@@ -1,0 +1,5 @@
+import type { DefaultOutput } from '../types/Base';
+import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
+export declare const updateLogScale: <Output = DefaultOutput, DiscreteInput extends import("../types/Base").StringLike = import("../types/Base").StringLike, ThresholdInput extends import("..").DefaultThresholdInput = import("..").DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScaleLogarithmic<Output, Output, never>, config?: Omit<import("../types/ScaleConfig").LogScaleConfig<Output>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScaleLogarithmic<Output, Output, never>;
+export default function createLogScale<Output = DefaultOutput>(config?: PickScaleConfigWithoutType<'log', Output>): import("@visx/vendor/d3-scale").ScaleLogarithmic<Output, Output, never>;
+//# sourceMappingURL=log.d.ts.map

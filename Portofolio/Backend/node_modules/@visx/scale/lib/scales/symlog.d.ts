@@ -1,0 +1,5 @@
+import type { DefaultOutput } from '../types/Base';
+import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
+export declare const updateSymlogScale: <Output = DefaultOutput, DiscreteInput extends import("../types/Base").StringLike = import("../types/Base").StringLike, ThresholdInput extends import("..").DefaultThresholdInput = import("..").DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScaleSymLog<Output, Output, never>, config?: Omit<import("../types/ScaleConfig").SymlogScaleConfig<Output>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScaleSymLog<Output, Output, never>;
+export default function createSymlogScale<Output = DefaultOutput>(config?: PickScaleConfigWithoutType<'symlog', Output>): import("@visx/vendor/d3-scale").ScaleSymLog<Output, Output, never>;
+//# sourceMappingURL=symlog.d.ts.map

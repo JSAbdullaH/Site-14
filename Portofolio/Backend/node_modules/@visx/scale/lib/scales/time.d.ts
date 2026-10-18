@@ -1,0 +1,5 @@
+import type { DefaultOutput } from '../types/Base';
+import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
+export declare const updateTimeScale: <Output = DefaultOutput, DiscreteInput extends import("../types/Base").StringLike = import("../types/Base").StringLike, ThresholdInput extends import("..").DefaultThresholdInput = import("..").DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScaleTime<Output, Output, never>, config?: Omit<import("../types/ScaleConfig").TimeScaleConfig<Output>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScaleTime<Output, Output, never>;
+export default function createTimeScale<Output = DefaultOutput>(config?: PickScaleConfigWithoutType<'time', Output>): import("@visx/vendor/d3-scale").ScaleTime<Output, Output, never>;
+//# sourceMappingURL=time.d.ts.map

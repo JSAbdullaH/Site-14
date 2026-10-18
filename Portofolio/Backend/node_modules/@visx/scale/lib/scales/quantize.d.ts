@@ -1,0 +1,5 @@
+import type { DefaultOutput } from '../types/Base';
+import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
+export declare const updateQuantizeScale: <Output = DefaultOutput, DiscreteInput extends import("../types/Base").StringLike = import("../types/Base").StringLike, ThresholdInput extends import("..").DefaultThresholdInput = import("..").DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScaleQuantize<Output, never>, config?: Omit<import("../types/ScaleConfig").QuantizeScaleConfig<Output>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScaleQuantize<Output, never>;
+export default function createQuantizeScale<Output = DefaultOutput>(config?: PickScaleConfigWithoutType<'quantize', Output>): import("@visx/vendor/d3-scale").ScaleQuantize<Output, never>;
+//# sourceMappingURL=quantize.d.ts.map

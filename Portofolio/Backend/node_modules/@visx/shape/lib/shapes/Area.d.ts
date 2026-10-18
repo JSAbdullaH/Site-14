@@ -1,0 +1,4 @@
+import type { AddSVGProps, BaseAreaProps } from '../types';
+export type AreaProps<Datum> = BaseAreaProps<Datum>;
+export default function Area<Datum>({ children, x, x0, x1, y, y0, y1, data, defined, className, curve, innerRef, ...restProps }: AddSVGProps<AreaProps<Datum>, SVGPathElement>): import("react/jsx-runtime").JSX.Element;
+//# sourceMappingURL=Area.d.ts.map

@@ -1,0 +1,5 @@
+import type { DefaultOutput } from '../types/Base';
+import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
+export declare const updateQuantileScale: <Output = DefaultOutput, DiscreteInput extends import("../types/Base").StringLike = import("../types/Base").StringLike, ThresholdInput extends import("..").DefaultThresholdInput = import("..").DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScaleQuantile<Output, never>, config?: Omit<import("../types/ScaleConfig").QuantileScaleConfig<Output>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScaleQuantile<Output, never>;
+export default function createQuantileScale<Output = DefaultOutput>(config?: PickScaleConfigWithoutType<'quantile', Output>): import("@visx/vendor/d3-scale").ScaleQuantile<Output, never>;
+//# sourceMappingURL=quantile.d.ts.map

@@ -1,0 +1,7 @@
+import type { StackProps } from './Stack';
+import type { AddSVGProps, StackKey } from '../types';
+type PickProps = 'className' | 'top' | 'left' | 'keys' | 'data' | 'curve' | 'defined' | 'x' | 'x0' | 'x1' | 'y0' | 'y1' | 'value' | 'order' | 'offset' | 'color' | 'children';
+export type AreaStackProps<Datum, Key> = Pick<StackProps<Datum, Key>, PickProps>;
+export default function AreaStack<Datum, Key extends StackKey = StackKey>({ className, top, left, keys, data, curve, defined, x, x0, x1, y0, y1, value, order, offset, color, children, ...restProps }: AddSVGProps<AreaStackProps<Datum, Key>, SVGPathElement>): import("react/jsx-runtime").JSX.Element;
+export {};
+//# sourceMappingURL=AreaStack.d.ts.map

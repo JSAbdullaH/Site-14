@@ -1,5 +1,5 @@
 const config = require('../config');
-const { withTransaction } = require('../config/db');
+const { prisma, Prisma } = require('../config/db');
 const AppError = require('../utils/AppError');
 const { burnPasswordCheck, hashPassword, verifyPassword } = require('../utils/password');
 const { signAccessToken } = require('../utils/jwt');
@@ -9,24 +9,30 @@ const userModel = require('../models/user.model');
 const invalidCredentials = () =>
   new AppError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect');
 
+// Prisma error P2002 = unique constraint violation (PostgreSQL 23505).
+const isUniqueViolation = (err) =>
+  err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+
 async function register(input) {
   const passwordHash = await hashPassword(input.password);
   try {
-    await withTransaction(async (client) => {
-      const company = await companyModel.create(client, {
+    // Company and first admin are saved together, or neither is.
+    await prisma.$transaction(async (tx) => {
+      const company = await companyModel.create(tx, {
         name: input.company_name,
         commercialRegistration: input.commercial_registration,
       });
-      await userModel.create(client, {
-        //companyId: company.id,
-        //fullName: input.full_name,
+      await userModel.create(tx, {
+        companyId: company.id,
+        fullName: input.full_name,
         email: input.email,
         passwordHash,
         role: 'company_admin',
       });
     });
   } catch (err) {
-    if (err.code === '23505') return;
+    // Same answer for a taken email, so the endpoint does not reveal who has an account.
+    if (isUniqueViolation(err)) return;
     throw err;
   }
 }
@@ -34,24 +40,24 @@ async function register(input) {
 async function login(input) {
   const user = await userModel.findByEmail(input.email);
 
-  if (!user || !user.password_hash) {
+  if (!user || !user.passwordHash) {
     await burnPasswordCheck(input.password);
     throw invalidCredentials();
   }
 
-  if (user.locked_until && user.locked_until > new Date()) {
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
     await burnPasswordCheck(input.password);
     throw invalidCredentials();
   }
 
-  const ok = await verifyPassword(user.password_hash, input.password);
+  const ok = await verifyPassword(user.passwordHash, input.password);
   if (!ok) {
     await userModel.registerFailure(user.id);
     throw invalidCredentials();
   }
 
-  if (!user.is_active) throw invalidCredentials();
-  if (config.REQUIRE_EMAIL_VERIFICATION && !user.is_email_verified) {
+  if (!user.isActive) throw invalidCredentials();
+  if (config.REQUIRE_EMAIL_VERIFICATION && !user.isEmailVerified) {
     throw new AppError(403, 'EMAIL_NOT_VERIFIED', 'Confirm your email address before signing in');
   }
 
@@ -59,7 +65,7 @@ async function login(input) {
 
   const { token, expiresIn } = signAccessToken({
     userId: user.id,
-    companyId: user.company_id,
+    companyId: user.companyId,
     role: user.role,
   });
 
@@ -68,10 +74,10 @@ async function login(input) {
     expires_in: expiresIn,
     user: {
       id: user.id,
-      //full_name: user.full_name,
+      full_name: user.fullName,
       email: user.email,
       role: user.role,
-      //company_id: user.company_id,
+      company_id: user.companyId,
     },
   };
 }

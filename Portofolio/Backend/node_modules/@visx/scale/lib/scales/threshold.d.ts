@@ -1,0 +1,6 @@
+import type { DefaultOutput, StringLike } from '../types/Base';
+import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
+import type { DefaultThresholdInput } from '../types/Scale';
+export declare const updateThresholdScale: <Output = DefaultOutput, DiscreteInput extends StringLike = StringLike, ThresholdInput extends DefaultThresholdInput = DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScaleThreshold<ThresholdInput, Output, never>, config?: Omit<import("../types/ScaleConfig").ThresholdScaleConfig<ThresholdInput, Output>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScaleThreshold<ThresholdInput, Output, never>;
+export default function createThresholdScale<ThresholdInput extends DefaultThresholdInput = DefaultThresholdInput, Output = DefaultOutput>(config?: PickScaleConfigWithoutType<'threshold', Output, StringLike, ThresholdInput>): import("@visx/vendor/d3-scale").ScaleThreshold<ThresholdInput, Output, never>;
+//# sourceMappingURL=threshold.d.ts.map

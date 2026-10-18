@@ -1,0 +1,37 @@
+{
+  "name": "@visx/curve",
+  "version": "4.0.1-alpha.0",
+  "description": "visx curve",
+  "sideEffects": false,
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    }
+  },
+  "repository": "https://github.com/airbnb/visx",
+  "files": [
+    "lib",
+    "esm"
+  ],
+  "keywords": [
+    "visx",
+    "react",
+    "d3",
+    "visualization",
+    "chart"
+  ],
+  "author": "@hshoff",
+  "license": "MIT",
+  "dependencies": {
+    "@visx/vendor": "4.0.0-alpha.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "30ea16e4d218b439e5f0683de30aefb77489089e"
+}

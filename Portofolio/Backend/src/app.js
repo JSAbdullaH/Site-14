@@ -6,6 +6,10 @@ const { notFound, errorHandler } = require('./middlewares/error.middleware');
 
 const app = express();
 
+// Security headers, and JSON body parsing (without it req.body is undefined
+// and every POST fails validation).
+app.use(helmet());
+app.use(express.json({ limit: '100kb' }));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });

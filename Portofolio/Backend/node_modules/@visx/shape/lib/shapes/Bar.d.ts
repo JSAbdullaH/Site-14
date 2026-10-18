@@ -1,0 +1,10 @@
+import type { Ref } from 'react';
+import type { AddSVGProps } from '../types';
+export type BarProps = {
+    /** className to apply to rect element. */
+    className?: string;
+    /** reference to rect element. */
+    innerRef?: Ref<SVGRectElement>;
+};
+export default function Bar({ className, innerRef, ...restProps }: AddSVGProps<BarProps, SVGRectElement>): import("react/jsx-runtime").JSX.Element;
+//# sourceMappingURL=Bar.d.ts.map

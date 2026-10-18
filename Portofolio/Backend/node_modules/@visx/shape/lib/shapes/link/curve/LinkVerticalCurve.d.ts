@@ -1,0 +1,9 @@
+import type { SharedLinkProps, AccessorProps, AddSVGProps } from '../../../types';
+export declare function pathVerticalCurve<Link, Node>({ source, target, x, y, percent, }: Required<AccessorProps<Link, Node>> & {
+    percent: number;
+}): (link: Link) => string;
+export type LinkVerticalCurveProps<Link, Node> = {
+    percent?: number;
+} & AccessorProps<Link, Node> & SharedLinkProps<Link>;
+export default function LinkVerticalCurve<Link, Node>({ className, children, data, innerRef, path, percent, x, y, source, target, ...restProps }: AddSVGProps<LinkVerticalCurveProps<Link, Node>, SVGPathElement>): import("react/jsx-runtime").JSX.Element;
+//# sourceMappingURL=LinkVerticalCurve.d.ts.map

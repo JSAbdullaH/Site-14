@@ -1,48 +1,55 @@
-const { pool } = require('../config/db');
+const { prisma } = require('../config/db');
 const config = require('../config');
 
-async function create(client, { companyId, fullName, email, passwordHash, role }) {
-  const { rows } = await client.query(
-    `INSERT INTO users (company_id, full_name, email, password_hash, role, is_email_verified)
-     VALUES ($1, $2, $3, $4, $5, FALSE)
-     RETURNING id`,
-    [companyId, fullName, email, passwordHash, role],
-  );
-  return rows[0];
+async function create(tx, { companyId, fullName, email, passwordHash, role }) {
+  return tx.user.create({
+    data: { companyId, fullName, email, passwordHash, role, isEmailVerified: false },
+    select: { id: true },
+  });
 }
 
+// Emails are stored lower-case (zod lowercases them, and a CHECK in the
+// database enforces it), so an exact match is a case-insensitive match.
 async function findByEmail(email) {
-  const { rows } = await pool.query(
-    `SELECT id, company_id, full_name, email, password_hash, role,
-            is_email_verified, is_active, locked_until
-       FROM users WHERE lower(email) = $1`,
-    [email],
-  );
-  return rows[0] || null;
+  return prisma.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      companyId: true,
+      fullName: true,
+      email: true,
+      passwordHash: true,
+      role: true,
+      isEmailVerified: true,
+      isActive: true,
+      lockedUntil: true,
+    },
+  });
 }
 
+// Raw SQL on purpose: the read, the count and the lock happen in ONE statement,
+// so two wrong passwords sent at the same moment cannot both read the old count.
+// Prisma's update API cannot express this CASE logic atomically.
 async function registerFailure(userId) {
-  await pool.query(
-    `UPDATE users SET
+  await prisma.$executeRaw`
+    UPDATE users SET
         failed_login_count = CASE
           WHEN locked_until IS NOT NULL AND locked_until <= now() THEN 1
           ELSE failed_login_count + 1 END,
         locked_until = CASE
           WHEN (CASE WHEN locked_until IS NOT NULL AND locked_until <= now() THEN 1
-                     ELSE failed_login_count + 1 END) >= $2
-          THEN now() + make_interval(mins => $3)
+                     ELSE failed_login_count + 1 END) >= ${config.LOGIN_MAX_FAILURES}::int
+          THEN now() + make_interval(mins => ${config.LOGIN_LOCK_MINUTES}::int)
           ELSE NULL END,
         updated_at = now()
-      WHERE id = $1`,
-    [userId, config.LOGIN_MAX_FAILURES, config.LOGIN_LOCK_MINUTES],
-  );
+      WHERE id = ${userId}::uuid`;
 }
 
 async function resetFailures(userId) {
-  await pool.query(
-    'UPDATE users SET failed_login_count = 0, locked_until = NULL, updated_at = now() WHERE id = $1',
-    [userId],
-  );
+  await prisma.user.update({
+    where: { id: userId },
+    data: { failedLoginCount: 0, lockedUntil: null },
+  });
 }
 
 module.exports = { create, findByEmail, registerFailure, resetFailures };

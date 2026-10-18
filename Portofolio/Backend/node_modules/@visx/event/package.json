@@ -1,0 +1,45 @@
+{
+  "name": "@visx/event",
+  "version": "4.0.1-alpha.0",
+  "description": "visx event",
+  "sideEffects": false,
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib",
+    "esm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/airbnb/visx.git"
+  },
+  "keywords": [
+    "visx",
+    "d3",
+    "react",
+    "visualizations",
+    "charts"
+  ],
+  "author": "@hshoff",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/airbnb/visx/issues"
+  },
+  "homepage": "https://github.com/airbnb/visx#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@types/react": "*",
+    "@visx/point": "4.0.1-alpha.0"
+  },
+  "gitHead": "30ea16e4d218b439e5f0683de30aefb77489089e"
+}

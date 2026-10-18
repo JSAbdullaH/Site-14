@@ -1,0 +1,5 @@
+import type { DefaultOutput, StringLike } from '../types/Base';
+import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
+export declare const updateBandScale: <Output = DefaultOutput, DiscreteInput extends StringLike = StringLike, ThresholdInput extends import("..").DefaultThresholdInput = import("..").DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScaleBand<DiscreteInput>, config?: Omit<import("../types/ScaleConfig").BandScaleConfig<DiscreteInput>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScaleBand<DiscreteInput>;
+export default function createBandScale<DiscreteInput extends StringLike = StringLike>(config?: PickScaleConfigWithoutType<'band', DefaultOutput, DiscreteInput>): import("@visx/vendor/d3-scale").ScaleBand<DiscreteInput>;
+//# sourceMappingURL=band.d.ts.map

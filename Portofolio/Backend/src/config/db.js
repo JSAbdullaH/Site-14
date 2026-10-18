@@ -1,21 +1,13 @@
-const { Pool } = require('pg');
+// One Prisma Client for the whole app.
+// Prisma 7 talks to PostgreSQL through a driver adapter (node-postgres here).
+// The client is generated into src/generated/prisma by `npx prisma generate`
+// (runs automatically after `npm install`).
+const { PrismaClient, Prisma } = require('../generated/prisma/client.mts');
+const { PrismaPg } = require('@prisma/adapter-pg');
 const config = require('./index');
 
-const pool = new Pool({ connectionString: config.DATABASE_URL });
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: config.DATABASE_URL }),
+});
 
-async function withTransaction(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const result = await fn(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => undefined);
-    throw err;
-  } finally {
-    client.release();
-  }
-}
-
-module.exports = { pool, withTransaction };
+module.exports = { prisma, Prisma };

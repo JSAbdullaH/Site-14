@@ -1,0 +1,53 @@
+{
+  "name": "@visx/grid",
+  "version": "4.0.1-alpha.0",
+  "description": "visx grid",
+  "sideEffects": false,
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib",
+    "esm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/airbnb/visx.git"
+  },
+  "keywords": [
+    "visx",
+    "react",
+    "d3",
+    "visualizations",
+    "charts"
+  ],
+  "author": "@hshoff",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/airbnb/visx/issues"
+  },
+  "homepage": "https://github.com/airbnb/visx#readme",
+  "peerDependencies": {
+    "react": "^16.14.0 || ^17.0.0-0 || ^18.0.0-0 || ^19.0.0-0"
+  },
+  "dependencies": {
+    "@types/react": "*",
+    "@visx/curve": "4.0.1-alpha.0",
+    "@visx/group": "4.0.1-alpha.0",
+    "@visx/point": "4.0.1-alpha.0",
+    "@visx/scale": "4.0.1-alpha.0",
+    "@visx/shape": "4.0.1-alpha.0",
+    "classnames": "^2.3.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "30ea16e4d218b439e5f0683de30aefb77489089e"
+}

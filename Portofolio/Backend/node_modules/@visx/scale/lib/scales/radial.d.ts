@@ -1,0 +1,5 @@
+import type { DefaultOutput } from '../types/Base';
+import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
+export declare const updateRadialScale: <Output = DefaultOutput, DiscreteInput extends import("../types/Base").StringLike = import("../types/Base").StringLike, ThresholdInput extends import("..").DefaultThresholdInput = import("..").DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScaleRadial<Output, Output, never>, config?: Omit<import("../types/ScaleConfig").RadialScaleConfig<Output>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScaleRadial<Output, Output, never>;
+export default function createRadialScale<Output = DefaultOutput>(config?: PickScaleConfigWithoutType<'radial', Output>): import("@visx/vendor/d3-scale").ScaleRadial<Output, Output, never>;
+//# sourceMappingURL=radial.d.ts.map

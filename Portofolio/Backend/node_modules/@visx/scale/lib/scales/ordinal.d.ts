@@ -1,0 +1,5 @@
+import type { DefaultOutput, StringLike } from '../types/Base';
+import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
+export declare const updateOrdinalScale: <Output = DefaultOutput, DiscreteInput extends StringLike = StringLike, ThresholdInput extends import("..").DefaultThresholdInput = import("..").DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScaleOrdinal<DiscreteInput, Output, never>, config?: Omit<import("../types/ScaleConfig").OrdinalScaleConfig<DiscreteInput, Output>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScaleOrdinal<DiscreteInput, Output, never>;
+export default function createOrdinalScale<DiscreteInput extends StringLike = StringLike, Output = DefaultOutput>(config?: PickScaleConfigWithoutType<'ordinal', Output, DiscreteInput>): import("@visx/vendor/d3-scale").ScaleOrdinal<DiscreteInput, Output, never>;
+//# sourceMappingURL=ordinal.d.ts.map

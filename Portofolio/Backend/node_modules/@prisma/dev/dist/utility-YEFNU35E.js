@@ -1,0 +1,1 @@
+import{a as r}from"./chunk-SW3J2PL2.js";import"./chunk-ANHBRJRZ.js";import"./chunk-EDFHV3AK.js";import{a}from"./chunk-DOJAPHLY.js";function h(o,e,m){o.on("POST","/database/dump",r(async(p,t)=>{await e.db.dump(e.databaseDumpPath),a(t,{dumpPath:e.databaseDumpPath},201)},m)),o.on("GET","/health",r((p,t)=>{a(t,{name:e.name})},m))}export{h as registerUtilityRoutes};

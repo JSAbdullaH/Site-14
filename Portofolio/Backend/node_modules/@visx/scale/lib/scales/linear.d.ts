@@ -1,0 +1,5 @@
+import type { DefaultOutput } from '../types/Base';
+import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
+export declare const updateLinearScale: <Output = DefaultOutput, DiscreteInput extends import("../types/Base").StringLike = import("../types/Base").StringLike, ThresholdInput extends import("..").DefaultThresholdInput = import("..").DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScaleLinear<Output, Output, never>, config?: Omit<import("../types/ScaleConfig").LinearScaleConfig<Output>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScaleLinear<Output, Output, never>;
+export default function createLinearScale<Output = DefaultOutput>(config?: PickScaleConfigWithoutType<'linear', Output>): import("@visx/vendor/d3-scale").ScaleLinear<Output, Output, never>;
+//# sourceMappingURL=linear.d.ts.map
