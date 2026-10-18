@@ -1,5 +1,0 @@
-import type { DefaultOutput, StringLike } from '../types/Base';
-import type { PickScaleConfigWithoutType } from '../types/ScaleConfig';
-export declare const updatePointScale: <Output = DefaultOutput, DiscreteInput extends StringLike = StringLike, ThresholdInput extends import("..").DefaultThresholdInput = import("..").DefaultThresholdInput>(scale: import("@visx/vendor/d3-scale").ScalePoint<DiscreteInput>, config?: Omit<import("../types/ScaleConfig").PointScaleConfig<DiscreteInput>, "type"> | undefined) => import("@visx/vendor/d3-scale").ScalePoint<DiscreteInput>;
-export default function createPointScale<DiscreteInput extends StringLike = StringLike>(config?: PickScaleConfigWithoutType<'point', DefaultOutput, DiscreteInput>): import("@visx/vendor/d3-scale").ScalePoint<DiscreteInput>;
-//# sourceMappingURL=point.d.ts.map
