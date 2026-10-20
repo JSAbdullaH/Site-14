@@ -20,7 +20,6 @@ require('dotenv').config({ quiet: true });
 const crypto = require('node:crypto');
 const { prisma } = require('../src/config/db');
 const { hashPassword } = require('../src/utils/password');
-const { assertSafeTarget } = require('./rollback');
 
 const MINUTE = 60_000;
 const RIYADH_OFFSET = 3 * 60 * MINUTE; // UTC+3, no daylight saving
@@ -75,6 +74,25 @@ const jitter = (area) => ({
   latitude: area.lat + (random() - 0.5) * area.half,
   longitude: area.lng + (random() - 0.5) * area.half,
 });
+
+// ---------------------------------------------------------------- safety
+
+// The seed empties every table first, so it runs only on a database on this
+// machine and never in production, unless ALLOW_REMOTE_RESET=true says the
+// remote database holds demo data only.
+function assertSafeTarget(url, action) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`Refusing to ${action}: NODE_ENV is production.`);
+  }
+  const host = new URL(url).hostname;
+  const local = ['localhost', '127.0.0.1', '::1'].includes(host);
+  if (!local && process.env.ALLOW_REMOTE_RESET !== 'true') {
+    throw new Error(
+      `Refusing to ${action} on ${host}: it deletes data. ` +
+      'Set ALLOW_REMOTE_RESET=true only if that database holds demo data.',
+    );
+  }
+}
 
 // Empties every table in the schema (whatever tables exist), keeping
 // Prisma's own migration history. TRUNCATE is allowed on the append-only
@@ -436,4 +454,4 @@ if (require.main === module) {
     .finally(() => prisma.$disconnect());
 }
 
-module.exports = { seed };
+module.exports = { seed, assertSafeTarget };

@@ -1,5 +1,6 @@
 -- SITE-69: undoes 20261015000000_init/migration.sql.
--- Run with `npm run db:rollback`. It deletes every table and all their data.
+-- Run with `npm run db:rollback` (prisma db execute). It deletes every table
+-- and all their data, so run it only on your own database.
 -- Afterwards the database is empty, with no tables, view, functions or types
 -- left behind, and `npm run db:deploy` builds it again from scratch.
 --
@@ -39,5 +40,8 @@ DROP TYPE IF EXISTS "alert_type";
 DROP TYPE IF EXISTS "employee_status";
 DROP TYPE IF EXISTS "auth_token_type";
 DROP TYPE IF EXISTS "user_role";
+
+-- Prisma's own record of applied migrations, so db:deploy starts fresh.
+DROP TABLE IF EXISTS "_prisma_migrations";
 
 COMMIT;

@@ -1,5 +1,5 @@
-// SITE-77: Playwright starts the real backend and frontend, on a database
-// rebuilt and seeded for the run, then walks the critical journey.
+// SITE-77: Playwright rebuilds and seeds a test database, starts the real
+// backend and frontend on it, then walks the critical journey.
 //   npx playwright install chromium     (once)
 //   npm run test:e2e                    (from Portofolio/Backend)
 const path = require('node:path');
@@ -12,12 +12,16 @@ const frontend = path.join(backend, '..', 'FrontEnd', 'Portfolio');
 require('dotenv').config({ path: path.join(backend, '.env'), quiet: true });
 
 // A separate database can be set with DATABASE_URL_E2E; otherwise the test one.
+// The run wipes it, so its name must say it is a test database.
 const databaseUrl = process.env.DATABASE_URL_E2E || process.env.DATABASE_URL_TEST;
-process.env.E2E_DATABASE_URL = databaseUrl;
+if (!databaseUrl) throw new Error('Set DATABASE_URL_TEST (or DATABASE_URL_E2E) in .env');
+const name = new URL(databaseUrl).pathname.slice(1);
+if (!/test|e2e/i.test(name)) {
+  throw new Error(`Refusing to use database "${name}" for E2E: its name must contain "test" or "e2e".`);
+}
 
 module.exports = defineConfig({
   testDir: '.',
-  globalSetup: require.resolve('./global-setup'),
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
@@ -31,13 +35,13 @@ module.exports = defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     {
-      // The API, on the database global-setup prepared.
-      command: 'npm start',
+      // Fresh database (migrations + demo seed), then the API on it.
+      command: 'npx prisma migrate reset --force && node prisma/seed.js && node src/server.js',
       cwd: backend,
       url: 'http://localhost:4000/health',
       env: { DATABASE_URL: databaseUrl, PORT: '4000', NODE_ENV: 'development' },
       reuseExistingServer: false,
-      timeout: 60_000,
+      timeout: 120_000,
     },
     {
       // The frontend dev server; it forwards /api to port 4000.
