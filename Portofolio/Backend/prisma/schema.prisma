@@ -1,7 +1,7 @@
 // SITE14 database schema (Prisma ORM 7)
 // Source design: Stage3.md section 2.2 (16 tables + 1 view), plus heart rate (v2.1),
 // trimmed to the columns the MVP uses (v2.2). The midday ban window is a fixed
-// rule and lives in src/config/rules.js.
+// rule and lives in src/models/company.model.js.
 // Deviations from Stage3 are listed in the SITE-69 pull request.
 //
 // Things Prisma cannot express live in the migration SQL, not here:

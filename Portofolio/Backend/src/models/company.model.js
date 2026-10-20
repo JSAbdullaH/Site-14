@@ -1,5 +1,9 @@
 const { prisma } = require('../config/db');
-const { MIDDAY_BAN } = require('../config/rules');
+
+// Midday ban on work under direct sun (Saudi labour rules): 12:00 to 15:00,
+// from 15 June to 15 September. The same for every company, so it is a
+// constant here, not a column. The rule engine will import it from this file.
+const MIDDAY_BAN = { fromMonthDay: '06-15', toMonthDay: '09-15', startTime: '12:00:00', endTime: '15:00:00' };
 
 // `tx` is the transaction client from prisma.$transaction, so the company and
 // its first user are created together.
@@ -11,7 +15,6 @@ async function create(tx, { name, commercialRegistration }) {
 }
 
 // Keeps the snake_case JSON shape the API returned before Prisma.
-// The midday ban is the same for every company (config/rules.js).
 async function findById(id) {
   const company = await prisma.company.findUnique({
     where: { id },
@@ -29,4 +32,4 @@ async function findById(id) {
   };
 }
 
-module.exports = { create, findById };
+module.exports = { create, findById, MIDDAY_BAN };

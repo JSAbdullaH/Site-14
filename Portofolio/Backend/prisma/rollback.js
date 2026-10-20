@@ -8,9 +8,25 @@ require('dotenv').config({ quiet: true });
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client } = require('pg');
-const { assertSafeTarget } = require('./safety');
 
 const MIGRATIONS = path.join(__dirname, 'migrations');
+
+// Guard shared by the scripts that wipe data (this one and seed.js).
+// They run only on a database on this machine, never in production,
+// unless ALLOW_REMOTE_RESET=true says the remote database is disposable.
+function assertSafeTarget(url, action) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`Refusing to ${action}: NODE_ENV is production.`);
+  }
+  const host = new URL(url).hostname;
+  const local = ['localhost', '127.0.0.1', '::1'].includes(host);
+  if (!local && process.env.ALLOW_REMOTE_RESET !== 'true') {
+    throw new Error(
+      `Refusing to ${action} on ${host}: it deletes data. ` +
+      'Set ALLOW_REMOTE_RESET=true only if that database holds demo data.',
+    );
+  }
+}
 
 async function rollback(url = process.env.DATABASE_URL) {
   assertSafeTarget(url, 'roll back');
@@ -56,4 +72,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { rollback };
+module.exports = { rollback, assertSafeTarget };

@@ -1,19 +1,22 @@
 // SITE-77: Playwright starts the real backend and frontend, on a database
 // rebuilt and seeded for the run, then walks the critical journey.
-//   cd Portofolio/e2e && npm install && npx playwright install chromium
-//   npm test
+//   npx playwright install chromium     (once)
+//   npm run test:e2e                    (from Portofolio/Backend)
 const path = require('node:path');
 const { defineConfig, devices } = require('@playwright/test');
 
+const backend = path.join(__dirname, '..', '..');
+const frontend = path.join(backend, '..', 'FrontEnd', 'Portfolio');
+
 // The database settings live in the backend's .env.
-require('dotenv').config({ path: path.join(__dirname, '..', 'Backend', '.env'), quiet: true });
+require('dotenv').config({ path: path.join(backend, '.env'), quiet: true });
 
 // A separate database can be set with DATABASE_URL_E2E; otherwise the test one.
 const databaseUrl = process.env.DATABASE_URL_E2E || process.env.DATABASE_URL_TEST;
 process.env.E2E_DATABASE_URL = databaseUrl;
 
 module.exports = defineConfig({
-  testDir: './tests',
+  testDir: '.',
   globalSetup: require.resolve('./global-setup'),
   fullyParallel: false,
   workers: 1,
@@ -30,7 +33,7 @@ module.exports = defineConfig({
     {
       // The API, on the database global-setup prepared.
       command: 'npm start',
-      cwd: path.join(__dirname, '..', 'Backend'),
+      cwd: backend,
       url: 'http://localhost:4000/health',
       env: { DATABASE_URL: databaseUrl, PORT: '4000', NODE_ENV: 'development' },
       reuseExistingServer: false,
@@ -39,7 +42,7 @@ module.exports = defineConfig({
     {
       // The frontend dev server; it forwards /api to port 4000.
       command: 'npm run dev -- --port 5173 --strictPort',
-      cwd: path.join(__dirname, '..', 'FrontEnd', 'Portfolio'),
+      cwd: frontend,
       url: 'http://localhost:5173',
       reuseExistingServer: false,
       timeout: 60_000,

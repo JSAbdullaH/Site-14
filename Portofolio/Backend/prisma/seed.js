@@ -20,7 +20,7 @@ require('dotenv').config({ quiet: true });
 const crypto = require('node:crypto');
 const { prisma } = require('../src/config/db');
 const { hashPassword } = require('../src/utils/password');
-const { assertSafeTarget } = require('./safety');
+const { assertSafeTarget } = require('./rollback');
 
 const MINUTE = 60_000;
 const RIYADH_OFFSET = 3 * 60 * MINUTE; // UTC+3, no daylight saving

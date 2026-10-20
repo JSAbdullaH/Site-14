@@ -4,13 +4,13 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const backend = path.join(__dirname, '..', 'Backend');
-// Use the backend's own copy of pg, so this folder needs only Playwright.
-const { Client } = require(require.resolve('pg', { paths: [backend] }));
+const { Client } = require('pg');
+
+const backend = path.join(__dirname, '..', '..');
 
 module.exports = async function globalSetup() {
   const url = process.env.E2E_DATABASE_URL;
-  if (!url) throw new Error('Set DATABASE_URL_TEST (or DATABASE_URL_E2E) in Portofolio/Backend/.env');
+  if (!url) throw new Error('Set DATABASE_URL_TEST (or DATABASE_URL_E2E) in .env');
   const name = new URL(url).pathname.slice(1);
   if (!/test|e2e/i.test(name)) {
     throw new Error(`Refusing to use database "${name}" for E2E: its name must contain "test" or "e2e", because the run wipes it.`);
