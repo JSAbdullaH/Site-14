@@ -8,6 +8,9 @@ src/generated/
 
 coverage/
 
+# Playwright results (npm run test:e2e)
+test-results/
+playwright-report/
+
 # Dependencies
 node_modules/
-**/node_modules/

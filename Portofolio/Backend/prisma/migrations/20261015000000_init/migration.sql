@@ -1,4 +1,4 @@
--- SITE-69: initial schema, 16 tables + 1 view (Stage3 section 2.2, v2.1 with heart rate)
+-- SITE-69: initial schema, 16 tables + 1 view (Stage3 section 2.2, v2.2: heart rate, trimmed columns)
 -- Part 1 follows Prisma's own naming so `prisma migrate diff` stays clean.
 -- Part 2 holds what schema.prisma cannot express: CHECKs, partial unique
 -- indexes, triggers and the view.
@@ -17,9 +17,6 @@ CREATE TYPE "auth_token_type" AS ENUM ('email_verify', 'invitation', 'password_r
 CREATE TYPE "employee_status" AS ENUM ('active', 'inactive');
 
 -- CreateEnum
-CREATE TYPE "session_end_reason" AS ENUM ('left_site', 'shift_ended', 'device_offline');
-
--- CreateEnum
 CREATE TYPE "alert_type" AS ENUM ('zone_exit', 'hour_limit', 'midday_ban', 'heart_rate_high', 'heart_rate_low');
 
 -- CreateEnum
@@ -33,14 +30,9 @@ CREATE TABLE "companies" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "name" VARCHAR(150) NOT NULL,
     "commercial_registration" VARCHAR(50),
-    "midday_ban_from_date" DATE,
-    "midday_ban_to_date" DATE,
-    "midday_ban_start_time" TIME(6) NOT NULL DEFAULT '12:00:00'::time without time zone,
-    "midday_ban_end_time" TIME(6) NOT NULL DEFAULT '15:00:00'::time without time zone,
     "heart_rate_max_bpm" SMALLINT,
     "heart_rate_min_bpm" SMALLINT,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "companies_pkey" PRIMARY KEY ("id")
 );
@@ -51,10 +43,7 @@ CREATE TABLE "job_category_rules" (
     "company_id" UUID NOT NULL,
     "job_category" VARCHAR(60) NOT NULL,
     "daily_limit_minutes" SMALLINT NOT NULL DEFAULT 480,
-    "ramadan_limit_minutes" SMALLINT,
-    "ban_lead_minutes" SMALLINT NOT NULL DEFAULT 10,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "job_category_rules_pkey" PRIMARY KEY ("id")
 );
@@ -72,7 +61,6 @@ CREATE TABLE "users" (
     "failed_login_count" SMALLINT NOT NULL DEFAULT 0,
     "locked_until" TIMESTAMPTZ(6),
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -85,7 +73,6 @@ CREATE TABLE "auth_tokens" (
     "token_hash" VARCHAR(255) NOT NULL,
     "expires_at" TIMESTAMPTZ(6) NOT NULL,
     "consumed_at" TIMESTAMPTZ(6),
-    "attempt_count" SMALLINT NOT NULL DEFAULT 0,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "auth_tokens_pkey" PRIMARY KEY ("id")
@@ -108,13 +95,11 @@ CREATE TABLE "sites" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "company_id" UUID NOT NULL,
     "name" VARCHAR(120) NOT NULL,
-    "client" VARCHAR(150),
     "boundary" JSONB NOT NULL,
     "shift_start" TIME(6) NOT NULL,
     "shift_end" TIME(6) NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "sites_pkey" PRIMARY KEY ("id")
 );
@@ -127,11 +112,9 @@ CREATE TABLE "employees" (
     "employee_number" VARCHAR(30),
     "full_name" VARCHAR(120) NOT NULL,
     "job_category" VARCHAR(60) NOT NULL,
-    "phone" VARCHAR(20),
     "consent_given_at" TIMESTAMPTZ(6),
     "status" "employee_status" NOT NULL DEFAULT 'active',
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "employees_pkey" PRIMARY KEY ("id")
 );
@@ -144,7 +127,6 @@ CREATE TABLE "devices" (
     "serial_number" VARCHAR(64) NOT NULL,
     "api_key_hash" VARCHAR(255) NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
-    "last_seen_at" TIMESTAMPTZ(6),
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "devices_pkey" PRIMARY KEY ("id")
@@ -159,7 +141,6 @@ CREATE TABLE "geofences" (
     "is_outdoor" BOOLEAN NOT NULL DEFAULT false,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "geofences_pkey" PRIMARY KEY ("id")
 );
@@ -173,8 +154,6 @@ CREATE TABLE "work_sessions" (
     "device_id" UUID NOT NULL,
     "started_at" TIMESTAMPTZ(6) NOT NULL,
     "ended_at" TIMESTAMPTZ(6),
-    "end_reason" "session_end_reason",
-    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "work_sessions_pkey" PRIMARY KEY ("id")
 );
@@ -206,7 +185,6 @@ CREATE TABLE "alerts" (
     "limit_bpm" SMALLINT,
     "observed_bpm" SMALLINT,
     "triggered_at" TIMESTAMPTZ(6) NOT NULL,
-    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "acknowledged_by" UUID,
     "acknowledged_at" TIMESTAMPTZ(6),
     "resolved_at" TIMESTAMPTZ(6),
@@ -224,7 +202,6 @@ CREATE TABLE "employee_current_state" (
     "battery_percent" SMALLINT,
     "heart_rate_bpm" SMALLINT,
     "recorded_at" TIMESTAMPTZ(6) NOT NULL,
-    "received_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "employee_current_state_pkey" PRIMARY KEY ("employee_id")
 );
@@ -234,16 +211,13 @@ CREATE TABLE "tasks" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "company_id" UUID NOT NULL,
     "site_id" UUID NOT NULL,
-    "geofence_id" UUID,
     "employee_id" UUID NOT NULL,
     "created_by" UUID NOT NULL,
     "title" VARCHAR(150) NOT NULL,
-    "description" TEXT,
     "status" "task_status" NOT NULL DEFAULT 'todo',
     "scheduled_for" DATE NOT NULL DEFAULT (timezone('Asia/Riyadh'::text, now()))::date,
     "completed_at" TIMESTAMPTZ(6),
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "tasks_pkey" PRIMARY KEY ("id")
 );
@@ -334,9 +308,6 @@ CREATE UNIQUE INDEX "devices_company_id_id_key" ON "devices"("company_id", "id")
 
 -- CreateIndex
 CREATE UNIQUE INDEX "devices_company_id_employee_id_key" ON "devices"("company_id", "employee_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "geofences_site_id_id_key" ON "geofences"("site_id", "id");
 
 -- CreateIndex
 CREATE INDEX "work_sessions_employee_id_started_at_idx" ON "work_sessions"("employee_id", "started_at");
@@ -438,9 +409,6 @@ ALTER TABLE "tasks" ADD CONSTRAINT "tasks_company_id_fkey" FOREIGN KEY ("company
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_company_id_site_id_fkey" FOREIGN KEY ("company_id", "site_id") REFERENCES "sites"("company_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_site_id_geofence_id_fkey" FOREIGN KEY ("site_id", "geofence_id") REFERENCES "geofences"("site_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_company_id_employee_id_fkey" FOREIGN KEY ("company_id", "employee_id") REFERENCES "employees"("company_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -476,19 +444,14 @@ ALTER TABLE "reports" ADD CONSTRAINT "reports_company_id_created_by_fkey" FOREIG
 -- Emails are stored lower-case, so users_email_key is case-insensitive.
 ALTER TABLE "users" ADD CONSTRAINT "users_email_lowercase_chk" CHECK ("email" = lower("email"));
 
-ALTER TABLE "companies" ADD CONSTRAINT "companies_midday_ban_window_chk"
-    CHECK ("midday_ban_start_time" < "midday_ban_end_time");
 ALTER TABLE "companies" ADD CONSTRAINT "companies_heart_rate_range_chk"
     CHECK (("heart_rate_min_bpm" IS NULL OR "heart_rate_min_bpm" BETWEEN 20 AND 250)
        AND ("heart_rate_max_bpm" IS NULL OR "heart_rate_max_bpm" BETWEEN 20 AND 250)
        AND ("heart_rate_min_bpm" IS NULL OR "heart_rate_max_bpm" IS NULL OR "heart_rate_min_bpm" < "heart_rate_max_bpm"));
 
 ALTER TABLE "job_category_rules" ADD CONSTRAINT "job_category_rules_limits_chk"
-    CHECK ("daily_limit_minutes" BETWEEN 1 AND 1440
-       AND ("ramadan_limit_minutes" IS NULL OR "ramadan_limit_minutes" BETWEEN 1 AND 1440)
-       AND "ban_lead_minutes" >= 0);
+    CHECK ("daily_limit_minutes" BETWEEN 1 AND 1440);
 
-ALTER TABLE "auth_tokens" ADD CONSTRAINT "auth_tokens_attempt_count_chk" CHECK ("attempt_count" >= 0);
 ALTER TABLE "users" ADD CONSTRAINT "users_failed_login_count_chk" CHECK ("failed_login_count" >= 0);
 
 ALTER TABLE "sites" ADD CONSTRAINT "sites_boundary_polygon_chk"
@@ -498,8 +461,6 @@ ALTER TABLE "geofences" ADD CONSTRAINT "geofences_boundary_polygon_chk"
 
 ALTER TABLE "work_sessions" ADD CONSTRAINT "work_sessions_period_chk"
     CHECK ("ended_at" IS NULL OR "ended_at" >= "started_at");
-ALTER TABLE "work_sessions" ADD CONSTRAINT "work_sessions_end_reason_chk"
-    CHECK (("ended_at" IS NULL) = ("end_reason" IS NULL));
 
 ALTER TABLE "telemetry_logs" ADD CONSTRAINT "telemetry_logs_position_chk"
     CHECK ("latitude" BETWEEN -90 AND 90 AND "longitude" BETWEEN -180 AND 180);
@@ -601,11 +562,11 @@ CREATE FUNCTION "alerts_handling_only"() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     IF (NEW."id", NEW."session_id", NEW."alert_type", NEW."geofence_id", NEW."latitude", NEW."longitude",
         NEW."limit_minutes", NEW."observed_minutes", NEW."limit_bpm", NEW."observed_bpm",
-        NEW."triggered_at", NEW."created_at")
+        NEW."triggered_at")
        IS DISTINCT FROM
        (OLD."id", OLD."session_id", OLD."alert_type", OLD."geofence_id", OLD."latitude", OLD."longitude",
         OLD."limit_minutes", OLD."observed_minutes", OLD."limit_bpm", OLD."observed_bpm",
-        OLD."triggered_at", OLD."created_at") THEN
+        OLD."triggered_at") THEN
         RAISE EXCEPTION 'only the handling columns of an alert can change' USING ERRCODE = 'AO001';
     END IF;
     IF (OLD."acknowledged_at" IS NOT NULL AND NEW."acknowledged_at" IS DISTINCT FROM OLD."acknowledged_at")
