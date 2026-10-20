@@ -40,8 +40,7 @@ async function registerFailure(userId) {
           WHEN (CASE WHEN locked_until IS NOT NULL AND locked_until <= now() THEN 1
                      ELSE failed_login_count + 1 END) >= ${config.LOGIN_MAX_FAILURES}::int
           THEN now() + make_interval(mins => ${config.LOGIN_LOCK_MINUTES}::int)
-          ELSE NULL END,
-        updated_at = now()
+          ELSE NULL END
       WHERE id = ${userId}::uuid`;
 }
 

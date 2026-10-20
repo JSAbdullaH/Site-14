@@ -1,0 +1,85 @@
+// SITE-75: the demo seed meets its acceptance criteria.
+const { prisma } = require('../src/config/db');
+const { pool, listTables } = require('./setup');
+const { seed } = require('../prisma/seed');
+
+const one = async (sql, params) => (await pool.query(sql, params)).rows[0];
+
+// Row count of every table, to compare two runs.
+async function snapshot() {
+  const counts = {};
+  for (const t of await listTables()) counts[t] = (await one(`SELECT count(*)::int AS n FROM "${t}"`)).n;
+  return counts;
+}
+
+let first;
+beforeAll(async () => {
+  await seed();
+  first = await snapshot();
+}, 120_000);
+
+afterAll(async () => {
+  await prisma.$disconnect();
+  await pool.end();
+});
+
+test('a company with two sites, three zones (one outdoor) and twenty tracked employees', async () => {
+  const c = await one("SELECT id FROM companies WHERE name = 'Al-Bina Advanced Contracting'");
+  expect((await one('SELECT count(*)::int AS n FROM sites WHERE company_id = $1', [c.id])).n).toBe(2);
+
+  const zones = await one(
+    'SELECT count(*)::int AS n, count(*) FILTER (WHERE g.is_outdoor)::int AS outdoor FROM geofences g JOIN sites s ON s.id = g.site_id WHERE s.company_id = $1',
+    [c.id],
+  );
+  expect(zones).toEqual({ n: 3, outdoor: 1 });
+
+  // Tracked = has consented and wears a device.
+  const tracked = await one(
+    'SELECT count(*)::int AS n FROM employees e JOIN devices d ON d.employee_id = e.id WHERE e.company_id = $1 AND e.consent_given_at IS NOT NULL',
+    [c.id],
+  );
+  expect(tracked.n).toBe(20);
+});
+
+test('the live map, the table, the alert list and the daily record all have data', async () => {
+  const c = await one("SELECT id FROM companies WHERE name = 'Al-Bina Advanced Contracting'");
+  const q = async (sql) => (await one(sql, [c.id])).n;
+
+  // Live map: workers on site right now, each with a fresh position.
+  expect(await q(`SELECT count(*)::int AS n FROM employee_current_state cs
+    JOIN work_sessions ws ON ws.id = cs.session_id WHERE ws.company_id = $1 AND ws.ended_at IS NULL`)).toBeGreaterThanOrEqual(10);
+  // Table: the employee list.
+  expect(await q('SELECT count(*)::int AS n FROM employees WHERE company_id = $1')).toBeGreaterThanOrEqual(20);
+  // Alert list: open ones for today, handled ones from the past week.
+  expect(await q(`SELECT count(*)::int AS n FROM alerts a JOIN work_sessions ws ON ws.id = a.session_id
+    WHERE ws.company_id = $1 AND a.resolved_at IS NULL`)).toBeGreaterThanOrEqual(2);
+  expect(await q(`SELECT count(*)::int AS n FROM alerts a JOIN work_sessions ws ON ws.id = a.session_id
+    WHERE ws.company_id = $1 AND a.resolved_at IS NOT NULL`)).toBeGreaterThan(0);
+  // Daily record: a week of past days.
+  expect(await q('SELECT count(DISTINCT work_date)::int AS n FROM daily_work_records WHERE company_id = $1')).toBeGreaterThanOrEqual(6);
+  // Readings behind the sessions, and tasks in every status.
+  expect(await q(`SELECT count(*)::int AS n FROM telemetry_logs t JOIN work_sessions ws ON ws.id = t.session_id
+    WHERE ws.company_id = $1`)).toBeGreaterThan(5000);
+  expect(await q('SELECT count(DISTINCT status)::int AS n FROM tasks WHERE company_id = $1')).toBe(3);
+});
+
+test('employees without consent have no device and no session', async () => {
+  const pending = await one(`SELECT count(*)::int AS n FROM employees e
+    WHERE e.consent_given_at IS NULL
+      AND NOT EXISTS (SELECT 1 FROM devices d WHERE d.employee_id = e.id)
+      AND NOT EXISTS (SELECT 1 FROM work_sessions ws WHERE ws.employee_id = e.id)`);
+  expect(pending.n).toBeGreaterThanOrEqual(2);
+});
+
+test('the demo users can be looked up for sign-in', async () => {
+  const users = await pool.query("SELECT email, role FROM users WHERE email LIKE '%@albina.test' ORDER BY email");
+  expect(users.rows).toEqual([
+    { email: 'admin@albina.test', role: 'company_admin' },
+    { email: 'manager@albina.test', role: 'site_manager' },
+  ]);
+});
+
+test('running the seed twice resets cleanly instead of duplicating rows', async () => {
+  await seed();
+  expect(await snapshot()).toEqual(first);
+}, 120_000);

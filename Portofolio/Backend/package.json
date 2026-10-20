@@ -13,6 +13,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:reset": "prisma migrate reset",
+    "db:rollback": "node prisma/rollback.js",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "db:check": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script",

@@ -40,15 +40,38 @@ async function globalSetup() {
 // A Pool opens no connection until the first query, so creating it here is free.
 const pool = new Pool({ connectionString: url });
 
-const TABLES = [
-  'companies', 'job_category_rules', 'users', 'auth_tokens', 'refresh_tokens', 'sites',
-  'employees', 'devices', 'geofences', 'work_sessions', 'telemetry_logs', 'alerts',
-  'employee_current_state', 'tasks', 'record_corrections', 'reports',
-];
+// The tables and columns schema.prisma declares, read from the file, so the
+// tests follow the schema when tables or columns are added or removed.
+//   { companies: ['created_at', 'id', 'name', ...], ... }
+const SCHEMA_COLUMNS = (() => {
+  const text = fs.readFileSync(path.join(__dirname, '..', 'prisma', 'schema.prisma'), 'utf8');
+  const blocks = [...text.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)];
+  const models = new Set(blocks.map((b) => b[1]));
+  const tables = {};
+  for (const [, , body] of blocks) {
+    const table = body.match(/@@map\("(\w+)"\)/)[1];
+    tables[table] = body.split('\n')
+      .map((line) => line.trim().match(/^(\w+)\s+(\w+)[?[\]]*(.*)$/))
+      .filter((m) => m && !models.has(m[2])) // skip relation fields
+      .map((m) => (m[3].match(/@map\("(\w+)"\)/) || [, m[1]])[1])
+      .sort();
+  }
+  return tables;
+})();
+const SCHEMA_TABLES = Object.keys(SCHEMA_COLUMNS);
+
+// Every table that exists right now, apart from Prisma's migration history.
+async function listTables() {
+  const { rows } = await pool.query(
+    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations' ORDER BY 1",
+  );
+  return rows.map((r) => r.tablename);
+}
 
 // TRUNCATE is allowed even on append-only tables (the triggers block UPDATE/DELETE only).
 async function truncateAll() {
-  await pool.query(`TRUNCATE ${TABLES.join(', ')} RESTART IDENTITY CASCADE`);
+  const tables = await listTables();
+  if (tables.length) await pool.query(`TRUNCATE ${tables.map((t) => `"${t}"`).join(', ')} RESTART IDENTITY CASCADE`);
 }
 
 const square = (lng, lat, half = 0.001) => ({
@@ -103,4 +126,4 @@ async function sqlState(sql, params) {
 }
 
 module.exports = globalSetup;
-Object.assign(module.exports, { pool, TABLES, truncateAll, makeCompany, openSession, sqlState, square });
+Object.assign(module.exports, { pool, SCHEMA_TABLES, SCHEMA_COLUMNS, listTables, truncateAll, makeCompany, openSession, sqlState, square });

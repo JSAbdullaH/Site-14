@@ -1,5 +1,7 @@
 // SITE14 database schema (Prisma ORM 7)
-// Source design: Stage3.md section 2.2 (16 tables + 1 view), plus heart rate (v2.1).
+// Source design: Stage3.md section 2.2 (16 tables + 1 view), plus heart rate (v2.1),
+// trimmed to the columns the MVP uses (v2.2). The midday ban window is a fixed
+// rule and lives in src/config/rules.js.
 // Deviations from Stage3 are listed in the SITE-69 pull request.
 //
 // Things Prisma cannot express live in the migration SQL, not here:
@@ -43,14 +45,6 @@ enum EmployeeStatus {
   @@map("employee_status")
 }
 
-enum SessionEndReason {
-  left_site
-  shift_ended
-  device_offline
-
-  @@map("session_end_reason")
-}
-
 enum AlertType {
   zone_exit
   hour_limit
@@ -80,17 +74,12 @@ enum ReportType {
 // ---------------------------------------------------------------- 1. companies
 
 model Company {
-  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                   String    @db.VarChar(150)
-  commercialRegistration String?   @map("commercial_registration") @db.VarChar(50)
-  middayBanFromDate      DateTime? @map("midday_ban_from_date") @db.Date
-  middayBanToDate        DateTime? @map("midday_ban_to_date") @db.Date
-  middayBanStartTime     DateTime  @default(dbgenerated("'12:00:00'::time without time zone")) @map("midday_ban_start_time") @db.Time(6)
-  middayBanEndTime       DateTime  @default(dbgenerated("'15:00:00'::time without time zone")) @map("midday_ban_end_time") @db.Time(6)
-  heartRateMaxBpm        Int?      @map("heart_rate_max_bpm") @db.SmallInt
-  heartRateMinBpm        Int?      @map("heart_rate_min_bpm") @db.SmallInt
-  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String   @db.VarChar(150)
+  commercialRegistration String?  @map("commercial_registration") @db.VarChar(50)
+  heartRateMaxBpm        Int?     @map("heart_rate_max_bpm") @db.SmallInt
+  heartRateMinBpm        Int?     @map("heart_rate_min_bpm") @db.SmallInt
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   jobCategoryRules  JobCategoryRule[]
   users             User[]
@@ -108,14 +97,11 @@ model Company {
 // ---------------------------------------------------------------- 2. job_category_rules
 
 model JobCategoryRule {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId           String   @map("company_id") @db.Uuid
-  jobCategory         String   @map("job_category") @db.VarChar(60)
-  dailyLimitMinutes   Int      @default(480) @map("daily_limit_minutes") @db.SmallInt
-  ramadanLimitMinutes Int?     @map("ramadan_limit_minutes") @db.SmallInt
-  banLeadMinutes      Int      @default(10) @map("ban_lead_minutes") @db.SmallInt
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId         String   @map("company_id") @db.Uuid
+  jobCategory       String   @map("job_category") @db.VarChar(60)
+  dailyLimitMinutes Int      @default(480) @map("daily_limit_minutes") @db.SmallInt
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   company   Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
   employees Employee[]
@@ -139,7 +125,6 @@ model User {
   failedLoginCount Int       @default(0) @map("failed_login_count") @db.SmallInt
   lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(6)
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   company            Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
   authTokens         AuthToken[]
@@ -157,14 +142,13 @@ model User {
 // ---------------------------------------------------------------- 4. auth_tokens
 
 model AuthToken {
-  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String        @map("user_id") @db.Uuid
-  tokenType    AuthTokenType @map("token_type")
-  tokenHash    String        @unique @map("token_hash") @db.VarChar(255)
-  expiresAt    DateTime      @map("expires_at") @db.Timestamptz(6)
-  consumedAt   DateTime?     @map("consumed_at") @db.Timestamptz(6)
-  attemptCount Int           @default(0) @map("attempt_count") @db.SmallInt
-  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String        @map("user_id") @db.Uuid
+  tokenType  AuthTokenType @map("token_type")
+  tokenHash  String        @unique @map("token_hash") @db.VarChar(255)
+  expiresAt  DateTime      @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime?     @map("consumed_at") @db.Timestamptz(6)
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
@@ -194,7 +178,6 @@ model Site {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId  String   @map("company_id") @db.Uuid
   name       String   @db.VarChar(120)
-  client     String?  @db.VarChar(150)
   // GeoJSON Polygon, the perimeter
   boundary   Json     @db.JsonB
   // Saudi time
@@ -202,7 +185,6 @@ model Site {
   shiftEnd   DateTime @map("shift_end") @db.Time(6)
   isActive   Boolean  @default(true) @map("is_active")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   company           Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
   employees         Employee[]
@@ -226,12 +208,10 @@ model Employee {
   employeeNumber String?        @map("employee_number") @db.VarChar(30)
   fullName       String         @map("full_name") @db.VarChar(120)
   jobCategory    String         @map("job_category") @db.VarChar(60)
-  phone          String?        @db.VarChar(20)
   // Charter item 7: no work session can open while this is NULL (trigger).
   consentGivenAt DateTime?      @map("consent_given_at") @db.Timestamptz(6)
   status         EmployeeStatus @default(active)
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   company           Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
   site              Site?                 @relation(fields: [companyId, siteId], references: [companyId, id], onDelete: Restrict)
@@ -251,15 +231,14 @@ model Employee {
 // ---------------------------------------------------------------- 8. devices
 
 model Device {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId    String    @map("company_id") @db.Uuid
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
   // One device per employee: unique.
-  employeeId   String?   @unique @map("employee_id") @db.Uuid
-  serialNumber String    @unique @map("serial_number") @db.VarChar(64)
-  apiKeyHash   String    @map("api_key_hash") @db.VarChar(255)
-  isActive     Boolean   @default(true) @map("is_active")
-  lastSeenAt   DateTime? @map("last_seen_at") @db.Timestamptz(6)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  employeeId   String?  @unique @map("employee_id") @db.Uuid
+  serialNumber String   @unique @map("serial_number") @db.VarChar(64)
+  apiKeyHash   String   @map("api_key_hash") @db.VarChar(255)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   company      Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
   employee     Employee?     @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
@@ -282,33 +261,27 @@ model Geofence {
   isOutdoor Boolean  @default(false) @map("is_outdoor")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   site          Site                   @relation(fields: [siteId], references: [id], onDelete: Restrict)
   alerts        Alert[]
   currentStates EmployeeCurrentState[]
-  tasks         Task[]
 
-  @@unique([siteId, id])
   @@map("geofences")
 }
 
 // ---------------------------------------------------------------- 10. work_sessions
 
 model WorkSession {
-  id         BigInt            @id @default(autoincrement())
-  companyId  String            @map("company_id") @db.Uuid
-  employeeId String            @map("employee_id") @db.Uuid
-  siteId     String            @map("site_id") @db.Uuid
+  id         BigInt    @id @default(autoincrement())
+  companyId  String    @map("company_id") @db.Uuid
+  employeeId String    @map("employee_id") @db.Uuid
+  siteId     String    @map("site_id") @db.Uuid
   // The device worn, as a snapshot.
-  deviceId   String            @map("device_id") @db.Uuid
+  deviceId   String    @map("device_id") @db.Uuid
   // Device clock
-  startedAt  DateTime          @map("started_at") @db.Timestamptz(6)
+  startedAt  DateTime  @map("started_at") @db.Timestamptz(6)
   // NULL = still on site. At most one open session per employee (partial unique index).
-  endedAt    DateTime?         @map("ended_at") @db.Timestamptz(6)
-  endReason  SessionEndReason? @map("end_reason")
-  // Server clock
-  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  endedAt    DateTime? @map("ended_at") @db.Timestamptz(6)
 
   company       Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
   employee      Employee               @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
@@ -361,8 +334,6 @@ model Alert {
   observedBpm     Int?      @map("observed_bpm") @db.SmallInt
   // Device clock
   triggeredAt     DateTime  @map("triggered_at") @db.Timestamptz(6)
-  // Server clock
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   acknowledgedBy  String?   @map("acknowledged_by") @db.Uuid
   acknowledgedAt  DateTime? @map("acknowledged_at") @db.Timestamptz(6)
   // NULL = still open. One open alert per type per session (partial unique index).
@@ -389,7 +360,6 @@ model EmployeeCurrentState {
   batteryPercent Int?     @map("battery_percent") @db.SmallInt
   heartRateBpm   Int?     @map("heart_rate_bpm") @db.SmallInt
   recordedAt     DateTime @map("recorded_at") @db.Timestamptz(6)
-  receivedAt     DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
 
   employee Employee     @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   session  WorkSession? @relation(fields: [sessionId], references: [id], onDelete: Restrict)
@@ -404,24 +374,19 @@ model Task {
   id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId    String     @map("company_id") @db.Uuid
   siteId       String     @map("site_id") @db.Uuid
-  // A zone of the same site (composite FK).
-  geofenceId   String?    @map("geofence_id") @db.Uuid
   employeeId   String     @map("employee_id") @db.Uuid
   createdBy    String     @map("created_by") @db.Uuid
   title        String     @db.VarChar(150)
-  description  String?
   status       TaskStatus @default(todo)
   // Saudi date
   scheduledFor DateTime   @default(dbgenerated("(timezone('Asia/Riyadh'::text, now()))::date")) @map("scheduled_for") @db.Date
   completedAt  DateTime?  @map("completed_at") @db.Timestamptz(6)
   createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company  Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  site     Site      @relation(fields: [companyId, siteId], references: [companyId, id], onDelete: Restrict)
-  geofence Geofence? @relation(fields: [siteId, geofenceId], references: [siteId, id], onDelete: Restrict)
-  employee Employee  @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
-  creator  User      @relation(fields: [companyId, createdBy], references: [companyId, id], onDelete: Restrict)
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  site     Site     @relation(fields: [companyId, siteId], references: [companyId, id], onDelete: Restrict)
+  employee Employee @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
+  creator  User     @relation(fields: [companyId, createdBy], references: [companyId, id], onDelete: Restrict)
 
   @@index([siteId, scheduledFor])
   @@index([employeeId, scheduledFor])

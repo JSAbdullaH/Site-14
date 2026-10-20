@@ -1,4 +1,4 @@
-// Writes and reads one row in each of the 16 models through Prisma Client.
+// Writes and reads one row in each model through Prisma Client.
 // If schema.prisma and the migration SQL ever disagree (a column name, a type,
 // a relation), one of these calls fails.
 const { prisma } = require('../src/config/db');
@@ -65,7 +65,7 @@ test('every model round-trips through Prisma', async () => {
     },
   });
   const task = await prisma.task.create({
-    data: { companyId: company.id, siteId: site.id, geofenceId: zone.id, employeeId: employee.id, createdBy: user.id, title: 'Pour concrete' },
+    data: { companyId: company.id, siteId: site.id, employeeId: employee.id, createdBy: user.id, title: 'Pour concrete' },
   });
   expect(task.status).toBe('todo');
   await prisma.recordCorrection.create({
@@ -96,7 +96,7 @@ test('every model round-trips through Prisma', async () => {
     prisma.geofence.count(), prisma.workSession.count(), prisma.telemetryLog.count(), prisma.alert.count(),
     prisma.employeeCurrentState.count(), prisma.task.count(), prisma.recordCorrection.count(), prisma.report.count(),
   ]);
-  expect(counts).toEqual(Array(16).fill(1));
+  expect(counts).toEqual(Array(counts.length).fill(1));
 });
 
 test('Prisma reports the database error codes the services rely on', async () => {
