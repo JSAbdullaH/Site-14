@@ -7,7 +7,7 @@ export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
-    seed: 'node prisma/seed.js',
+    seed: 'node --experimental-strip-types --no-warnings=ExperimentalWarning prisma/seed.js',
   },
   // Needed by migrate/db commands. Left undefined it still lets
   // `prisma generate` run on a fresh clone that has no .env yet.

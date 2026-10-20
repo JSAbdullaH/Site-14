@@ -1,29 +1,46 @@
 const { prisma } = require('../config/db');
 const config = require('../config');
 
-async function create(tx, { companyId, fullName, email, passwordHash, role }) {
+const AUTH_FIELDS = {
+  id: true,
+  companyId: true,
+  fullName: true,
+  email: true,
+  passwordHash: true,
+  role: true,
+  isEmailVerified: true,
+  isActive: true,
+  lockedUntil: true,
+  createdAt: true,
+};
+
+async function create(tx, { companyId, fullName, email, passwordHash, role, isActive = true }) {
   return tx.user.create({
-    data: { companyId, fullName, email, passwordHash, role, isEmailVerified: false },
-    select: { id: true },
+    data: { companyId, fullName, email, passwordHash, role, isActive, isEmailVerified: false },
+    select: AUTH_FIELDS,
   });
 }
 
 // Emails are stored lower-case (zod lowercases them, and a CHECK in the
 // database enforces it), so an exact match is a case-insensitive match.
 async function findByEmail(email) {
-  return prisma.user.findUnique({
-    where: { email },
-    select: {
-      id: true,
-      companyId: true,
-      fullName: true,
-      email: true,
-      passwordHash: true,
-      role: true,
-      isEmailVerified: true,
-      isActive: true,
-      lockedUntil: true,
-    },
+  return prisma.user.findUnique({ where: { email }, select: AUTH_FIELDS });
+}
+
+async function findById(id, db = prisma) {
+  return db.user.findUnique({ where: { id }, select: AUTH_FIELDS });
+}
+
+// Company-scoped lookup: a user of another company is simply not found.
+async function findInCompany(companyId, id) {
+  return prisma.user.findFirst({ where: { id, companyId }, select: AUTH_FIELDS });
+}
+
+async function listByCompany(companyId, { isActive } = {}) {
+  return prisma.user.findMany({
+    where: { companyId, ...(isActive === undefined ? {} : { isActive }) },
+    orderBy: { createdAt: 'asc' },
+    select: AUTH_FIELDS,
   });
 }
 
@@ -51,4 +68,45 @@ async function resetFailures(userId) {
   });
 }
 
-module.exports = { create, findByEmail, registerFailure, resetFailures };
+async function update(db, id, data) {
+  return db.user.update({ where: { id }, data, select: AUTH_FIELDS });
+}
+
+// An invitation that was never accepted has no history, so it is removed
+// instead of being kept as an inactive account.
+async function deletePendingInvitation(tx, id) {
+  await tx.authToken.deleteMany({ where: { userId: id } });
+  await tx.user.delete({ where: { id } });
+}
+
+// A user who has not accepted their invitation yet has no password.
+const isPendingInvitation = (user) => user.passwordHash === null;
+
+// The API shape (snake_case) of a user. Never includes the password hash.
+function toPublic(user) {
+  return {
+    id: user.id,
+    full_name: user.fullName,
+    email: user.email,
+    role: user.role,
+    company_id: user.companyId,
+    is_active: user.isActive,
+    is_email_verified: user.isEmailVerified,
+    invitation_pending: isPendingInvitation(user),
+    created_at: user.createdAt.toISOString(),
+  };
+}
+
+module.exports = {
+  create,
+  findByEmail,
+  findById,
+  findInCompany,
+  listByCompany,
+  registerFailure,
+  resetFailures,
+  update,
+  deletePendingInvitation,
+  isPendingInvitation,
+  toPublic,
+};
