@@ -1,0 +1,445 @@
+// SITE14 database schema (Prisma ORM 7)
+// Source design: Stage3.md section 2.2 (16 tables + 1 view), plus heart rate (v2.1),
+// trimmed to the columns the MVP uses (v2.2). The midday ban window is a fixed
+// rule and lives in src/models/company.model.js.
+// Deviations from Stage3 are listed in the SITE-69 pull request.
+//
+// Things Prisma cannot express live in the migration SQL, not here:
+//   CHECK constraints, partial unique indexes, triggers (consent, append-only),
+//   and the daily_work_records view.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "esm"
+  generatedFileExtension = "mts"
+  importFileExtension    = "mts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- enums
+
+enum UserRole {
+  company_admin
+  site_manager
+
+  @@map("user_role")
+}
+
+enum AuthTokenType {
+  email_verify
+  invitation
+  password_reset
+  login_otp
+
+  @@map("auth_token_type")
+}
+
+enum EmployeeStatus {
+  active
+  inactive
+
+  @@map("employee_status")
+}
+
+enum AlertType {
+  zone_exit
+  hour_limit
+  midday_ban
+  heart_rate_high
+  heart_rate_low
+
+  @@map("alert_type")
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+
+  @@map("task_status")
+}
+
+enum ReportType {
+  daily
+  weekly
+  monthly
+
+  @@map("report_type")
+}
+
+// ---------------------------------------------------------------- 1. companies
+
+model Company {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String   @db.VarChar(150)
+  commercialRegistration String?  @map("commercial_registration") @db.VarChar(50)
+  heartRateMaxBpm        Int?     @map("heart_rate_max_bpm") @db.SmallInt
+  heartRateMinBpm        Int?     @map("heart_rate_min_bpm") @db.SmallInt
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  jobCategoryRules  JobCategoryRule[]
+  users             User[]
+  sites             Site[]
+  employees         Employee[]
+  devices           Device[]
+  workSessions      WorkSession[]
+  tasks             Task[]
+  recordCorrections RecordCorrection[]
+  reports           Report[]
+
+  @@map("companies")
+}
+
+// ---------------------------------------------------------------- 2. job_category_rules
+
+model JobCategoryRule {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId         String   @map("company_id") @db.Uuid
+  jobCategory       String   @map("job_category") @db.VarChar(60)
+  dailyLimitMinutes Int      @default(480) @map("daily_limit_minutes") @db.SmallInt
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employees Employee[]
+
+  @@unique([companyId, jobCategory])
+  @@map("job_category_rules")
+}
+
+// ---------------------------------------------------------------- 3. users
+
+model User {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId        String    @map("company_id") @db.Uuid
+  fullName         String    @map("full_name") @db.VarChar(120)
+  // Stored lower-case (CHECK in the migration), so a plain unique index is case-insensitive.
+  email            String    @unique @db.VarChar(255)
+  passwordHash     String?   @map("password_hash") @db.VarChar(255)
+  role             UserRole
+  isEmailVerified  Boolean   @default(false) @map("is_email_verified")
+  isActive         Boolean   @default(true) @map("is_active")
+  failedLoginCount Int       @default(0) @map("failed_login_count") @db.SmallInt
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company            Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  authTokens         AuthToken[]
+  refreshTokens      RefreshToken[]
+  acknowledgedAlerts Alert[]            @relation("AlertAcknowledgedBy")
+  createdTasks       Task[]
+  corrections        RecordCorrection[]
+  reports            Report[]
+
+  @@unique([companyId, id])
+  @@index([companyId])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------- 4. auth_tokens
+
+model AuthToken {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String        @map("user_id") @db.Uuid
+  tokenType  AuthTokenType @map("token_type")
+  tokenHash  String        @unique @map("token_hash") @db.VarChar(255)
+  expiresAt  DateTime      @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime?     @map("consumed_at") @db.Timestamptz(6)
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@map("auth_tokens")
+}
+
+// ---------------------------------------------------------------- 5. refresh_tokens
+
+model RefreshToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ---------------------------------------------------------------- 6. sites
+
+model Site {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  name       String   @db.VarChar(120)
+  // GeoJSON Polygon, the perimeter
+  boundary   Json     @db.JsonB
+  // Saudi time
+  shiftStart DateTime @map("shift_start") @db.Time(6)
+  shiftEnd   DateTime @map("shift_end") @db.Time(6)
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employees         Employee[]
+  geofences         Geofence[]
+  workSessions      WorkSession[]
+  tasks             Task[]
+  recordCorrections RecordCorrection[]
+  reports           Report[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, name])
+  @@map("sites")
+}
+
+// ---------------------------------------------------------------- 7. employees
+
+model Employee {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String         @map("company_id") @db.Uuid
+  siteId         String?        @map("site_id") @db.Uuid
+  employeeNumber String?        @map("employee_number") @db.VarChar(30)
+  fullName       String         @map("full_name") @db.VarChar(120)
+  jobCategory    String         @map("job_category") @db.VarChar(60)
+  // Charter item 7: no work session can open while this is NULL (trigger).
+  consentGivenAt DateTime?      @map("consent_given_at") @db.Timestamptz(6)
+  status         EmployeeStatus @default(active)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company           Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  site              Site?                 @relation(fields: [companyId, siteId], references: [companyId, id], onDelete: Restrict)
+  jobCategoryRule   JobCategoryRule       @relation(fields: [companyId, jobCategory], references: [companyId, jobCategory], onDelete: Restrict)
+  device            Device?
+  workSessions      WorkSession[]
+  currentState      EmployeeCurrentState?
+  tasks             Task[]
+  recordCorrections RecordCorrection[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, employeeNumber])
+  @@index([siteId])
+  @@map("employees")
+}
+
+// ---------------------------------------------------------------- 8. devices
+
+model Device {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  // One device per employee: unique.
+  employeeId   String?  @unique @map("employee_id") @db.Uuid
+  serialNumber String   @unique @map("serial_number") @db.VarChar(64)
+  apiKeyHash   String   @map("api_key_hash") @db.VarChar(255)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee     Employee?     @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
+  workSessions WorkSession[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, employeeId])
+  @@map("devices")
+}
+
+// ---------------------------------------------------------------- 9. geofences
+
+model Geofence {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  siteId    String   @map("site_id") @db.Uuid
+  name      String   @db.VarChar(120)
+  // GeoJSON Polygon
+  boundary  Json     @db.JsonB
+  // The midday ban applies to outdoor zones.
+  isOutdoor Boolean  @default(false) @map("is_outdoor")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  site          Site                   @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  alerts        Alert[]
+  currentStates EmployeeCurrentState[]
+
+  @@map("geofences")
+}
+
+// ---------------------------------------------------------------- 10. work_sessions
+
+model WorkSession {
+  id         BigInt    @id @default(autoincrement())
+  companyId  String    @map("company_id") @db.Uuid
+  employeeId String    @map("employee_id") @db.Uuid
+  siteId     String    @map("site_id") @db.Uuid
+  // The device worn, as a snapshot.
+  deviceId   String    @map("device_id") @db.Uuid
+  // Device clock
+  startedAt  DateTime  @map("started_at") @db.Timestamptz(6)
+  // NULL = still on site. At most one open session per employee (partial unique index).
+  endedAt    DateTime? @map("ended_at") @db.Timestamptz(6)
+
+  company       Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee      Employee               @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
+  site          Site                   @relation(fields: [companyId, siteId], references: [companyId, id], onDelete: Restrict)
+  device        Device                 @relation(fields: [companyId, deviceId], references: [companyId, id], onDelete: Restrict)
+  telemetryLogs TelemetryLog[]
+  alerts        Alert[]
+  currentStates EmployeeCurrentState[]
+
+  @@index([employeeId, startedAt])
+  @@index([siteId, startedAt])
+  @@map("work_sessions")
+}
+
+// ---------------------------------------------------------------- 11. telemetry_logs (append-only)
+
+model TelemetryLog {
+  id             BigInt   @id @default(autoincrement())
+  // No position without a session.
+  sessionId      BigInt   @map("session_id")
+  latitude       Float
+  longitude      Float
+  batteryPercent Int?     @map("battery_percent") @db.SmallInt
+  heartRateBpm   Int?     @map("heart_rate_bpm") @db.SmallInt
+  // Device clock
+  recordedAt     DateTime @map("recorded_at") @db.Timestamptz(6)
+  // Server clock
+  receivedAt     DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  session WorkSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  // A reading that is sent twice is stored once.
+  @@unique([sessionId, recordedAt])
+  @@map("telemetry_logs")
+}
+
+// ---------------------------------------------------------------- 12. alerts (append-only, except handling columns)
+
+model Alert {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId       BigInt    @map("session_id")
+  alertType       AlertType @map("alert_type")
+  // Mandatory for midday_ban (CHECK).
+  geofenceId      String?   @map("geofence_id") @db.Uuid
+  latitude        Float
+  longitude       Float
+  limitMinutes    Int?      @map("limit_minutes")
+  observedMinutes Int?      @map("observed_minutes")
+  limitBpm        Int?      @map("limit_bpm") @db.SmallInt
+  observedBpm     Int?      @map("observed_bpm") @db.SmallInt
+  // Device clock
+  triggeredAt     DateTime  @map("triggered_at") @db.Timestamptz(6)
+  acknowledgedBy  String?   @map("acknowledged_by") @db.Uuid
+  acknowledgedAt  DateTime? @map("acknowledged_at") @db.Timestamptz(6)
+  // NULL = still open. One open alert per type per session (partial unique index).
+  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  session      WorkSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  geofence     Geofence?   @relation(fields: [geofenceId], references: [id], onDelete: Restrict)
+  acknowledger User?       @relation("AlertAcknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: Restrict)
+
+  @@index([sessionId])
+  @@map("alerts")
+}
+
+// ---------------------------------------------------------------- 13. employee_current_state (hot table for the live map)
+
+model EmployeeCurrentState {
+  employeeId     String   @id @map("employee_id") @db.Uuid
+  // NULL = off site
+  sessionId      BigInt?  @map("session_id")
+  // NULL = in no zone
+  geofenceId     String?  @map("geofence_id") @db.Uuid
+  latitude       Float
+  longitude      Float
+  batteryPercent Int?     @map("battery_percent") @db.SmallInt
+  heartRateBpm   Int?     @map("heart_rate_bpm") @db.SmallInt
+  recordedAt     DateTime @map("recorded_at") @db.Timestamptz(6)
+
+  employee Employee     @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  session  WorkSession? @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  geofence Geofence?    @relation(fields: [geofenceId], references: [id], onDelete: Restrict)
+
+  @@map("employee_current_state")
+}
+
+// ---------------------------------------------------------------- 14. tasks
+
+model Task {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String     @map("company_id") @db.Uuid
+  siteId       String     @map("site_id") @db.Uuid
+  employeeId   String     @map("employee_id") @db.Uuid
+  createdBy    String     @map("created_by") @db.Uuid
+  title        String     @db.VarChar(150)
+  status       TaskStatus @default(todo)
+  // Saudi date
+  scheduledFor DateTime   @default(dbgenerated("(timezone('Asia/Riyadh'::text, now()))::date")) @map("scheduled_for") @db.Date
+  completedAt  DateTime?  @map("completed_at") @db.Timestamptz(6)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  site     Site     @relation(fields: [companyId, siteId], references: [companyId, id], onDelete: Restrict)
+  employee Employee @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
+  creator  User     @relation(fields: [companyId, createdBy], references: [companyId, id], onDelete: Restrict)
+
+  @@index([siteId, scheduledFor])
+  @@index([employeeId, scheduledFor])
+  @@map("tasks")
+}
+
+// ---------------------------------------------------------------- 15. record_corrections (append-only)
+
+model RecordCorrection {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  employeeId     String   @map("employee_id") @db.Uuid
+  siteId         String   @map("site_id") @db.Uuid
+  workDate       DateTime @map("work_date") @db.Date
+  field          String   @db.VarChar(40)
+  originalValue  String   @map("original_value")
+  correctedValue String   @map("corrected_value")
+  reason         String
+  correctedBy    String   @map("corrected_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee Employee @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
+  site     Site     @relation(fields: [companyId, siteId], references: [companyId, id], onDelete: Restrict)
+  author   User     @relation(fields: [companyId, correctedBy], references: [companyId, id], onDelete: Restrict)
+
+  @@index([employeeId, workDate])
+  @@map("record_corrections")
+}
+
+// ---------------------------------------------------------------- 16. reports (append-only)
+
+model Report {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String     @map("company_id") @db.Uuid
+  siteId          String     @map("site_id") @db.Uuid
+  createdBy       String     @map("created_by") @db.Uuid
+  // Printed on every page.
+  referenceNumber String     @unique @map("reference_number") @db.VarChar(40)
+  reportType      ReportType @map("report_type")
+  periodStart     DateTime   @map("period_start") @db.Date
+  periodEnd       DateTime   @map("period_end") @db.Date
+  filePath        String     @map("file_path") @db.VarChar(500)
+  mimeType        String     @default("application/pdf") @map("mime_type") @db.VarChar(100)
+  fileSizeBytes   Int        @map("file_size_bytes")
+  // SHA-256 fingerprint of the issued file (64 hex chars).
+  sha256          String     @db.Char(64)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  site    Site    @relation(fields: [companyId, siteId], references: [companyId, id], onDelete: Restrict)
+  creator User    @relation(fields: [companyId, createdBy], references: [companyId, id], onDelete: Restrict)
+
+  @@index([siteId, periodStart])
+  @@map("reports")
+}

@@ -1,21 +1,13 @@
 const { Pool } = require('pg');
+const { PrismaClient, Prisma } = require('../generated/prisma/client.mts');
+const { PrismaPg } = require('@prisma/adapter-pg');
 const config = require('./index');
 
-const pool = new Pool({ connectionString: config.DATABASE_URL });
+const pool = new Pool({ connectionString: config.DATABASE_URL, allowExitOnIdle: true });
+pool.on('connect', (client) => {
+  client.query("SET TIME ZONE 'UTC'").catch(() => {});
+});
 
-async function withTransaction(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const result = await fn(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => undefined);
-    throw err;
-  } finally {
-    client.release();
-  }
-}
+const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-module.exports = { pool, withTransaction };
+module.exports = { prisma, Prisma };

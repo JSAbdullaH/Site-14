@@ -3,30 +3,69 @@
   "version": "0.1.0",
   "private": true,
   "main": "src/server.js",
-  "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
-    "migrate": "node scripts/migrate.js",
-    "test": "jest"
+  "engines": {
+    "node": ">=22.6.0"
   },
-  "jest": {
-    "testEnvironment": "node",
-    "testMatch": [
-      "**/tests/**/*.test.js"
-    ]
+  "scripts": {
+    "dev": "node --experimental-strip-types --no-warnings=ExperimentalWarning --watch src/server.js",
+    "start": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/server.js",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset",
+    "db:rollback": "prisma db execute --file prisma/migrations/20261015000000_init/down.sql",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:check": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script",
+    "test": "jest --runInBand",
+    "test:e2e": "playwright test -c tests/e2e"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
     "argon2": "^0.45.1",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^18.0.7",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.1",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^7.0.13",
     "pg": "^8.23.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@babel/core": "7.29.7",
+    "@babel/preset-env": "7.29.7",
+    "@babel/preset-typescript": "7.29.7",
+    "@playwright/test": "1.63.0",
+    "babel-plugin-transform-import-meta": "2.3.3",
     "jest": "^30.5.2",
+    "prisma": "7.10.0",
     "supertest": "^7.3.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "transform": {
+      "\\.(m?ts|m?js)$": "babel-jest"
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!@prisma/client/runtime/)"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs",
+      "mts",
+      "ts",
+      "json"
+    ],
+    "setupFiles": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "globalSetup": "<rootDir>/tests/setup.js",
+    "testTimeout": 30000
   }
 }
