@@ -1,54 +1,27 @@
-const BASE = "api/v1"; 
+import { getToken } from "./auth";
 
-export type AuthResult = {
-  access_token: string;
-  user: { id: string; full_name: string; email: string; role: string };
-};
+const BASE = "/api/v1";
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(BASE + path, {
-      ...options,
-      headers: { "Content-Type": "application/json", ...(options.headers ?? {}) },
-    });
-  } catch {
-    throw new Error("Cannot reach the server. Is the backend running?");
-  }
+export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
+
+  const res = await fetch(BASE + path, {
+    ...options,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  });
 
   if (res.status === 204) return undefined as T;
 
-  const body = await res.json().catch(() => null);
+  const data = await res.json().catch(() => null);
 
   if (!res.ok) {
-    const msg =
-      body?.error?.message ?? body?.message ?? `Request failed (${res.status})`;
-    throw new Error(msg);
+    throw new Error(data?.message || "Something went wrong. Try again.");
   }
-  return body as T;
-}
 
-export function register(input: {
-  company_name: string;
-  full_name: string;
-  email: string;
-  password: string;
-}) {
-  return request<AuthResult>("/auth/register", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export function login(input: { email: string; password: string }) {
-  return request<AuthResult>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export function me(token: string) {
-  return request<AuthResult["user"]>("/auth/me", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  return data as T;
 }
