@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function Landing() {
   return (
-    <main className="s14-screen s14-landing">
+    <main className="bg-signal">
       <nav className="s14-landing-nav">
         <Link to="/signin" className="s14-textlink">Sign in</Link>
         <Link to="/signup" className="s14-btn s14-btn-sm">Sign up</Link>
