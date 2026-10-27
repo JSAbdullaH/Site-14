@@ -12,7 +12,7 @@ const globalSetup = require('./setup');
 const {
   pool, SCHEMA_TABLES, SCHEMA_COLUMNS, listTables, truncateAll, makeCompany, openSession, sqlState, square,
 } = require('./setup');
-const { prisma } = require('../src/config/db');
+const { prisma, Prisma, forCompany } = require('../src/config/db');
 const { seed, assertSafeTarget } = require('../prisma/seed');
 
 const DOWN_SQL = path.join(__dirname, '..', 'prisma', 'migrations', '20261015000000_init', 'down.sql');
@@ -416,6 +416,73 @@ describe('seed', () => {
     await seed();
     expect(await snapshot()).toEqual(first);
   }, 120_000);
+});
+
+describe('tenant scope', () => {
+  let a;
+  let b;
+  let dbA;
+  beforeAll(async () => {
+    await truncateAll();
+    a = await makeCompany('A');
+    b = await makeCompany('B');
+    for (const c of [a, b]) {
+      c.sessionId = await openSession(c);
+      await pool.query('INSERT INTO telemetry_logs (session_id, latitude, longitude, recorded_at) VALUES ($1, 24.7, 46.6, now())', [c.sessionId]);
+      await pool.query("INSERT INTO alerts (session_id, alert_type, latitude, longitude, triggered_at) VALUES ($1, 'zone_exit', 24.7, 46.6, now())", [c.sessionId]);
+      await pool.query('INSERT INTO employee_current_state (employee_id, session_id, latitude, longitude, recorded_at) VALUES ($1, $2, 24.7, 46.6, now())', [c.employeeId, c.sessionId]);
+      await pool.query("INSERT INTO tasks (company_id, site_id, employee_id, created_by, title) VALUES ($1, $2, $3, $4, 'T')", [c.companyId, c.siteId, c.employeeId, c.userId]);
+      await pool.query("INSERT INTO record_corrections (company_id, employee_id, site_id, work_date, field, original_value, corrected_value, reason, corrected_by) VALUES ($1, $2, $3, '2026-10-20', 'worked_minutes', '1', '2', 'r', $4)", [c.companyId, c.employeeId, c.siteId, c.userId]);
+      await pool.query("INSERT INTO reports (company_id, site_id, created_by, reference_number, report_type, period_start, period_end, file_path, file_size_bytes, sha256) VALUES ($1, $2, $3, $4, 'daily', '2026-10-20', '2026-10-20', '/r.pdf', 1, $5)", [c.companyId, c.siteId, c.userId, `R-${c.companyId}`, 'a'.repeat(64)]);
+      await pool.query("INSERT INTO auth_tokens (user_id, token_type, token_hash, expires_at) VALUES ($1, 'password_reset', $2, now() + interval '1 hour')", [c.userId, `h-${c.userId}`]);
+      await pool.query("INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')", [c.userId, `r-${c.userId}`]);
+    }
+    dbA = forCompany(a.companyId);
+  });
+
+  const lower = (m) => m[0].toLowerCase() + m.slice(1);
+  const MODELS = Object.values(Prisma.ModelName);
+
+  test('every table in the schema has a company scope', () => {
+    expect(MODELS.length).toBe(SCHEMA_TABLES.length);
+  });
+
+  test.each(MODELS)('%s: lists and counts only the own company rows', async (model) => {
+    const all = await prisma[lower(model)].count();
+    expect(all).toBe(2);
+    expect(await dbA[lower(model)].count()).toBe(1);
+    expect(await dbA[lower(model)].findMany()).toHaveLength(1);
+  });
+
+  test("another company's row is not found by id, and cannot be changed or deleted", async () => {
+    expect(await dbA.site.findUnique({ where: { id: b.siteId } })).toBeNull();
+    expect(await dbA.employee.findFirst({ where: { id: b.employeeId } })).toBeNull();
+    await expect(dbA.site.update({ where: { id: b.siteId }, data: { name: 'x' } })).rejects.toMatchObject({ code: 'P2025' });
+    await expect(dbA.geofence.update({ where: { id: b.geofenceId }, data: { name: 'x' } })).rejects.toMatchObject({ code: 'P2025' });
+    expect((await dbA.site.updateMany({ data: { name: 'renamed' } })).count).toBe(1);
+    const name = async (id) => (await pool.query('SELECT name FROM sites WHERE id = $1', [id])).rows[0].name;
+    expect(await name(a.siteId)).toBe('renamed');
+    expect(await name(b.siteId)).toBe('Site B');
+  });
+
+  test('new rows are stamped with the own company, whatever the caller sends', async () => {
+    const site = await dbA.site.create({
+      data: { companyId: b.companyId, name: 'New', boundary: square(46.6, 24.7), shiftStart: new Date('1970-01-01T07:00:00Z'), shiftEnd: new Date('1970-01-01T17:00:00Z') },
+    });
+    expect(site.companyId).toBe(a.companyId);
+  });
+
+  test("a child row cannot be attached to another company's parent", async () => {
+    await expect(dbA.geofence.create({ data: { siteId: b.siteId, name: 'Z', boundary: square(46.6, 24.7) } }))
+      .rejects.toMatchObject({ status: 404 });
+    const ok = await dbA.geofence.create({ data: { siteId: a.siteId, name: 'Z', boundary: square(46.6, 24.7) } });
+    expect(ok.siteId).toBe(a.siteId);
+  });
+
+  test('a row cannot be moved to another company', async () => {
+    await expect(dbA.employee.update({ where: { id: a.employeeId }, data: { companyId: b.companyId } }))
+      .rejects.toMatchObject({ status: 404 });
+  });
 });
 
 // ================================================================ 4. rollback (SITE-69)
