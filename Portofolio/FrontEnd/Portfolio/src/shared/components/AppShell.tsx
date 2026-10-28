@@ -8,7 +8,6 @@ const MAIN = [
   { to: "/sites", label: "Sites & Zones" },
   { to: "/tasks", label: "Tasks" },
   { to: "/team", label: "Team" },
-  { to: "/employees", label: "Employees" },
 ];
 
 const RECORDS = [

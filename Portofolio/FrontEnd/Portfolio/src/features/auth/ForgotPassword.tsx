@@ -58,8 +58,8 @@ export default function ForgotPassword() {
           <>
             <p className="text-sm text-muted-foreground">
               If an account exists for{" "}
-              <span className="font-medium text-foreground">{email}</span>, the
-              link is on its way.
+              <span className="font-medium text-foreground">{email}</span>, the link is
+              on its way.
             </p>
             <Link
               to="/signin"

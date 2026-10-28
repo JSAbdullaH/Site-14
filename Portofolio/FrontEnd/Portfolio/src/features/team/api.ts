@@ -1,4 +1,4 @@
-import { apiFetch } from "@/shared/lib/api";
+﻿import { apiFetch } from "@/shared/lib/api";
 import type { InviteUserInput, ListUsersResponse, User } from "./types";
 
 export function listUsers(isActive?: boolean): Promise<ListUsersResponse> {

@@ -49,9 +49,7 @@ export default function ResetPassword() {
     return (
       <main className="flex min-h-screen items-center justify-center px-5">
         <div className="w-full max-w-md rounded-xl border bg-card p-8">
-          <h1 className="mb-1 text-2xl font-semibold tracking-tight">
-            Link not valid
-          </h1>
+          <h1 className="mb-1 text-2xl font-semibold tracking-tight">Link not valid</h1>
           <p className="text-sm text-muted-foreground">
             This page needs the link from your email. Ask for a new one.
           </p>

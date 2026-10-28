@@ -1,17 +1,23 @@
 ﻿import { useEffect, useState } from "react";
 import AppShell from "@/shared/components/AppShell";
-import { Button } from "@/components/ui/button";
 import FormField from "@/shared/components/FormField";
+import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/shared/lib/api";
+import { getUser } from "@/shared/lib/auth";
 
 type Company = {
+  id?: string;
   name?: string;
+  commercial_registration?: string;
   email?: string;
-  commercial_register?: string;
   phone?: string;
 };
 
+const NOT_SET = "Not set";
+
 export default function Account() {
+  const user = getUser();
+
   const [company, setCompany] = useState<Company | null>(null);
   const [loadError, setLoadError] = useState("");
   const [resetSent, setResetSent] = useState(false);
@@ -24,58 +30,67 @@ export default function Account() {
   }, []);
 
   async function sendReset() {
-    if (!company?.email) return;
+    if (!user?.email) return;
     setBusy(true);
     try {
       await apiFetch("/auth/forgot-password", {
         method: "POST",
-        body: JSON.stringify({ email: company.email }),
+        body: JSON.stringify({ email: user.email }),
       });
-      setResetSent(true);
-    } catch {
-      setResetSent(true);
     } finally {
+      setResetSent(true);
       setBusy(false);
     }
   }
 
   return (
-    <AppShell title="Account" subtitle="Company profile and security">
-      <div className="max-w-[640px] flex flex-col gap-6">
-        <section className="bg-white rounded-card p-8">
-          <h2 className="text-xl font-bold mb-6">Company details</h2>
+    <AppShell title="Account" subtitle="Your profile and company">
+      <div className="flex max-w-2xl flex-col gap-6">
+        <section className="rounded-xl border bg-card p-8">
+          <h2 className="mb-6 text-xl font-semibold">Your account</h2>
+          <FormField id="u_name" label="Name" value={user?.full_name ?? NOT_SET} readOnly />
+          <FormField id="u_email" label="Email" value={user?.email ?? NOT_SET} readOnly />
+          <FormField id="u_role" label="Role" value={user?.role ?? NOT_SET} readOnly />
+        </section>
+
+        <section className="rounded-xl border bg-card p-8">
+          <h2 className="mb-6 text-xl font-semibold">Company details</h2>
 
           {loadError && (
-            <p className="mb-5 px-4 py-3 rounded-ctrl bg-orange-bg text-signal-dark text-sm font-bold">
+            <p className="mb-5 rounded-md bg-warn-bg px-4 py-3 text-sm font-medium text-warn">
               {loadError}
             </p>
           )}
 
-          <FormField id="cname" label="COMPANY NAME" value={company?.name ?? ""} readOnly />
-          <FormField id="cr" label="COMMERCIAL REGISTER"
-            value={company?.commercial_register ?? "â€”"} readOnly />
-          <FormField id="cemail" label="EMAIL" value={company?.email ?? ""} readOnly />
-          <FormField id="cphone" label="PHONE" value={company?.phone ?? "â€”"} readOnly />
+          <FormField id="c_name" label="Company name" value={company?.name ?? NOT_SET} readOnly />
+          <FormField
+            id="c_cr"
+            label="Commercial register"
+            value={company?.commercial_registration ?? NOT_SET}
+            readOnly
+          />
+          <FormField id="c_phone" label="Phone" value={company?.phone ?? NOT_SET} readOnly />
 
-          <p className="text-[13px] text-mute2 font-semibold">
+          <p className="text-sm text-muted-foreground">
             Editing company details is not available yet.
           </p>
         </section>
 
-        <section className="bg-white rounded-card p-8">
-          <h2 className="text-xl font-bold mb-3">Password</h2>
+        <section className="rounded-xl border bg-card p-8">
+          <h2 className="mb-3 text-xl font-semibold">Password</h2>
 
           {resetSent ? (
-            <p className="text-[15px] text-muted-foreground-foreground font-semibold leading-relaxed">
-              We sent a link to <span className="text-ink">{company?.email}</span>. Open it
-              to set a new password.
+            <p className="text-sm text-muted-foreground">
+              If an account exists for{" "}
+              <span className="font-medium text-foreground">{user?.email}</span>, we sent
+              a link to set a new password.
             </p>
           ) : (
             <>
-              <p className="mb-6 text-[15px] text-muted-foreground-foreground font-semibold leading-relaxed">
+              <p className="mb-6 text-sm text-muted-foreground">
                 We will email you a one-time link to set a new password.
               </p>
-              <Button onClick={sendReset} disabled={busy || !company?.email}>
+              <Button onClick={sendReset} disabled={busy || !user?.email}>
                 {busy ? "Sending..." : "Change password"}
               </Button>
             </>
