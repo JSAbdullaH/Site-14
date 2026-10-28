@@ -49,6 +49,34 @@ const listUsersQuery = z.object({
 
 const acceptInvitationSchema = z.object({ password: newPassword });
 
+const jobCategory = z.string().trim().toLowerCase().min(2, 'Enter a job category').max(60);
+
+const employeeFields = {
+  full_name: z.string().trim().min(2).max(120),
+  employee_number: z.string().trim().min(1).max(30).nullable().optional(),
+  job_category: jobCategory,
+  site_id: z.string().uuid('Invalid site').nullable().optional(),
+  consent: z.boolean().optional(),
+};
+
+const createEmployeeSchema = z.object(employeeFields).strict();
+
+const updateEmployeeSchema = z
+  .object(employeeFields)
+  .partial()
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
+
+const listEmployeesQuery = z.object({
+  search: z.string().trim().min(1).max(120).optional(),
+  site_id: z.string().uuid('Invalid site').optional(),
+  geofence_id: z.string().uuid('Invalid zone').optional(),
+  job_category: jobCategory.optional(),
+  status: z.enum(['active', 'inactive', 'all']).default('active'),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+
 const idParams = z.object({ id: z.string().uuid('Invalid id') });
 const tokenParams = z.object({ token: linkToken });
 
@@ -65,4 +93,7 @@ module.exports = {
   acceptInvitationSchema,
   idParams,
   tokenParams,
+  createEmployeeSchema,
+  updateEmployeeSchema,
+  listEmployeesQuery,
 };
