@@ -58,7 +58,7 @@ export default function ZonePanel({
             checked={outdoor}
             onChange={(e) => setOutdoor(e.target.checked)}
           />
-          Outdoor â€” midday ban applies
+          Outdoor — midday ban applies
         </label>
 
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}

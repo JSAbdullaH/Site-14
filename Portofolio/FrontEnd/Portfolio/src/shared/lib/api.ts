@@ -2,12 +2,22 @@
 
 const BASE = "/api/v1";
 
+// Every failed response has the shape { error: { code, message, fields? } }.
 export class ApiError extends Error {
   status: number;
+  code: string;
+  fields: Record<string, string>;
 
-  constructor(status: number, message: string) {
+  constructor(
+    status: number,
+    message: string,
+    code = "UNKNOWN",
+    fields: Record<string, string> = {},
+  ) {
     super(message);
     this.status = status;
+    this.code = code;
+    this.fields = fields;
   }
 }
 
@@ -72,7 +82,7 @@ export async function apiFetch<T>(
       if (!window.location.pathname.startsWith("/signin")) {
         window.location.href = "/signin";
       }
-      throw new ApiError(401, "Your session has ended. Sign in again.");
+      throw new ApiError(401, "Your session has ended. Sign in again.", "UNAUTHENTICATED");
     }
   }
 
@@ -84,6 +94,8 @@ export async function apiFetch<T>(
     throw new ApiError(
       res.status,
       data?.error?.message || data?.message || "Something went wrong. Try again.",
+      data?.error?.code,
+      data?.error?.fields,
     );
   }
 

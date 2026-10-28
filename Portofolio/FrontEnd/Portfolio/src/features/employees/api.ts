@@ -9,10 +9,14 @@ import type {
 export function listEmployees(params?: {
   siteId?: string;
   status?: EmployeeStatus;
+  search?: string;
+  limit?: number;
 }) {
   const query = new URLSearchParams();
   if (params?.siteId) query.set("site_id", params.siteId);
   if (params?.status) query.set("status", params.status);
+  if (params?.search) query.set("search", params.search);
+  if (params?.limit) query.set("limit", String(params.limit));
 
   const qs = query.toString();
   return apiFetch<ListEmployeesResponse>(`/employees${qs ? `?${qs}` : ""}`);

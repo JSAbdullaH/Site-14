@@ -3,6 +3,7 @@
 export type Employee = {
   id: string;
   full_name: string;
+  employee_number?: string | null;
   job_category: string;
   status: EmployeeStatus;
   site_id: string | null;
@@ -13,6 +14,9 @@ export type Employee = {
 
 export type ListEmployeesResponse = {
   data: Employee[];
+  page: number;
+  limit: number;
+  total: number;
 };
 
 export type CreateEmployeeInput = {

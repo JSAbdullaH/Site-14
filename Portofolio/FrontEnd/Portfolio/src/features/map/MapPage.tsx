@@ -1,18 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import AppShell from "@/shared/components/AppShell";
 import LiveMap from "./components/LiveMap";
+import { getActiveSiteId, setActiveSiteId } from "@/features/sites/api";
 import { listSites } from "./api";
 import type { SiteOption } from "./types";
-
-const SITE_KEY = "site14.activeSite";
-
-function readSaved() {
-  try {
-    return localStorage.getItem(SITE_KEY);
-  } catch {
-    return null;
-  }
-}
 
 export default function MapPage() {
   const [sites, setSites] = useState<SiteOption[] | null>(null);
@@ -23,7 +14,7 @@ export default function MapPage() {
     listSites()
       .then((list) => {
         setSites(list);
-        const saved = readSaved();
+        const saved = getActiveSiteId();
         setSiteId(list.find((s) => s.id === saved)?.id ?? list[0]?.id ?? null);
       })
       .catch((err: Error) => {
@@ -34,11 +25,7 @@ export default function MapPage() {
 
   function choose(id: string) {
     setSiteId(id);
-    try {
-      localStorage.setItem(SITE_KEY, id);
-    } catch {
-      return;
-    }
+    setActiveSiteId(id);
   }
 
   const site = sites?.find((s) => s.id === siteId);
@@ -46,7 +33,7 @@ export default function MapPage() {
   const notice =
     error ??
     (sites === null
-      ? "Loading sitesâ€¦"
+      ? "Loading sites…"
       : !siteId
         ? "No site yet. Create a site first, or set VITE_DEMO_SITE_ID in .env.local."
         : null);

@@ -44,7 +44,7 @@ function workerIcon(w: LiveWorker) {
       `background:#FDF9F2;border:2px solid ${s.color};font:700 12px system-ui;color:#1C1C1C;` +
       `box-shadow:0 1px 4px rgba(0,0,0,.25);white-space:nowrap;cursor:pointer">` +
       `<span style="width:10px;height:10px;border-radius:50%;background:${s.color}"></span>` +
-      `<span>${name} â”¬â•– ${s.label}</span></div>`,
+      `<span>${name} · ${s.label}</span></div>`,
   });
 }
 
@@ -71,7 +71,8 @@ export default function LiveMap({ siteId, notice }: Props) {
   const polygonsRef = useRef(new Map<string, L.Polygon>());
   const draftRef = useRef<L.Polyline | null>(null);
   const handlesRef = useRef<L.LayerGroup | null>(null);
-  const siteLayerRef = useRef<L.Polygon | null>(null);
+  const siteLayerRef = useRef<L.FeatureGroup | null>(null);
+  const siteOutlineRef = useRef<L.Polygon | null>(null);
   const editPathRef = useRef<LatLng[]>([]);
   const fittedRef = useRef<string | null>(null);
 
@@ -79,6 +80,7 @@ export default function LiveMap({ siteId, notice }: Props) {
   const [workers, setWorkers] = useState<LiveWorker[]>([]);
   const [zones, setZones] = useState<Geofence[]>([]);
   const [siteBoundary, setSiteBoundary] = useState<Polygon | null>(null);
+  const [siteName, setSiteName] = useState("");
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: "view" });
   const [draftCount, setDraftCount] = useState(0);
@@ -200,6 +202,7 @@ export default function LiveMap({ siteId, notice }: Props) {
         if (!stopped) {
           setWorkers(res.data);
           setSiteBoundary(res.site.boundary);
+          setSiteName(res.site.name);
           setPollError(null);
         }
       } catch (err) {
@@ -249,16 +252,39 @@ export default function LiveMap({ siteId, notice }: Props) {
     const map = mapRef.current;
     siteLayerRef.current?.remove();
     siteLayerRef.current = null;
+    siteOutlineRef.current = null;
     if (!ready || !map || !siteBoundary) return;
-    siteLayerRef.current = L.polygon(toPath(siteBoundary), {
-      color: "#1C1C1C",
-      weight: 2,
-      dashArray: "6 6",
-      fillOpacity: 0.04,
-      interactive: false,
-    }).addTo(map);
+    // A white halo under a bright outline keeps the perimeter readable on satellite imagery.
+    const path = toPath(siteBoundary);
+    // Interactive only for the hover details; clicks still reach the map, so zones can be drawn inside.
+    const outline = L.polygon(path, {
+      color: "#FACC15",
+      weight: 3,
+      fillColor: "#FACC15",
+      fillOpacity: 0.1,
+    }).bindTooltip("", { sticky: true, direction: "top", offset: [0, -8] });
+    siteOutlineRef.current = outline;
+    siteLayerRef.current = L.featureGroup([
+      L.polygon(path, { color: "#FFFFFF", weight: 7, opacity: 0.8, fill: false, interactive: false }),
+      outline,
+    ]).addTo(map);
     siteLayerRef.current.bringToBack();
   }, [ready, siteBoundary]);
+
+  // Hover details on the site boundary, refreshed with every poll.
+  useEffect(() => {
+    const outline = siteOutlineRef.current;
+    if (!outline) return;
+    const off = workers.filter((w) => w.location_status === "off_site").length;
+    const on = workers.length - off;
+    outline.setTooltipContent(
+      `<div style="font:13px system-ui;line-height:1.5">` +
+        `<div style="font-weight:700;margin-bottom:2px">${escape(siteName || "Site")}</div>` +
+        `<div><span style="color:${STATUS.on_site.color};font-weight:700">${on}</span> on site</div>` +
+        `<div><span style="color:${STATUS.off_site.color};font-weight:700">${off}</span> off site</div>` +
+        `</div>`,
+    );
+  }, [siteBoundary, siteName, workers]);
 
   useEffect(() => {
     const map = mapRef.current;

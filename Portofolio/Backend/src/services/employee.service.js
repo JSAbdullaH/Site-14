@@ -41,6 +41,8 @@ function toPublic(e) {
     status: e.status,
     consent_given_at: e.consentGivenAt ? e.consentGivenAt.toISOString() : null,
     site: e.site,
+    site_id: e.site ? e.site.id : null,
+    site_name: e.site ? e.site.name : null,
     device: e.device ? { id: e.device.id, serial_number: e.device.serialNumber } : null,
     created_at: e.createdAt.toISOString(),
   };
@@ -49,7 +51,7 @@ function toPublic(e) {
 async function list(auth, q) {
   const where = {
     ...(q.status === 'all' ? {} : { status: q.status }),
-    ...(q.site_id && { siteId: q.site_id }),
+    ...(q.site_id && { siteId: q.site_id === 'none' ? null : q.site_id }),
     ...(q.job_category && { jobCategory: q.job_category }),
     ...(q.geofence_id && { currentState: { geofenceId: q.geofence_id } }),
     ...(q.search && {
@@ -98,10 +100,14 @@ async function get(auth, id) {
   };
 }
 
+// SITE-49: a worker's hours go to their site, so it must be one of the company's open sites.
 async function checkSite(db, siteId) {
   if (!siteId) return;
   const site = await db.site.findUnique({ where: { id: siteId }, select: { isActive: true } });
-  if (!site || !site.isActive) throw invalid('site_id', 'Site not found');
+  if (!site) throw invalid('site_id', 'Site not found');
+  if (!site.isActive) {
+    throw new AppError(409, 'SITE_INACTIVE', 'This site is deactivated. Reactivate it before assigning employees.');
+  }
 }
 
 const DAILY_LIMIT_MINUTES = { security: 720, cleaning: 720 };
@@ -151,10 +157,20 @@ async function create(auth, input) {
 async function update(auth, id, input) {
   const current = await auth.db.employee.findUnique({
     where: { id },
-    select: { consentGivenAt: true, workSessions: { where: { endedAt: null }, select: { id: true } } },
+    select: {
+      siteId: true,
+      status: true,
+      consentGivenAt: true,
+      workSessions: { where: { endedAt: null }, select: { id: true } },
+    },
   });
   if (!current) throw notFound();
-  await checkSite(auth.db, input.site_id);
+  if (input.site_id && input.site_id !== current.siteId) {
+    if (current.status !== 'active') {
+      throw new AppError(409, 'EMPLOYEE_INACTIVE', 'This employee is deactivated and cannot be assigned to a site');
+    }
+    await checkSite(auth.db, input.site_id);
+  }
   if (input.consent === false && current.workSessions.length) {
     throw new AppError(409, 'ON_SHIFT', 'End the worker\'s shift before withdrawing consent');
   }

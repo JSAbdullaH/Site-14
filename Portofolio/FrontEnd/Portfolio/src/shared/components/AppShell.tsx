@@ -3,17 +3,20 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "@/shared/lib/api";
 import { clearToken, getUser } from "@/shared/lib/auth";
 
-const MAIN = [
+type NavItem = { to: string; label: string; soon?: boolean };
+
+// "soon": the page is not built yet, so the item is shown but not linked.
+const MAIN: NavItem[] = [
   { to: "/home", label: "Map" },
   { to: "/sites", label: "Sites & Zones" },
-  { to: "/tasks", label: "Tasks" },
+  { to: "/tasks", label: "Tasks", soon: true },
   { to: "/team", label: "Team" },
 ];
 
-const RECORDS = [
-  { to: "/devices", label: "Devices" },
-  { to: "/history", label: "History" },
-  { to: "/reports", label: "Reports" },
+const RECORDS: NavItem[] = [
+  { to: "/devices", label: "Devices", soon: true },
+  { to: "/history", label: "History", soon: true },
+  { to: "/reports", label: "Reports", soon: true },
 ];
 
 type Props = {
@@ -47,7 +50,19 @@ export default function AppShell({ title, subtitle, children }: Props) {
     navigate("/signin", { replace: true });
   }
 
-  function NavLink({ to, label }: { to: string; label: string }) {
+  function NavLink({ to, label, soon }: NavItem) {
+    if (soon) {
+      return (
+        <span
+          aria-disabled="true"
+          className="flex h-10 cursor-default items-center justify-between rounded-md px-4 text-sm font-medium text-muted-foreground"
+        >
+          {label}
+          <span className="text-[10px] font-semibold tracking-wide uppercase">Soon</span>
+        </span>
+      );
+    }
+
     const active =
       location.pathname === to || location.pathname.startsWith(`${to}/`);
 

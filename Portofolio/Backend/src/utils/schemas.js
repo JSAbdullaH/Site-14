@@ -74,16 +74,16 @@ const updateEmployeeSchema = z
   .strict()
   .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
 
+// site_id=none lists the workers not assigned to any site.
 const listEmployeesQuery = z.object({
   search: z.string().trim().min(1).max(120).optional(),
-  site_id: z.string().uuid('Invalid site').optional(),
+  site_id: z.union([z.literal('none'), z.string().uuid('Invalid site')]).optional(),
   geofence_id: z.string().uuid('Invalid zone').optional(),
   job_category: jobCategory.optional(),
   status: z.enum(['active', 'inactive', 'all']).default('active'),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
 });
-
-// null takes the employee off their site.
-const assignEmployeeSchema = z.object({ site_id: z.string().uuid('Invalid site').nullable() });
 
 // ---------- sites (SITE-47, SITE-48) ----------
 
@@ -155,6 +155,29 @@ const updateSiteSchema = z
 
 const listSitesQuery = z.object({ is_active: booleanQuery });
 
+const createGeofenceSchema = z.object({
+  site_id: z.string().uuid('Invalid site id'),
+  name: z.string().trim().min(1, 'Enter a zone name').max(120),
+  is_outdoor: z.boolean().default(false),
+  boundary: polygon,
+});
+
+const updateGeofenceSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Enter a zone name').max(120).optional(),
+    is_outdoor: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    boundary: polygon.optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, 'Send at least one field to update');
+
+const listGeofencesQuery = z.object({
+  site_id: z.string().uuid('Invalid site id'),
+  is_active: booleanQuery,
+});
+
+const liveLocationsQuery = z.object({ site_id: z.string().uuid('Invalid site id') });
+
 const idParams = z.object({ id: z.string().uuid('Invalid id') });
 const tokenParams = z.object({ token: linkToken });
 
@@ -172,10 +195,13 @@ module.exports = {
   createEmployeeSchema,
   updateEmployeeSchema,
   listEmployeesQuery,
-  assignEmployeeSchema,
   createSiteSchema,
   updateSiteSchema,
   listSitesQuery,
+  createGeofenceSchema,
+  updateGeofenceSchema,
+  listGeofencesQuery,
+  liveLocationsQuery,
   idParams,
   tokenParams,
 };

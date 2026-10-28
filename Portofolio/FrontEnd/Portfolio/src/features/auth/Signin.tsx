@@ -4,11 +4,12 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import FormField from "@/shared/components/FormField";
 import { apiFetch } from "@/shared/lib/api";
-import { saveToken } from "@/shared/lib/auth";
+import { saveToken, saveUser } from "@/shared/lib/auth";
+import type { SessionUser } from "@/shared/lib/auth";
 import { signinSchema, codeSchema } from "@/shared/lib/validation";
 import { useFormValidation } from "@/shared/lib/useFormValidation";
 
-type Session = { access_token: string };
+type Session = { access_token: string; user: SessionUser };
 
 export default function Signin() {
   const navigate = useNavigate();
@@ -62,6 +63,7 @@ export default function Signin() {
         body: JSON.stringify(result.data),
       });
       saveToken(session.access_token);
+      saveUser(session.user);
       navigate(from, { replace: true });
     } catch (err) {
       setFormError((err as Error).message);

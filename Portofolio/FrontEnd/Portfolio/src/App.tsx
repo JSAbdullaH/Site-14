@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/shared/components/ProtectedRoute";
 import Landing from "@/features/landing/Landing";
 import Signin from "@/features/auth/Signin";
@@ -9,6 +9,7 @@ import Account from "@/features/account/Account";
 import TeamPage from "@/features/team/TeamPage";
 import MapPage from "@/features/map/MapPage";
 import SitesPage from "@/features/sites/SitesPage";
+import SiteEditPage from "@/features/sites/SiteEditPage";
 
 export default function App() {
   return (
@@ -21,8 +22,12 @@ export default function App() {
 
       <Route path="/home" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
       <Route path="/sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
+      <Route path="/sites/new" element={<ProtectedRoute><SiteEditPage /></ProtectedRoute>} />
+      <Route path="/sites/:id" element={<ProtectedRoute><SiteEditPage /></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

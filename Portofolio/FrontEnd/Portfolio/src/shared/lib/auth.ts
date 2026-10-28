@@ -1,11 +1,13 @@
 ﻿const KEY = "site14_access_token";
 const USER_KEY = "site14_user";
 
+export type Role = "company_admin" | "site_manager";
+
 export type SessionUser = {
   id: string;
   full_name: string;
   email: string;
-  role: string;
+  role: Role;
 };
 
 export function saveToken(token: string) {
@@ -41,3 +43,18 @@ export function getUser(): SessionUser | null {
     return null;
   }
 }
+
+// The role claim in the access token, for sessions started before the user was saved.
+function tokenRole(): string | null {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(part.padEnd(Math.ceil(part.length / 4) * 4, "="))).role ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Only decides what to show; the API checks the role again on every request.
+export const isAdmin = () => (getUser()?.role ?? tokenRole()) === "company_admin";

@@ -8,6 +8,7 @@ export type User = {
   is_active: boolean;
 
   is_email_verified?: boolean;
+  invitation_pending?: boolean;
   invited_at?: string;
   created_at?: string;
 };
@@ -26,6 +27,6 @@ export type UserState = "active" | "pending" | "deactivated";
 
 export function userState(user: User): UserState {
   if (user.is_active) return "active";
-  if (user.invited_at && !user.is_email_verified) return "pending";
+  if (user.invitation_pending) return "pending";
   return "deactivated";
 }

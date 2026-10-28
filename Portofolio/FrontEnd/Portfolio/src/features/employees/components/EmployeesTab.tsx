@@ -13,7 +13,7 @@ export default function EmployeesTab() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    listEmployees()
+    listEmployees({ limit: 100 })
       .then((res) => setEmployees(res.data))
       .catch((err) => setError((err as Error).message))
       .finally(() => setLoading(false));
