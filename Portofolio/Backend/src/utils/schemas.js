@@ -49,6 +49,94 @@ const listUsersQuery = z.object({
 
 const acceptInvitationSchema = z.object({ password: newPassword });
 
+const booleanQuery = z
+  .enum(['true', 'false'])
+  .transform((v) => v === 'true')
+  .optional();
+
+// ---------- sites (SITE-47, SITE-48) ----------
+
+// Shift times are wall-clock Saudi time, "HH:MM".
+const clockTime = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use the 24-hour format HH:MM');
+
+// [longitude, latitude], the GeoJSON order.
+const position = z.tuple([
+  z.number().finite().min(-180, 'Longitude must be between -180 and 180').max(180, 'Longitude must be between -180 and 180'),
+  z.number().finite().min(-90, 'Latitude must be between -90 and 90').max(90, 'Latitude must be between -90 and 90'),
+]);
+
+const samePosition = (a, b) => a[0] === b[0] && a[1] === b[1];
+
+// A GeoJSON Polygon with one closed ring of at least three distinct corners.
+const polygon = z.object({
+  type: z.literal('Polygon'),
+  coordinates: z
+    .array(
+      z
+        .array(position)
+        .min(4, 'A boundary needs at least three corners')
+        .max(500, 'A boundary can have at most 499 corners')
+        // Zod still runs these after a failed .min(), so an empty ring must not throw.
+        .refine((ring) => ring.length > 0 && samePosition(ring[0], ring[ring.length - 1]), 'The boundary must end where it starts')
+        .refine(
+          (ring) => new Set(ring.slice(0, -1).map((p) => `${p[0]},${p[1]}`)).size >= 3,
+          'A boundary needs at least three distinct corners',
+        ),
+    )
+    .length(1, 'A boundary is a single outline'),
+});
+
+const siteName = z.string().trim().min(2, 'Use at least 2 characters').max(120, 'Use at most 120 characters');
+const siteClient = z
+  .string()
+  .trim()
+  .max(150, 'Use at most 150 characters')
+  .transform((v) => v || null)
+  .nullable();
+
+const createSiteSchema = z
+  .object({
+    name: siteName,
+    client: siteClient.optional(),
+    boundary: polygon,
+    shift_start: clockTime,
+    shift_end: clockTime,
+  })
+  .refine((s) => s.shift_start !== s.shift_end, {
+    message: 'The shift must end at a different time than it starts',
+    path: ['shift_end'],
+  });
+
+const updateSiteSchema = z
+  .object({
+    name: siteName.optional(),
+    client: siteClient.optional(),
+    boundary: polygon.optional(),
+    shift_start: clockTime.optional(),
+    shift_end: clockTime.optional(),
+    is_active: z.boolean().optional(),
+  })
+  .refine((s) => Object.values(s).some((v) => v !== undefined), {
+    message: 'Send at least one field to change',
+    path: ['_'],
+  });
+
+const listSitesQuery = z.object({ is_active: booleanQuery });
+
+// ---------- employees: site assignment (SITE-49) ----------
+
+const listEmployeesQuery = z.object({
+  search: z.string().trim().max(120).optional(),
+  site_id: z.union([z.literal('none'), z.string().uuid('Invalid site')]).optional(),
+  job_category: z.string().trim().max(60).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+
+// null takes the employee off their site.
+const assignEmployeeSchema = z.object({ site_id: z.string().uuid('Invalid site').nullable() });
+
 const idParams = z.object({ id: z.string().uuid('Invalid id') });
 const tokenParams = z.object({ token: linkToken });
 
@@ -63,6 +151,11 @@ module.exports = {
   inviteUserSchema,
   listUsersQuery,
   acceptInvitationSchema,
+  createSiteSchema,
+  updateSiteSchema,
+  listSitesQuery,
+  listEmployeesQuery,
+  assignEmployeeSchema,
   idParams,
   tokenParams,
 };
