@@ -1,4 +1,4 @@
-const KEY = "site14_access_token";
+﻿const KEY = "site14_access_token";
 
 export function saveToken(token: string) {
   localStorage.setItem(KEY, token);

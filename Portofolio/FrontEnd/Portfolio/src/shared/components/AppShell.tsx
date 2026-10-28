@@ -1,12 +1,13 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { apiFetch } from "../lib/api";
-import { clearToken } from "../lib/auth";
+import { apiFetch } from "@/shared/lib/api";
+import { clearToken } from "@/shared/lib/auth";
 
 const MAIN = [
   { to: "/home", label: "Map" },
   { to: "/sites", label: "Sites & Zones" },
   { to: "/tasks", label: "Tasks" },
+  { to: "/team", label: "Team" },
   { to: "/employees", label: "Employees" },
 ];
 
@@ -81,7 +82,7 @@ export default function AppShell({ title, subtitle, children }: Props) {
 
           <button
             onClick={logout}
-            className="mt-1 w-full text-left px-4 h-10 rounded-ctrl text-sm font-bold text-muted hover:bg-sand hover:text-signal transition-colors"
+            className="mt-1 w-full text-left px-4 h-10 rounded-ctrl text-sm font-bold text-muted-foreground-foreground hover:bg-sand hover:text-signal transition-colors"
           >
             Sign out
           </button>
@@ -93,7 +94,7 @@ export default function AppShell({ title, subtitle, children }: Props) {
           <div className="min-w-0">
             <h1 className="text-lg font-bold truncate">{title}</h1>
             {subtitle && (
-              <p className="text-[13px] text-muted font-semibold truncate">{subtitle}</p>
+              <p className="text-[13px] text-muted-foreground-foreground font-semibold truncate">{subtitle}</p>
             )}
           </div>
         </header>

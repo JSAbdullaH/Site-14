@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import AppShell from "../components/AppShell";
-import Button from "../components/Button";
-import Input from "../components/Input";
-import { apiFetch } from "../lib/api";
+﻿import { useEffect, useState } from "react";
+import AppShell from "@/shared/components/AppShell";
+import { Button } from "@/components/ui/button";
+import FormField from "@/shared/components/FormField";
+import { apiFetch } from "@/shared/lib/api";
 
 type Company = {
   name?: string;
@@ -51,11 +51,11 @@ export default function Account() {
             </p>
           )}
 
-          <Input id="cname" label="COMPANY NAME" value={company?.name ?? ""} readOnly />
-          <Input id="cr" label="COMMERCIAL REGISTER"
-            value={company?.commercial_register ?? "—"} readOnly />
-          <Input id="cemail" label="EMAIL" value={company?.email ?? ""} readOnly />
-          <Input id="cphone" label="PHONE" value={company?.phone ?? "—"} readOnly />
+          <FormField id="cname" label="COMPANY NAME" value={company?.name ?? ""} readOnly />
+          <FormField id="cr" label="COMMERCIAL REGISTER"
+            value={company?.commercial_register ?? "â€”"} readOnly />
+          <FormField id="cemail" label="EMAIL" value={company?.email ?? ""} readOnly />
+          <FormField id="cphone" label="PHONE" value={company?.phone ?? "â€”"} readOnly />
 
           <p className="text-[13px] text-mute2 font-semibold">
             Editing company details is not available yet.
@@ -66,13 +66,13 @@ export default function Account() {
           <h2 className="text-xl font-bold mb-3">Password</h2>
 
           {resetSent ? (
-            <p className="text-[15px] text-muted font-semibold leading-relaxed">
+            <p className="text-[15px] text-muted-foreground-foreground font-semibold leading-relaxed">
               We sent a link to <span className="text-ink">{company?.email}</span>. Open it
               to set a new password.
             </p>
           ) : (
             <>
-              <p className="mb-6 text-[15px] text-muted font-semibold leading-relaxed">
+              <p className="mb-6 text-[15px] text-muted-foreground-foreground font-semibold leading-relaxed">
                 We will email you a one-time link to set a new password.
               </p>
               <Button onClick={sendReset} disabled={busy || !company?.email}>

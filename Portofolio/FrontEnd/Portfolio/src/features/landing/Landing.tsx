@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 
 export default function Landing() {
   return (
@@ -24,7 +24,7 @@ export default function Landing() {
           was written down later.
         </h1>
 
-        <p className="mt-10 max-w-[48ch] text-lg leading-relaxed text-muted font-semibold">
+        <p className="mt-10 max-w-[48ch] text-lg leading-relaxed text-muted-foreground-foreground font-semibold">
           SITE14 records attendance, zones and hours as they happen in the field, so
           the daily record is the work itself and not a form filled in afterwards.
         </p>

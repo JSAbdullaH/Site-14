@@ -1,5 +1,5 @@
-import { Navigate, useLocation } from "react-router-dom";
-import { isLoggedIn } from "../lib/auth";
+﻿import { Navigate, useLocation } from "react-router-dom";
+import { isLoggedIn } from "@/shared/lib/auth";
 import type { ReactNode } from "react";
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
