@@ -2,6 +2,15 @@ import { getToken } from "./auth";
 
 const BASE = "/api/v1";
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
 
@@ -20,7 +29,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new Error(data?.message || "Something went wrong. Try again.");
+    throw new ApiError(res.status, data?.error?.message || data?.message || "Something went wrong. Try again.");
   }
 
   return data as T;

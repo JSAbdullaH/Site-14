@@ -15,6 +15,7 @@
     "db:reset": "prisma migrate reset",
     "db:rollback": "prisma db execute --file prisma/migrations/20261015000000_init/down.sql",
     "db:seed": "prisma db seed",
+    "simulate:move": "node scripts/simulate-move.js",
     "db:studio": "prisma studio",
     "db:check": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script",
     "test": "jest --runInBand",
