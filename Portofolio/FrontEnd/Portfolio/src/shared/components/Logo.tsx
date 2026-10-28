@@ -1,4 +1,4 @@
-export function LogoMark({ size = 40 }: { size?: number }) {
+﻿export function LogoMark({ size = 40 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 111 111" fill="none"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">

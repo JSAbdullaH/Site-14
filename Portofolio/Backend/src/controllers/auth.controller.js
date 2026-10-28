@@ -1,8 +1,6 @@
 const config = require('../config');
 const authService = require('../services/auth.service');
 
-// The refresh token lives in an httpOnly cookie that page scripts cannot read
-// (Stage3 section 2.3.6). It is only ever sent to the auth routes.
 const REFRESH_COOKIE = 'site14_refresh';
 const cookieOptions = () => ({
   httpOnly: true,
@@ -19,7 +17,6 @@ const clearRefreshCookie = (res) => res.clearCookie(REFRESH_COOKIE, cookieOption
 
 const refreshTokenFrom = (req) => req.body.refresh_token || (req.cookies && req.cookies[REFRESH_COOKIE]);
 
-// Responds with a new session and stores its refresh token in the cookie.
 function sendSession(res, session) {
   setRefreshCookie(res, session.refresh_token);
   res.json(session);
