@@ -126,7 +126,7 @@ const ALBINA = {
   ],
   sites: [
     {
-      name: 'Al Malqa Tower', lng: 46.6290, lat: 24.8120,
+      name: 'Al Malqa Tower', client: 'Riyadh Development Co.', lng: 46.6290, lat: 24.8120,
       zones: [
         { name: 'Roof', outdoor: true, dLng: -0.0012, dLat: 0 },
         { name: 'Warehouse', outdoor: false, dLng: 0.0012, dLat: 0 },
@@ -135,7 +135,7 @@ const ALBINA = {
       security: [10, 11],
     },
     {
-      name: 'Al Narjis Villas', lng: 46.6680, lat: 24.8650,
+      name: 'Al Narjis Villas', client: 'Narjis Housing', lng: 46.6680, lat: 24.8650,
       zones: [{ name: 'Site Office', outdoor: false, dLng: 0, dLat: 0.0010 }],
       workers: 8, // workers 12-19; 18 and 19 are security
       security: [6, 7],
@@ -174,7 +174,7 @@ async function createCompany(spec, passwordHash) {
 async function createSite(companyId, spec) {
   const site = await prisma.site.create({
     data: {
-      companyId, name: spec.name,
+      companyId, name: spec.name, client: spec.client,
       boundary: square(spec.lng, spec.lat, 0.003),
       shiftStart: time('07:00'), shiftEnd: time('17:00'),
     },

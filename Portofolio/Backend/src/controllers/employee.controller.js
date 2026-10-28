@@ -21,4 +21,8 @@ async function deactivate(req, res) {
   res.status(204).end();
 }
 
-module.exports = { list, get, create, update, deactivate };
+async function assignSite(req, res) {
+  res.json(await employeeService.assignSite(req.auth, req.params.id, req.body));
+}
+
+module.exports = { list, get, create, update, deactivate, assignSite };

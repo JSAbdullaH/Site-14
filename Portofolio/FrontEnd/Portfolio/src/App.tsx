@@ -1,4 +1,4 @@
-﻿import { Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import ProtectedRoute from "@/shared/components/ProtectedRoute";
 import Landing from "@/features/landing/Landing";
 import Signin from "@/features/auth/Signin";
@@ -18,9 +18,10 @@ export default function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
+
       <Route path="/home" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
       <Route path="/sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
+      <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
     </Routes>
   );
