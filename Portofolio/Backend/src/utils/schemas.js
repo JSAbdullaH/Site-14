@@ -178,6 +178,31 @@ const listGeofencesQuery = z.object({
 
 const liveLocationsQuery = z.object({ site_id: z.string().uuid('Invalid site id') });
 
+const importColumnMap = z.object({
+  column_map: z
+    .string()
+    .optional()
+    .transform((text, ctx) => {
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch {
+        ctx.addIssue({ code: 'custom', message: 'column_map must be JSON' });
+        return z.NEVER;
+      }
+    })
+    .pipe(
+      z
+        .object({
+          full_name: z.string().min(1).optional(),
+          employee_number: z.string().min(1).optional(),
+          job_category: z.string().min(1).optional(),
+          site_name: z.string().min(1).optional(),
+        })
+        .strict(),
+    ),
+});
+
 const idParams = z.object({ id: z.string().uuid('Invalid id') });
 const tokenParams = z.object({ token: linkToken });
 
@@ -195,6 +220,7 @@ module.exports = {
   createEmployeeSchema,
   updateEmployeeSchema,
   listEmployeesQuery,
+  importColumnMap,
   createSiteSchema,
   updateSiteSchema,
   listSitesQuery,
