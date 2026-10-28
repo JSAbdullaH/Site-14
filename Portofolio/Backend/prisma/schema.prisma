@@ -179,13 +179,15 @@ model Site {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId  String   @map("company_id") @db.Uuid
   name       String   @db.VarChar(120)
+  client     String?  @db.VarChar(150)
   // GeoJSON Polygon, the perimeter
   boundary   Json     @db.JsonB
-  // Saudi time
+  // Saudi time. A shift whose end is before its start runs past midnight.
   shiftStart DateTime @map("shift_start") @db.Time(6)
   shiftEnd   DateTime @map("shift_end") @db.Time(6)
   isActive   Boolean  @default(true) @map("is_active")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   company           Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
   employees         Employee[]

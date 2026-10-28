@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import { clearToken } from "../lib/auth";
+import SiteSelector from "./SiteSelector";
 
 const MAIN = [
   { to: "/home", label: "Map" },
@@ -37,7 +38,7 @@ export default function AppShell({ title, subtitle, children }: Props) {
   }
 
   function NavLink({ to, label }: { to: string; label: string }) {
-    const active = location.pathname === to;
+    const active = location.pathname === to || location.pathname.startsWith(`${to}/`);
     return (
       <Link
         to={to}
@@ -89,13 +90,14 @@ export default function AppShell({ title, subtitle, children }: Props) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 shrink-0 flex items-center px-8 border-b border-sand2">
-          <div className="min-w-0">
+        <header className="h-20 shrink-0 flex items-center gap-6 px-8 border-b border-sand2">
+          <div className="min-w-0 flex-1">
             <h1 className="text-lg font-bold truncate">{title}</h1>
             {subtitle && (
               <p className="text-[13px] text-muted font-semibold truncate">{subtitle}</p>
             )}
           </div>
+          <SiteSelector />
         </header>
 
         <main className="flex-1 p-8 min-w-0">{children}</main>

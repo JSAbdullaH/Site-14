@@ -15,3 +15,21 @@ export function clearToken() {
 export function isLoggedIn(): boolean {
   return Boolean(getToken());
 }
+
+export type Role = "company_admin" | "site_manager";
+
+// Read from the access token's payload, only to decide what to show.
+// The API checks the role again on every request.
+export function getRole(): Role | null {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const role = JSON.parse(atob(part.padEnd(Math.ceil(part.length / 4) * 4, "="))).role;
+    return role === "company_admin" || role === "site_manager" ? role : null;
+  } catch {
+    return null;
+  }
+}
+
+export const isAdmin = () => getRole() === "company_admin";
