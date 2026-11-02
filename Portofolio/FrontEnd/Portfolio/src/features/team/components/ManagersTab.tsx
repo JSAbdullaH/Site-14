@@ -63,7 +63,7 @@ export default function ManagersTab() {
   return (
     <>
       <p className="mb-4 text-sm text-muted-foreground">
-        Managers sign in to SITE14 and run sites. They are invited by email.
+       invited a Manager by email!
       </p>
 
       {error && (
