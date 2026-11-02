@@ -1,15 +1,15 @@
-import { Routes, Route, Outlet } from "react-router-dom";
-import ProtectedRoute from "./components/ProtectedRoute";
-import SiteProvider from "./components/SiteProvider";
-import Landing from "./pages/Landing";
-import Signin from "./pages/Signin";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import Home from "./pages/Home";
-import Account from "./pages/Account";
-import ResetPassword from "./pages/ResetPassword";
-import Sites from "./pages/Sites";
-import SiteEdit from "./pages/SiteEdit";
+import { Routes, Route, Navigate } from "react-router-dom";
+import ProtectedRoute from "@/shared/components/ProtectedRoute";
+import Landing from "@/features/landing/Landing";
+import Signin from "@/features/auth/Signin";
+import Signup from "@/features/auth/Signup";
+import ForgotPassword from "@/features/auth/ForgotPassword";
+import ResetPassword from "@/features/auth/ResetPassword";
+import Account from "@/features/account/Account";
+import TeamPage from "@/features/team/TeamPage";
+import MapPage from "@/features/map/MapPage";
+import SitesPage from "@/features/sites/SitesPage";
+import SiteEditPage from "@/features/sites/SiteEditPage";
 
 export default function App() {
   return (
@@ -20,14 +20,14 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* One SiteProvider for every signed-in screen, so the active site survives navigation. */}
-      <Route element={<ProtectedRoute><SiteProvider><Outlet /></SiteProvider></ProtectedRoute>}>
-        <Route path="/home" element={<Home />} />
-        <Route path="/account" element={<Account />} />
-        <Route path="/sites" element={<Sites />} />
-        <Route path="/sites/new" element={<SiteEdit />} />
-        <Route path="/sites/:id" element={<SiteEdit />} />
-      </Route>
+      <Route path="/home" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
+      <Route path="/sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
+      <Route path="/sites/new" element={<ProtectedRoute><SiteEditPage /></ProtectedRoute>} />
+      <Route path="/sites/:id" element={<ProtectedRoute><SiteEditPage /></ProtectedRoute>} />
+      <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
+      <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

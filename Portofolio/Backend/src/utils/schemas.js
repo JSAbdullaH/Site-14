@@ -2,6 +2,11 @@ const { z } = require('zod');
 
 const email = z.string().trim().toLowerCase().email('Enter a valid email address').max(255);
 
+const booleanQuery = z
+  .enum(['true', 'false'])
+  .transform((v) => v === 'true')
+  .optional();
+
 const newPassword = z
   .string()
   .min(10, 'Use at least 10 characters')
@@ -49,10 +54,36 @@ const listUsersQuery = z.object({
 
 const acceptInvitationSchema = z.object({ password: newPassword });
 
-const booleanQuery = z
-  .enum(['true', 'false'])
-  .transform((v) => v === 'true')
-  .optional();
+// ---------- employees ----------
+
+const jobCategory = z.string().trim().toLowerCase().min(2, 'Enter a job category').max(60);
+
+const employeeFields = {
+  full_name: z.string().trim().min(2).max(120),
+  employee_number: z.string().trim().min(1).max(30).nullable().optional(),
+  job_category: jobCategory,
+  site_id: z.string().uuid('Invalid site').nullable().optional(),
+  consent: z.boolean().optional(),
+};
+
+const createEmployeeSchema = z.object(employeeFields).strict();
+
+const updateEmployeeSchema = z
+  .object(employeeFields)
+  .partial()
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
+
+// site_id=none lists the workers not assigned to any site.
+const listEmployeesQuery = z.object({
+  search: z.string().trim().min(1).max(120).optional(),
+  site_id: z.union([z.literal('none'), z.string().uuid('Invalid site')]).optional(),
+  geofence_id: z.string().uuid('Invalid zone').optional(),
+  job_category: jobCategory.optional(),
+  status: z.enum(['active', 'inactive', 'all']).default('active'),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
 
 // ---------- sites (SITE-47, SITE-48) ----------
 
@@ -87,6 +118,7 @@ const polygon = z.object({
 });
 
 const siteName = z.string().trim().min(2, 'Use at least 2 characters').max(120, 'Use at most 120 characters');
+
 const siteClient = z
   .string()
   .trim()
@@ -123,19 +155,28 @@ const updateSiteSchema = z
 
 const listSitesQuery = z.object({ is_active: booleanQuery });
 
-// ---------- employees: site assignment (SITE-49) ----------
-
-const listEmployeesQuery = z.object({
-  search: z.string().trim().max(120).optional(),
-  site_id: z.union([z.literal('none'), z.string().uuid('Invalid site')]).optional(),
-  job_category: z.string().trim().max(60).optional(),
-  status: z.enum(['active', 'inactive']).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(25),
+const createGeofenceSchema = z.object({
+  site_id: z.string().uuid('Invalid site id'),
+  name: z.string().trim().min(1, 'Enter a zone name').max(120),
+  is_outdoor: z.boolean().default(false),
+  boundary: polygon,
 });
 
-// null takes the employee off their site.
-const assignEmployeeSchema = z.object({ site_id: z.string().uuid('Invalid site').nullable() });
+const updateGeofenceSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Enter a zone name').max(120).optional(),
+    is_outdoor: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    boundary: polygon.optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, 'Send at least one field to update');
+
+const listGeofencesQuery = z.object({
+  site_id: z.string().uuid('Invalid site id'),
+  is_active: booleanQuery,
+});
+
+const liveLocationsQuery = z.object({ site_id: z.string().uuid('Invalid site id') });
 
 const idParams = z.object({ id: z.string().uuid('Invalid id') });
 const tokenParams = z.object({ token: linkToken });
@@ -151,11 +192,16 @@ module.exports = {
   inviteUserSchema,
   listUsersQuery,
   acceptInvitationSchema,
+  createEmployeeSchema,
+  updateEmployeeSchema,
+  listEmployeesQuery,
   createSiteSchema,
   updateSiteSchema,
   listSitesQuery,
-  listEmployeesQuery,
-  assignEmployeeSchema,
+  createGeofenceSchema,
+  updateGeofenceSchema,
+  listGeofencesQuery,
+  liveLocationsQuery,
   idParams,
   tokenParams,
 };

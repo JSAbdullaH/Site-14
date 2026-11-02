@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { authenticate, requireAdmin, requireRole } = require('../middlewares/auth.middleware');
+const { authenticate, requireRole, requireAdmin } = require('../middlewares/auth.middleware');
 const { validateBody, validateQuery, validateParams } = require('../middlewares/validate.middleware');
 const s = require('../utils/schemas');
 const employeeController = require('../controllers/employee.controller');
@@ -8,9 +8,12 @@ const router = Router();
 
 router.use(authenticate);
 
-// The rest of the employee profile (create, edit, deactivate, import) belongs to
-// the Employee & Device epic. PATCH takes only site_id until then.
-router.get('/', requireRole('site_manager'), validateQuery(s.listEmployeesQuery), employeeController.list);
-router.patch('/:id', requireAdmin, validateParams(s.idParams), validateBody(s.assignEmployeeSchema), employeeController.assignSite);
+const readers = requireRole('site_manager');
+
+router.get('/', readers, validateQuery(s.listEmployeesQuery), employeeController.list);
+router.get('/:id', readers, validateParams(s.idParams), employeeController.get);
+router.post('/', requireAdmin, validateBody(s.createEmployeeSchema), employeeController.create);
+router.patch('/:id', requireAdmin, validateParams(s.idParams), validateBody(s.updateEmployeeSchema), employeeController.update);
+router.delete('/:id', requireAdmin, validateParams(s.idParams), employeeController.deactivate);
 
 module.exports = router;

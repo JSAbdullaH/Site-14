@@ -36,7 +36,7 @@ module.exports = defineConfig({
   webServer: [
     {
       // Fresh database (migrations + demo seed), then the API on it.
-      command: 'npx prisma migrate reset --force && node prisma/seed.js && node src/server.js',
+      command: 'npx prisma migrate reset --force && npm run db:seed && npm start',
       cwd: backend,
       url: 'http://localhost:4000/health',
       env: { DATABASE_URL: databaseUrl, PORT: '4000', NODE_ENV: 'development' },

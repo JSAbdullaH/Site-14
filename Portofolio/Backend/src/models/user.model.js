@@ -31,14 +31,9 @@ async function findById(id, db = prisma) {
   return db.user.findUnique({ where: { id }, select: AUTH_FIELDS });
 }
 
-// Company-scoped lookup: a user of another company is simply not found.
-async function findInCompany(companyId, id) {
-  return prisma.user.findFirst({ where: { id, companyId }, select: AUTH_FIELDS });
-}
-
-async function listByCompany(companyId, { isActive } = {}) {
-  return prisma.user.findMany({
-    where: { companyId, ...(isActive === undefined ? {} : { isActive }) },
+async function list(db, { isActive } = {}) {
+  return db.user.findMany({
+    where: isActive === undefined ? {} : { isActive },
     orderBy: { createdAt: 'asc' },
     select: AUTH_FIELDS,
   });
@@ -101,8 +96,7 @@ module.exports = {
   create,
   findByEmail,
   findById,
-  findInCompany,
-  listByCompany,
+  list,
   registerFailure,
   resetFailures,
   update,

@@ -35,8 +35,7 @@ const toInvited = (user) => ({ ...userModel.toPublic(user), invited_at: user.cre
 async function invite(auth, input) {
   let user;
   try {
-    user = await userModel.create(prisma, {
-      companyId: auth.companyId,
+    user = await userModel.create(auth.db, {
       fullName: input.full_name,
       email: input.email,
       passwordHash: null,
@@ -56,12 +55,12 @@ async function invite(auth, input) {
 }
 
 async function list(auth, { is_active: isActive }) {
-  const users = await userModel.listByCompany(auth.companyId, { isActive });
+  const users = await userModel.list(auth.db, { isActive });
   return { data: users.map(userModel.toPublic) };
 }
 
 async function resendInvitation(auth, id) {
-  const user = await userModel.findInCompany(auth.companyId, id);
+  const user = await userModel.findById(id, auth.db);
   if (!user) throw notFound();
   if (!userModel.isPendingInvitation(user)) {
     throw new AppError(409, 'INVITATION_ACCEPTED', 'This user has already accepted their invitation');
@@ -99,7 +98,7 @@ async function deactivate(auth, id) {
   if (id === auth.userId) {
     throw new AppError(400, 'CANNOT_DEACTIVATE_SELF', 'You cannot deactivate your own account');
   }
-  const user = await userModel.findInCompany(auth.companyId, id);
+  const user = await userModel.findById(id, auth.db);
   if (!user) throw notFound();
 
   await prisma.$transaction(async (tx) => {
