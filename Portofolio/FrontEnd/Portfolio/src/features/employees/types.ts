@@ -26,26 +26,3 @@ export type CreateEmployeeInput = {
   site_id?: string | null;
   consent?: boolean;
 };
-
-export type ImportField = "full_name" | "employee_number" | "job_category" | "site_name";
-
-export type ColumnMap = Partial<Record<ImportField, string>>;
-
-export type ImportPreview = {
-  total_rows: number;
-  valid_rows: {
-    row: number;
-    full_name: string;
-    employee_number: string | null;
-    job_category: string;
-    site_name: string | null;
-  }[];
-  invalid_rows: { row: number; reason: string }[];
-  duplicates: { row: number; employee_number: string; reason: string }[];
-};
-
-export type ImportResult = {
-  created: number;
-  skipped: { row: number; employee_number: string; reason: string }[];
-  errors: { row: number; reason: string }[];
-};
