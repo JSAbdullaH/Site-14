@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { todayInRiyadh } = require('./day');
 
 const email = z.string().trim().toLowerCase().email('Enter a valid email address').max(255);
 
@@ -203,6 +204,13 @@ const importColumnMap = z.object({
     ),
 });
 
+const calendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use the format YYYY-MM-DD')
+  .refine((d) => !Number.isNaN(Date.parse(`${d}T00:00:00Z`)) && new Date(`${d}T00:00:00Z`).toISOString().startsWith(d), 'Not a real date');
+
+const dayQuery = z.object({ date: calendarDate.default(() => todayInRiyadh()) });
+
 const idParams = z.object({ id: z.string().uuid('Invalid id') });
 const tokenParams = z.object({ token: linkToken });
 
@@ -221,6 +229,7 @@ module.exports = {
   updateEmployeeSchema,
   listEmployeesQuery,
   importColumnMap,
+  dayQuery,
   createSiteSchema,
   updateSiteSchema,
   listSitesQuery,

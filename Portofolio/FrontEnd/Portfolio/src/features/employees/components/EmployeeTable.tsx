@@ -1,4 +1,5 @@
-﻿import StatusBadge from "@/shared/components/StatusBadge";
+﻿import { Link } from "react-router-dom";
+import StatusBadge from "@/shared/components/StatusBadge";
 import {
   Table,
   TableBody,
@@ -28,7 +29,12 @@ export default function EmployeeTable({ employees }: Props) {
         <TableBody>
           {employees.map((e) => (
             <TableRow key={e.id}>
-              <TableCell className="font-medium">{e.full_name}</TableCell>
+              <TableCell className="font-medium">
+                {/* name -> History page */}
+                <Link to={`/history?employee=${e.id}`} className="hover:text-signal hover:underline">
+                  {e.full_name}
+                </Link>
+              </TableCell>
 
               <TableCell className="text-muted-foreground">
                 {e.job_category}
