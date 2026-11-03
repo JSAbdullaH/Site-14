@@ -1,9 +1,11 @@
 ﻿import type { ReactNode } from "react";
+import { Pencil } from "lucide-react";
 import StatusBadge from "@/shared/components/StatusBadge";
+import { Button } from "@/components/ui/button";
 import type { AttendanceValue, DailyRecord } from "../types";
 import { ALERT_LABELS, FIELD_LABELS, clock, formatMinutes } from "../format";
 
-type Props = { record: DailyRecord };
+type Props = { record: DailyRecord; onCorrect?: () => void };
 
 function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return (
@@ -35,7 +37,7 @@ function Stat<T>({ label, item, show }: { label: string; item: AttendanceValue<T
 const time = (v: string | null) => v ?? "—";
 const hours = (v: number) => formatMinutes(v);
 
-export default function DailyRecordView({ record }: Props) {
+export default function DailyRecordView({ record, onCorrect }: Props) {
   const zoneTotal = record.minutes_by_zone.reduce((sum, z) => sum + z.minutes, 0);
   const done = record.tasks.filter((t) => t.status === "done").length;
 
@@ -150,7 +152,18 @@ export default function DailyRecordView({ record }: Props) {
           )}
         </Section>
 
-        <Section title="Corrections">
+        {/* Correct record button -> onCorrect (opens CorrectionForm) */}
+        <Section
+          title="Corrections"
+          aside={
+            onCorrect && (
+              <Button size="sm" variant="outline" onClick={onCorrect}>
+                <Pencil />
+                Correct record
+              </Button>
+            )
+          }
+        >
           {record.corrections.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nothing has been corrected on this day.</p>
           ) : (

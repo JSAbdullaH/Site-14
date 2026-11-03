@@ -191,3 +191,78 @@ describe('daily record', () => {
     await request(app).get(api(`/employees/${world.employeeId}/daily-record`)).expect(401);
   });
 });
+
+describe('corrections', () => {
+  const correct = (body, token = admin.token) =>
+    request(app).post(api(`/employees/${world.employeeId}/daily-record/corrections`)).set(bearer(token)).send(body);
+
+  beforeEach(async () => {
+    await shift(at('07:00'), at('15:00'), normalDay);
+  });
+
+  test('a correction is a new row with the author, the time, the reason and the value it replaces', async () => {
+    const res = await correct({ date: DAY, field: 'worked_minutes', corrected_value: 450, reason: 'Left 30 minutes early, confirmed by the supervisor' }).expect(201);
+    expect(res.body).toMatchObject({
+      field: 'worked_minutes',
+      original_value: '480',
+      corrected_value: '450',
+      reason: 'Left 30 minutes early, confirmed by the supervisor',
+      site: { id: world.siteId, name: 'Al Malqa Tower' },
+      corrected_by: { id: admin.userId, full_name: 'Al-Bina Admin' },
+    });
+    expect(Date.parse(res.body.created_at)).toBeGreaterThan(Date.now() - 60_000);
+
+    await correct({ date: DAY, field: 'worked_minutes', corrected_value: '460', reason: 'Supervisor rechecked the gate log' }).expect(201);
+    const { body } = await record().expect(200);
+    expect(body.attendance.worked_minutes).toEqual({ original: 480, value: 460, corrected: true });
+    expect(body.corrections.map((c) => [c.original_value, c.corrected_value])).toEqual([['480', '450'], ['450', '460']]);
+    expect((await pool.query('SELECT has_corrections FROM daily_work_records WHERE employee_id = $1', [world.employeeId])).rows[0]).toEqual({ has_corrections: true });
+  });
+
+  test('the original reading data is never touched', async () => {
+    const before = (await pool.query('SELECT count(*)::int AS n, min(recorded_at) AS first FROM telemetry_logs')).rows[0];
+    await correct({ date: DAY, field: 'first_seen', corrected_value: '06:45', reason: 'Arrived before the device was switched on' }).expect(201);
+    expect((await pool.query('SELECT count(*)::int AS n, min(recorded_at) AS first FROM telemetry_logs')).rows[0]).toEqual(before);
+    const { body } = await record().expect(200);
+    expect(body.attendance.first_seen).toEqual({ original: '07:00', value: '06:45', corrected: true });
+  });
+
+  test('without a reason the correction is refused', async () => {
+    const res = await correct({ date: DAY, field: 'worked_minutes', corrected_value: 450, reason: '  ' }).expect(422);
+    expect(res.body.error.fields).toEqual({ reason: 'Give the reason for the correction' });
+    expect((await pool.query('SELECT count(*)::int AS n FROM record_corrections')).rows[0].n).toBe(0);
+  });
+
+  test('values that make no sense are refused', async () => {
+    const fieldOf = async (body) => (await correct({ date: DAY, reason: 'Checked with the supervisor', ...body }).expect(422)).body.error.fields;
+    expect(await fieldOf({ field: 'first_seen', corrected_value: '7am' })).toEqual({ corrected_value: 'Use the 24-hour format HH:MM' });
+    expect(await fieldOf({ field: 'worked_minutes', corrected_value: '2000' })).toEqual({ corrected_value: 'Enter the minutes worked, from 0 to 1440' });
+    expect(await fieldOf({ field: 'worked_minutes', corrected_value: 480 })).toEqual({ corrected_value: 'This is already the recorded value' });
+    expect(await fieldOf({ field: 'last_seen', corrected_value: '06:30' })).toEqual({ corrected_value: 'First seen must be before last seen' });
+    expect(await fieldOf({ field: 'overtime', corrected_value: '1' })).toEqual({ field: 'Choose what to correct' });
+  });
+
+  test('hours can be corrected on a day whose shift runs past midnight', async () => {
+    await shift(at('22:00'), at('02:00', '2026-10-15'), () => ROOF);
+    const { body } = await record().expect(200);
+    expect(body.attendance.last_seen.original).toBe('02:00');
+    await correct({ date: DAY, field: 'worked_minutes', corrected_value: 700, reason: 'Night shift confirmed by the guard post' }).expect(201);
+  });
+
+  test('an absent day can be corrected against the worker\'s own site', async () => {
+    const res = await correct({ date: '2026-10-15', field: 'worked_minutes', corrected_value: 300, reason: 'Device was charging in the office all day' }).expect(201);
+    expect(res.body).toMatchObject({ original_value: '0', corrected_value: '300', site: { id: world.siteId } });
+  });
+
+  test('a site manager can correct; another company and a future day cannot', async () => {
+    const manager = await managerOf(admin.token, 'omar@albina.test');
+    const res = await correct({ date: DAY, field: 'last_seen', corrected_value: '15:20', reason: 'Gate log shows 15:20' }, manager).expect(201);
+    expect(res.body.corrected_by.full_name).toBe('Omar Manager');
+
+    const other = await adminOf('Nadeef', 'admin@nadeef.test');
+    await correct({ date: DAY, field: 'last_seen', corrected_value: '15:30', reason: 'Trying from outside' }, other.token).expect(404);
+
+    const future = new Date(Date.now() + 3 * 24 * 3600e3).toISOString().slice(0, 10);
+    await correct({ date: future, field: 'last_seen', corrected_value: '15:30', reason: 'Not yet' }).expect(422);
+  });
+});

@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listEmployees } from "@/features/employees/api";
 import type { Employee } from "@/features/employees/types";
 import DailyRecordView from "./components/DailyRecordView";
+import CorrectionForm from "./components/CorrectionForm";
 import { getDailyRecord } from "./api";
 import { longDate, todayInRiyadh } from "./format";
 import type { DailyRecord } from "./types";
@@ -24,6 +25,8 @@ export default function HistoryPage() {
   const [record, setRecord] = useState<DailyRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [correcting, setCorrecting] = useState(false);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     listEmployees({ limit: 100 })
@@ -47,7 +50,7 @@ export default function HistoryPage() {
     return () => {
       current = false;
     };
-  }, [employeeId, date]);
+  }, [employeeId, date, version]);
 
   // Employee dropdown + Day input
   function choose(next: { employee?: string; date?: string }) {
@@ -118,9 +121,15 @@ export default function HistoryPage() {
               <TabsTrigger value="record">Daily record</TabsTrigger>
             </TabsList>
             <TabsContent value="record">
-              <DailyRecordView record={record} />
+              <DailyRecordView record={record} onCorrect={() => setCorrecting(true)} />
             </TabsContent>
           </Tabs>
+          <CorrectionForm
+            record={record}
+            open={correcting}
+            onOpenChange={setCorrecting}
+            onSaved={() => setVersion((v) => v + 1)}
+          />
         </>
       ) : null}
     </AppShell>

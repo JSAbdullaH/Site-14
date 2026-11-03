@@ -176,4 +176,63 @@ async function dailyRecord(auth, employeeId, date) {
   };
 }
 
-module.exports = { dailyRecord, CORRECTABLE, checkDate, findEmployee, loadDay, attendanceOf, correctionsOf, withCorrections, correctionToPublic };
+function siteOfDay(employee, sessions, siteId) {
+  const sites = [...new Set(sessions.map((s) => s.site.id))];
+  if (siteId) {
+    const allowed = sites.length ? sites.includes(siteId) : siteId === employee.siteId;
+    if (!allowed) throw invalid('site_id', 'The worker was not on this site that day');
+    return siteId;
+  }
+  if (sites.length === 1) return sites[0];
+  if (sites.length > 1) throw invalid('site_id', 'This day has more than one site; choose one');
+  if (!employee.siteId) throw invalid('site_id', 'Assign the worker to a site first');
+  return employee.siteId;
+}
+
+async function correct(auth, employeeId, input) {
+  checkDate(input.date);
+  const employee = await findEmployee(auth.db, employeeId);
+  const [sessions, corrections] = await Promise.all([
+    loadDay(auth.db, employeeId, input.date),
+    correctionsOf(auth.db, employeeId, input.date),
+  ]);
+  const siteId = siteOfDay(employee, sessions, input.site_id);
+  const current = withCorrections(attendanceOf(sessions), corrections);
+  const before = current[input.field].value;
+  const value = input.field === 'worked_minutes' ? String(Number(input.corrected_value)) : input.corrected_value;
+
+  if (String(before ?? '') === value) throw invalid('corrected_value', 'This is already the recorded value');
+  const crossesMidnight = Boolean(current.first_seen.original && current.last_seen.original
+    && current.last_seen.original < current.first_seen.original);
+  if (input.field !== 'worked_minutes' && !crossesMidnight) {
+    const first = input.field === 'first_seen' ? value : current.first_seen.value;
+    const last = input.field === 'last_seen' ? value : current.last_seen.value;
+    if (first && last && first >= last) throw invalid('corrected_value', 'First seen must be before last seen');
+  }
+
+  const created = await auth.db.recordCorrection.create({
+    data: {
+      employeeId,
+      siteId,
+      workDate: new Date(`${input.date}T00:00:00Z`),
+      field: input.field,
+      originalValue: before === null || before === undefined ? '' : String(before),
+      correctedValue: value,
+      reason: input.reason,
+      correctedBy: auth.userId,
+    },
+    select: {
+      id: true,
+      field: true,
+      originalValue: true,
+      correctedValue: true,
+      reason: true,
+      createdAt: true,
+      site: { select: { id: true, name: true } },
+      author: { select: { id: true, fullName: true } },
+    },
+  });
+  return correctionToPublic(created);
+}
+
+module.exports = { dailyRecord, correct, CORRECTABLE, checkDate, findEmployee, loadDay, attendanceOf, correctionsOf, withCorrections, correctionToPublic };
