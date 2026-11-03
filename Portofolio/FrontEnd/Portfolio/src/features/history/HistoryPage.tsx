@@ -10,6 +10,7 @@ import type { Employee } from "@/features/employees/types";
 import DailyRecordView from "./components/DailyRecordView";
 import CorrectionForm from "./components/CorrectionForm";
 import MovementTimeline from "./components/MovementTimeline";
+import PathReplay from "./components/PathReplay";
 import { getDailyRecord, getHistory } from "./api";
 import { longDate, todayInRiyadh } from "./format";
 import type { DailyRecord, MovementHistory } from "./types";
@@ -127,12 +128,16 @@ export default function HistoryPage() {
             <TabsList className="mb-5">
               <TabsTrigger value="record">Daily record</TabsTrigger>
               <TabsTrigger value="movement">Movement</TabsTrigger>
+              <TabsTrigger value="replay">Replay</TabsTrigger>
             </TabsList>
             <TabsContent value="record">
               <DailyRecordView record={record} onCorrect={() => setCorrecting(true)} />
             </TabsContent>
             <TabsContent value="movement">
               {movement && <MovementTimeline history={movement} />}
+            </TabsContent>
+            <TabsContent value="replay">
+              {movement && <PathReplay history={movement} />}
             </TabsContent>
           </Tabs>
           <CorrectionForm
