@@ -266,3 +266,63 @@ describe('corrections', () => {
     await correct({ date: future, field: 'last_seen', corrected_value: '15:30', reason: 'Not yet' }).expect(422);
   });
 });
+
+describe('movement history', () => {
+  const history = (date = DAY, token = admin.token) =>
+    request(app).get(api(`/employees/${world.employeeId}/history?date=${date}`)).set(bearer(token));
+  const clock = (iso) => new Date(new Date(iso).getTime() + 3 * 3600e3).toISOString().slice(11, 16);
+  const timeline = (events) => events.map((e) => [clock(e.at), e.type, e.zone && e.zone.name]);
+
+  test('the day in order: arriving, zones entered and left, leaving', async () => {
+    await shift(at('07:00'), at('15:00'), normalDay);
+    const { body } = await history().expect(200);
+    expect(body.sites).toEqual([expect.objectContaining({ id: world.siteId, name: 'Al Malqa Tower', boundary: expect.any(Object) })]);
+    expect(body.zones.map((z) => z.name).sort()).toEqual(['Roof', 'Warehouse']);
+    expect(body.sessions).toHaveLength(1);
+    const [session] = body.sessions;
+    expect(session.points).toHaveLength(48);
+    expect(session.points[0]).toMatchObject({ latitude: ROOF.lat, longitude: ROOF.lng, zone_id: world.roofId });
+    expect(session.gaps).toEqual([]);
+    expect(timeline(session.events)).toEqual([
+      ['07:00', 'arrived', null],
+      ['07:00', 'entered_zone', 'Roof'],
+      ['10:00', 'left_zone', 'Roof'],
+      ['11:00', 'entered_zone', 'Warehouse'],
+      ['15:00', 'left_zone', 'Warehouse'],
+      ['15:00', 'left_site', null],
+    ]);
+  });
+
+  test('a device that stopped reporting shows as a gap, not as time in a zone', async () => {
+    await shift(at('07:00'), at('15:00'), normalDay, { skip: [[at('12:00'), at('12:50')]] });
+    const { body } = await history().expect(200);
+    const [session] = body.sessions;
+    expect(session.gaps).toEqual([{ from: at('11:50').toISOString(), to: at('12:50').toISOString(), minutes: 60, until_end: false }]);
+    expect(timeline(session.events).slice(3, 7)).toEqual([
+      ['11:00', 'entered_zone', 'Warehouse'],
+      ['11:50', 'offline', null],
+      ['12:50', 'back_online', null],
+      ['15:00', 'left_zone', 'Warehouse'],
+    ]);
+    expect(session.events.find((e) => e.type === 'offline').minutes).toBe(60);
+  });
+
+  test('a device that went quiet before the end of the shift stays offline', async () => {
+    await shift(at('07:00'), at('15:00'), normalDay, { skip: [[at('14:00'), at('15:00')]] });
+    const { body } = await history().expect(200);
+    const [session] = body.sessions;
+    expect(session.gaps).toEqual([expect.objectContaining({ minutes: 70, until_end: true })]);
+    expect(session.events.map((e) => e.type)).not.toContain('back_online');
+  });
+
+  test('a day with no activity is an empty history, not an error', async () => {
+    const { body } = await history('2026-10-15').expect(200);
+    expect(body).toEqual({ employee_id: world.employeeId, date: '2026-10-15', sites: [], zones: [], sessions: [] });
+  });
+
+  test('another company cannot read it', async () => {
+    await shift(at('07:00'), at('15:00'), normalDay);
+    const other = await adminOf('Nadeef', 'admin@nadeef.test');
+    await history(DAY, other.token).expect(404);
+  });
+});

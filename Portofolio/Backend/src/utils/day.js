@@ -34,7 +34,7 @@ function walk(readings, geofences, endAt) {
     const next = points[i + 1];
     const until = next ? next.recordedAt : endAt;
     if (until && minutesBetween(point.recordedAt, until) > OFFLINE_GAP_MINUTES) {
-      gaps.push({ from: point.recordedAt, to: until, minutes: minutesBetween(point.recordedAt, until) });
+      gaps.push({ from: point.recordedAt, to: until, minutes: minutesBetween(point.recordedAt, until), untilEnd: !next });
     }
     const covered = until && minutesBetween(point.recordedAt, until) <= OFFLINE_GAP_MINUTES ? until : point.recordedAt;
     const last = segments[segments.length - 1];

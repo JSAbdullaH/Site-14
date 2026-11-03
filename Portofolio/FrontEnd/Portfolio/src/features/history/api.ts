@@ -1,9 +1,13 @@
 ﻿import { apiFetch } from "@/shared/lib/api";
-import type { CorrectableField, Correction, DailyRecord } from "./types";
+import type { CorrectableField, Correction, DailyRecord, MovementHistory } from "./types";
 
 // GET /employees/:id/daily-record
 export const getDailyRecord = (employeeId: string, date: string) =>
   apiFetch<DailyRecord>(`/employees/${employeeId}/daily-record?date=${date}`);
+
+// GET /employees/:id/history
+export const getHistory = (employeeId: string, date: string) =>
+  apiFetch<MovementHistory>(`/employees/${employeeId}/history?date=${date}`);
 
 export type CorrectionInput = {
   date: string;

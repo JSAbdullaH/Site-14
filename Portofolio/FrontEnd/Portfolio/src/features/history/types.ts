@@ -1,4 +1,6 @@
-﻿export type Zone = { id: string; name: string; is_outdoor?: boolean };
+﻿import type { Polygon } from "@/features/map/types";
+
+export type Zone = { id: string; name: string; is_outdoor?: boolean };
 
 export type CorrectableField = "first_seen" | "last_seen" | "worked_minutes";
 
@@ -57,4 +59,38 @@ export type DailyRecord = {
   alerts: RecordAlert[];
   tasks: RecordTask[];
   corrections: Correction[];
+};
+
+export type HistoryEvent = {
+  type: "arrived" | "entered_zone" | "left_zone" | "offline" | "back_online" | "left_site";
+  at: string;
+  zone: { id: string; name: string } | null;
+  site: string;
+  minutes?: number;
+};
+
+export type HistoryPoint = {
+  latitude: number;
+  longitude: number;
+  recorded_at: string;
+  battery_percent: number | null;
+  zone_id: string | null;
+};
+
+export type HistorySession = {
+  session_id: string;
+  site: { id: string; name: string };
+  started_at: string;
+  ended_at: string | null;
+  points: HistoryPoint[];
+  gaps: { from: string; to: string; minutes: number; until_end: boolean }[];
+  events: HistoryEvent[];
+};
+
+export type MovementHistory = {
+  employee_id: string;
+  date: string;
+  sites: { id: string; name: string; boundary: Polygon }[];
+  zones: { id: string; site_id: string; name: string; is_outdoor: boolean; boundary: Polygon }[];
+  sessions: HistorySession[];
 };

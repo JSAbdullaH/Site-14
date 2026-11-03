@@ -9,9 +9,10 @@ import { listEmployees } from "@/features/employees/api";
 import type { Employee } from "@/features/employees/types";
 import DailyRecordView from "./components/DailyRecordView";
 import CorrectionForm from "./components/CorrectionForm";
-import { getDailyRecord } from "./api";
+import MovementTimeline from "./components/MovementTimeline";
+import { getDailyRecord, getHistory } from "./api";
 import { longDate, todayInRiyadh } from "./format";
-import type { DailyRecord } from "./types";
+import type { DailyRecord, MovementHistory } from "./types";
 
 const fieldClass =
   "h-9 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
@@ -23,6 +24,7 @@ export default function HistoryPage() {
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [record, setRecord] = useState<DailyRecord | null>(null);
+  const [movement, setMovement] = useState<MovementHistory | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [correcting, setCorrecting] = useState(false);
@@ -39,11 +41,16 @@ export default function HistoryPage() {
     let current = true;
     setLoading(true);
     setError("");
-    getDailyRecord(employeeId, date)
-      .then((res) => current && setRecord(res))
+    Promise.all([getDailyRecord(employeeId, date), getHistory(employeeId, date)])
+      .then(([day, moves]) => {
+        if (!current) return;
+        setRecord(day);
+        setMovement(moves);
+      })
       .catch((err) => {
         if (!current) return;
         setRecord(null);
+        setMovement(null);
         setError((err as Error).message);
       })
       .finally(() => current && setLoading(false));
@@ -119,9 +126,13 @@ export default function HistoryPage() {
           <Tabs defaultValue="record">
             <TabsList className="mb-5">
               <TabsTrigger value="record">Daily record</TabsTrigger>
+              <TabsTrigger value="movement">Movement</TabsTrigger>
             </TabsList>
             <TabsContent value="record">
               <DailyRecordView record={record} onCorrect={() => setCorrecting(true)} />
+            </TabsContent>
+            <TabsContent value="movement">
+              {movement && <MovementTimeline history={movement} />}
             </TabsContent>
           </Tabs>
           <CorrectionForm
