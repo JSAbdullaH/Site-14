@@ -1,11 +1,12 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { FileUp, Plus } from "lucide-react";
 import EmptyState from "@/shared/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmployeeTable from "./EmployeeTable";
 import AddEmployeeDialog from "./AddEmployeeDialog";
+import ImportDialog from "./ImportDialog";
 import { listEmployees } from "../api";
 import type { Employee } from "../types";
 
@@ -15,6 +16,7 @@ export default function EmployeesTab() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -59,10 +61,17 @@ export default function EmployeesTab() {
           onChange={(e) => setQuery(e.target.value)}
           className="max-w-sm"
         />
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus />
-          Add employee
-        </Button>
+        <div className="flex gap-2">
+          {/* Import CSV -> ImportDialog */}
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <FileUp />
+            Import CSV
+          </Button>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus />
+            Add employee
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -92,8 +101,10 @@ export default function EmployeesTab() {
         open={addOpen}
         onOpenChange={setAddOpen}
         onCreated={load}
-        onImportClick={() => {}}
+        onImportClick={() => setImportOpen(true)}
       />
+
+      <ImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={load} />
     </>
   );
 }

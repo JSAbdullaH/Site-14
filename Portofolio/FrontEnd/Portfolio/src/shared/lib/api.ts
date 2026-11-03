@@ -57,17 +57,14 @@ function send(path: string, options: RequestInit, token: string | null) {
     ...options,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
 }
 
-export async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function request(path: string, options: RequestInit): Promise<Response> {
   let res = await send(path, options, getToken());
 
   const canRefresh = !NO_REFRESH.some((p) => path.startsWith(p));
@@ -86,11 +83,8 @@ export async function apiFetch<T>(
     }
   }
 
-  if (res.status === 204) return undefined as T;
-
-  const data = await res.json().catch(() => null);
-
   if (!res.ok) {
+    const data = await res.json().catch(() => null);
     throw new ApiError(
       res.status,
       data?.error?.message || data?.message || "Something went wrong. Try again.",
@@ -99,5 +93,19 @@ export async function apiFetch<T>(
     );
   }
 
-  return data as T;
+  return res;
+}
+
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const res = await request(path, options);
+  if (res.status === 204) return undefined as T;
+  return (await res.json().catch(() => null)) as T;
+}
+
+export async function apiFile(path: string): Promise<Blob> {
+  const res = await request(path, {});
+  return res.blob();
 }

@@ -1,8 +1,11 @@
-﻿import { apiFetch } from "@/shared/lib/api";
+﻿import { apiFetch, apiFile } from "@/shared/lib/api";
 import type {
+  ColumnMap,
   CreateEmployeeInput,
   Employee,
   EmployeeStatus,
+  ImportPreview,
+  ImportResult,
   ListEmployeesResponse,
 } from "./types";
 
@@ -32,3 +35,21 @@ export const updateEmployee = (
 
 export const deactivateEmployee = (id: string) =>
   apiFetch<void>(`/employees/${id}`, { method: "DELETE" });
+
+function csvForm(file: File, columnMap: ColumnMap) {
+  const form = new FormData();
+  form.append("file", file);
+  if (Object.keys(columnMap).length) form.append("column_map", JSON.stringify(columnMap));
+  return form;
+}
+
+// GET /employees/import/template
+export const downloadTemplate = () => apiFile("/employees/import/template");
+
+// POST /employees/import/preview
+export const previewImport = (file: File, columnMap: ColumnMap) =>
+  apiFetch<ImportPreview>("/employees/import/preview", { method: "POST", body: csvForm(file, columnMap) });
+
+// POST /employees/import
+export const commitImport = (file: File, columnMap: ColumnMap) =>
+  apiFetch<ImportResult>("/employees/import", { method: "POST", body: csvForm(file, columnMap) });
