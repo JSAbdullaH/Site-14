@@ -194,4 +194,4 @@ async function deactivate(auth, id) {
   });
 }
 
-module.exports = { list, get, create, update, deactivate };
+module.exports = { list, get, create, update, deactivate, ensureCategory };

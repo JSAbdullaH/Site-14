@@ -22,5 +22,7 @@ export type ListEmployeesResponse = {
 export type CreateEmployeeInput = {
   full_name: string;
   job_category: string;
-  site_id: string;
+  employee_number?: string | null;
+  site_id?: string | null;
+  consent?: boolean;
 };

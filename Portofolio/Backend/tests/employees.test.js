@@ -269,3 +269,97 @@ describe('company isolation', () => {
     expect(res.body.error.fields).toEqual({ site_id: 'Site not found' });
   });
 });
+
+describe('CSV import', () => {
+  const HEADER = 'full_name,employee_number,job_category,site_name';
+  const upload = (path, csv, { token = admin.token, columnMap } = {}) => {
+    const req = request(app).post(api(path)).set(bearer(token));
+    if (columnMap) req.field('column_map', JSON.stringify(columnMap));
+    return csv === null ? req : req.attach('file', Buffer.from(csv), 'workers.csv');
+  };
+  const workers = (n) => Array.from({ length: n }, (_, i) => `Worker ${i + 1},W-${i + 1},construction,`).join('\n');
+  const count = async () => (await pool.query('SELECT count(*)::int AS n FROM employees')).rows[0].n;
+
+  test('the template carries the exact headers', async () => {
+    const res = await request(app).get(api('/employees/import/template')).set(bearer(admin.token)).expect(200);
+    expect(res.headers['content-type']).toMatch(/text\/csv/);
+    expect(res.headers['content-disposition']).toMatch(/employees-template\.csv/);
+    expect(res.text).toBe(`${HEADER}\n`);
+  });
+
+  test('86 valid rows: the preview writes nothing, the confirm creates 86 employees', async () => {
+    const csv = `${HEADER}\n${workers(86)}\n`;
+    const preview = await upload('/employees/import/preview', csv).expect(200);
+    expect(preview.body).toMatchObject({ total_rows: 86, invalid_rows: [], duplicates: [] });
+    expect(preview.body.valid_rows).toHaveLength(86);
+    expect(await count()).toBe(0);
+
+    const done = await upload('/employees/import', csv).expect(201);
+    expect(done.body).toEqual({ created: 86, skipped: [], errors: [] });
+    expect((await A.list('?limit=100').expect(200)).body.total).toBe(86);
+  });
+
+  test('rows missing a required field are named with the reason, and the rest import', async () => {
+    const csv = `${HEADER}\nAhmed Saleh,E-1,construction,\n,E-2,construction,\nKhalid Omar,E-3,,\nYousef Nasser,E-4,security,Nowhere\n`;
+    const preview = await upload('/employees/import/preview', csv).expect(200);
+    expect(preview.body.valid_rows.map((r) => r.row)).toEqual([2]);
+    expect(preview.body.invalid_rows).toEqual([
+      { row: 3, reason: 'full_name is missing or too long' },
+      { row: 4, reason: 'job_category is missing or too long' },
+      { row: 5, reason: 'no site named "Nowhere"' },
+    ]);
+    const done = await upload('/employees/import', csv).expect(201);
+    expect(done.body.created).toBe(1);
+    expect(done.body.errors).toHaveLength(3);
+  });
+
+  test('a worker number that already exists, or repeats in the file, is reported and imported once', async () => {
+    await A.create(ahmed).expect(201);
+    const csv = `${HEADER}\nAhmed Again,E-001,construction,\nNew One,E-002,construction,\nNew Twin,E-002,construction,\n`;
+    const done = await upload('/employees/import', csv).expect(201);
+    expect(done.body.created).toBe(1);
+    expect(done.body.skipped).toEqual([
+      { row: 2, employee_number: 'E-001', reason: 'Worker number already exists' },
+      { row: 4, employee_number: 'E-002', reason: 'Worker number repeated in the file' },
+    ]);
+    expect(await count()).toBe(2);
+  });
+
+  test("a column map reads the company's own headers, and sites match by name", async () => {
+    const siteId = await siteOf(admin.companyId, 'Al Malqa Tower');
+    const csv = 'Name,Worker ID,Category,Project\nAhmed Saleh,E-1,Security,al malqa tower\n';
+    const columnMap = { full_name: 'Name', employee_number: 'Worker ID', job_category: 'Category', site_name: 'Project' };
+    await upload('/employees/import', csv, { columnMap }).expect(201);
+    const [e] = (await A.list().expect(200)).body.data;
+    expect(e).toMatchObject({ full_name: 'Ahmed Saleh', job_category: 'security', site_id: siteId });
+    const { rows } = await pool.query("SELECT daily_limit_minutes FROM job_category_rules WHERE job_category = 'security'");
+    expect(rows[0].daily_limit_minutes).toBe(720);
+  });
+
+  test('an empty, malformed or headerless file is a clear error and nothing is created', async () => {
+    expect((await upload('/employees/import', '').expect(422)).body.error.code).toBe('INVALID_FILE');
+    expect((await upload('/employees/import', null).expect(422)).body.error.message).toBe('Choose a CSV file to upload');
+    expect((await upload('/employees/import', 'full_name,job_category\n').expect(422)).body.error.message).toMatch(/no rows/);
+    expect((await upload('/employees/import', 'name,role\nA,B\n').expect(422)).body.error.message).toBe('Missing column: full_name, job_category');
+    expect((await upload('/employees/import', 'full_name,job_category\n"unclosed,x\n').expect(422)).body.error.message).toMatch(/not a valid CSV/);
+    expect(await count()).toBe(0);
+  });
+
+  test("sites of another company are not matched, and its workers' numbers are not duplicates", async () => {
+    const other = await adminOf('Nadeef', 'admin@nadeef.test');
+    await siteOf(other.companyId, 'King Fahd Mall');
+    await as(other.token).create({ ...ahmed, full_name: 'Other Ahmed' }).expect(201);
+    const csv = `${HEADER}\nAhmed Saleh,E-001,construction,\nKhalid Omar,E-002,construction,King Fahd Mall\n`;
+    const preview = await upload('/employees/import/preview', csv).expect(200);
+    expect(preview.body.valid_rows.map((r) => r.row)).toEqual([2]);
+    expect(preview.body.duplicates).toEqual([]);
+    expect(preview.body.invalid_rows).toEqual([{ row: 3, reason: 'no site named "King Fahd Mall"' }]);
+  });
+
+  test('only an admin can import or download the template', async () => {
+    const manager = await managerOf(admin.token, 'omar@albina.test');
+    await upload('/employees/import/preview', `${HEADER}\nA B,1,x y,\n`, { token: manager }).expect(403);
+    await upload('/employees/import', `${HEADER}\nA B,1,x y,\n`, { token: manager }).expect(403);
+    await request(app).get(api('/employees/import/template')).set(bearer(manager)).expect(403);
+  });
+});

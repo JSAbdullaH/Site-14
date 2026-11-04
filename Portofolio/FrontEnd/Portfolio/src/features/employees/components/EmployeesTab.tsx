@@ -1,8 +1,11 @@
 ﻿import { useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import EmptyState from "@/shared/components/EmptyState";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmployeeTable from "./EmployeeTable";
+import AddEmployeeDialog from "./AddEmployeeDialog";
 import { listEmployees } from "../api";
 import type { Employee } from "../types";
 
@@ -11,12 +14,23 @@ export default function EmployeesTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await listEmployees({ limit: 100 });
+      setEmployees(res.data);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    listEmployees({ limit: 100 })
-      .then((res) => setEmployees(res.data))
-      .catch((err) => setError((err as Error).message))
-      .finally(() => setLoading(false));
+    load();
   }, []);
 
   const filtered = useMemo(() => {
@@ -25,7 +39,8 @@ export default function EmployeesTab() {
     return employees.filter(
       (e) =>
         e.full_name.toLowerCase().includes(q) ||
-        e.job_category.toLowerCase().includes(q),
+        e.job_category.toLowerCase().includes(q) ||
+        (e.employee_number ?? "").toLowerCase().includes(q),
     );
   }, [employees, query]);
 
@@ -37,12 +52,17 @@ export default function EmployeesTab() {
         </p>
       )}
 
-      <div className="mb-4 max-w-sm">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <Input
-          placeholder="Search by name or job"
+          placeholder="Search by name, job or number"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          className="max-w-sm"
         />
+        <Button onClick={() => setAddOpen(true)}>
+          <Plus />
+          Add employee
+        </Button>
       </div>
 
       {loading ? (
@@ -55,13 +75,25 @@ export default function EmployeesTab() {
           title={query ? "No matching employees" : "No employees yet"}
           description={
             query
-              ? "Try a different name or job."
-              : "Employees are added with their device and assigned to a site."
+              ? "Try a different name, job or number."
+              : "Add your first field worker, or import a list from a CSV file."
+          }
+          action={
+            !query ? (
+              <Button onClick={() => setAddOpen(true)}>Add employee</Button>
+            ) : undefined
           }
         />
       ) : (
         <EmployeeTable employees={filtered} />
       )}
+
+      <AddEmployeeDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onCreated={load}
+        onImportClick={() => {}}
+      />
     </>
   );
 }

@@ -178,10 +178,70 @@ const listGeofencesQuery = z.object({
 
 const liveLocationsQuery = z.object({ site_id: z.string().uuid('Invalid site id') });
 
+const importColumnMap = z.object({
+  column_map: z
+    .string()
+    .optional()
+    .transform((text, ctx) => {
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch {
+        ctx.addIssue({ code: 'custom', message: 'column_map must be JSON' });
+        return z.NEVER;
+      }
+    })
+    .pipe(
+      z
+        .object({
+          full_name: z.string().min(1).optional(),
+          employee_number: z.string().min(1).optional(),
+          job_category: z.string().min(1).optional(),
+          site_name: z.string().min(1).optional(),
+        })
+        .strict(),
+    ),
+});
+
+const taskStatus = z.enum(['todo', 'in_progress', 'done']);
+
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use the format YYYY-MM-DD')
+  .refine((v) => !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().startsWith(v), 'Enter a real date');
+
+const taskTitle = z.string().trim().min(2, 'Enter a task title').max(150, 'Use at most 150 characters');
+
+const createTaskSchema = z
+  .object({
+    title: taskTitle,
+    employee_id: z.string().uuid('Choose an employee'),
+    site_id: z.string().uuid('Invalid site').optional(),
+    scheduled_for: isoDate.optional(),
+  })
+  .strict();
+
+const updateTaskSchema = z
+  .object({ title: taskTitle.optional(), status: taskStatus.optional() })
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, 'Send at least one field to update');
+
+const listTasksQuery = z.object({
+  employee_id: z.string().uuid('Invalid employee').optional(),
+  site_id: z.string().uuid('Invalid site').optional(),
+  status: taskStatus.optional(),
+  scheduled_for: isoDate.optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 const idParams = z.object({ id: z.string().uuid('Invalid id') });
 const tokenParams = z.object({ token: linkToken });
 
 module.exports = {
+  createTaskSchema,
+  updateTaskSchema,
+  listTasksQuery,
   registerSchema,
   loginSchema,
   loginVerifySchema,
@@ -195,6 +255,7 @@ module.exports = {
   createEmployeeSchema,
   updateEmployeeSchema,
   listEmployeesQuery,
+  importColumnMap,
   createSiteSchema,
   updateSiteSchema,
   listSitesQuery,

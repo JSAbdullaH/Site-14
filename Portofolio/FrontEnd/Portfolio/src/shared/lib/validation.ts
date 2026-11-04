@@ -48,6 +48,24 @@ export const inviteSchema = z.object({
   role: z.enum(["site_manager", "company_admin"]),
 });
 
+export const employeeSchema = z.object({
+  full_name: z.string().trim().min(2, "Enter the full name").max(120),
+  job_category: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(2, "Enter a job category")
+    .max(60),
+  employee_number: z
+    .string()
+    .trim()
+    .max(30, "Use at most 30 characters")
+    .optional()
+    .transform((v) => v || undefined),
+  site_id: z.string().uuid().optional().or(z.literal("").transform(() => undefined)),
+  consent: z.boolean().optional(),
+});
+
 export type FieldErrors = Record<string, string>;
 
 export function validate<T>(
