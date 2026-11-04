@@ -14,6 +14,7 @@ const dayStart = (isoDate) => new Date(`${isoDate}T00:00:00${TZ}`);
 const dayEnd = (isoDate) => new Date(`${isoDate}T24:00:00${TZ}`);
 const minutesBetween = (a, b) => Math.max(0, Math.round((b - a) / 60000));
 const hhmmOf = (t) => new Date(t).toISOString().slice(11, 16);
+const dayKey = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
 
 const longDate = (isoDate) =>
   new Date(`${isoDate}T12:00:00${TZ}`).toLocaleDateString('en-GB', {
@@ -31,6 +32,7 @@ async function buildDailyRecords(auth, siteId, from, to) {
   const start = dayStart(from);
   const end = dayEnd(to);
   const now = new Date();
+  const periodDays = Math.round((end - start) / 86400000);
 
   const site = await auth.db.site.findFirst({
     where: { id: siteId },
@@ -94,11 +96,31 @@ async function buildDailyRecords(auth, siteId, from, to) {
     }
 
     if (!e.consentGivenAt) {
-      return { ...base, state: 'no_consent', first_seen: null, last_seen: null, total_minutes: 0, has_gap: false };
+      return {
+        ...base,
+        state: 'no_consent',
+        first_seen: null,
+        last_seen: null,
+        total_minutes: 0,
+        has_gap: false,
+        days_present: null,
+        days_absent: null,
+        avg_minutes: null,
+      };
     }
 
     if (own.length === 0) {
-      return { ...base, state: 'absent', first_seen: null, last_seen: null, total_minutes: 0, has_gap: false };
+      return {
+        ...base,
+        state: 'absent',
+        first_seen: null,
+        last_seen: null,
+        total_minutes: 0,
+        has_gap: false,
+        days_present: 0,
+        days_absent: periodDays,
+        avg_minutes: 0,
+      };
     }
 
     let minutes = 0;
@@ -106,6 +128,7 @@ async function buildDailyRecords(auth, siteId, from, to) {
     let previousEnd = null;
     let firstSeen = null;
     let lastSeen = null;
+    const days = new Set();
 
     for (const s of own) {
       const a = s.startedAt < start ? start : s.startedAt;
@@ -116,12 +139,26 @@ async function buildDailyRecords(auth, siteId, from, to) {
       if (firstSeen === null) firstSeen = a;
       lastSeen = s.endedAt === null ? null : b;
 
+      days.add(dayKey(a));
+      days.add(dayKey(b));
       minutes += minutesBetween(a, b);
       if (previousEnd && minutesBetween(previousEnd, a) > GAP_MINUTES) hasGap = true;
       previousEnd = b;
     }
 
-    return { ...base, state: 'present', first_seen: firstSeen, last_seen: lastSeen, total_minutes: minutes, has_gap: hasGap };
+    const daysPresent = days.size;
+
+    return {
+      ...base,
+      state: 'present',
+      first_seen: firstSeen,
+      last_seen: lastSeen,
+      total_minutes: minutes,
+      has_gap: hasGap,
+      days_present: daysPresent,
+      days_absent: Math.max(0, periodDays - daysPresent),
+      avg_minutes: daysPresent ? Math.round(minutes / daysPresent) : 0,
+    };
   });
 
   alerts.sort((x, y) => x.triggered_at - y.triggered_at);
@@ -134,7 +171,7 @@ async function buildDailyRecords(auth, siteId, from, to) {
     minutes: records.reduce((sum, r) => sum + r.total_minutes, 0),
   };
 
-  return { site, records, alerts, totals, provisional };
+  return { site, records, alerts, totals, provisional, periodDays };
 }
 
 let browser = null;
@@ -180,7 +217,11 @@ async function generate(auth, { site_id: siteId, report_type: reportType, from, 
       client: data.site.client,
       shift: `${hhmmOf(data.site.shiftStart)} to ${hhmmOf(data.site.shiftEnd)}`,
     },
-    period: { label: from === to ? longDate(from) : `${longDate(from)} to ${longDate(to)}` },
+    period: {
+      label: from === to ? longDate(from) : `${longDate(from)} to ${longDate(to)}`,
+      days: data.periodDays,
+    },
+    aggregate: reportType !== 'daily',
     issuer: {
       name: user?.fullName ?? 'Unknown',
       at: `${new Date().toISOString().replace('T', ' ').slice(0, 16)} UTC`,
