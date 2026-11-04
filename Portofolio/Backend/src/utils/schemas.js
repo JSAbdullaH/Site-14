@@ -267,7 +267,23 @@ const correctionSchema = z
 const idParams = z.object({ id: z.string().uuid('Invalid id') });
 const tokenParams = z.object({ token: linkToken });
 
+const generateReportQuery = z
+  .object({
+    site_id: z.string().uuid('Invalid site id'),
+    report_type: z.enum(['daily', 'weekly', 'monthly']).default('daily'),
+    from: isoDate,
+    to: isoDate,
+  })
+  .strict()
+  .refine((v) => v.from <= v.to, { message: 'from must not be after to', path: ['from'] });
+
+const referenceParams = z.object({
+  reference: z.string().trim().regex(/^SITE14-R-\d{8}-[0-9A-F]{8}$/, 'Invalid reference'),
+});
+
 module.exports = {
+  generateReportQuery,
+  referenceParams,
   createTaskSchema,
   updateTaskSchema,
   listTasksQuery,

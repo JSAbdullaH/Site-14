@@ -10,6 +10,7 @@ import TeamPage from "@/features/team/TeamPage";
 import MapPage from "@/features/map/MapPage";
 import SitesPage from "@/features/sites/SitesPage";
 import SiteEditPage from "@/features/sites/SiteEditPage";
+import ReportsPage from "@/features/reports/ReportsPage";
 import TasksPage from "@/features/tasks/TasksPage";
 import HistoryPage from "@/features/history/HistoryPage";
 
@@ -30,6 +31,7 @@ export default function App() {
       <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
       <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

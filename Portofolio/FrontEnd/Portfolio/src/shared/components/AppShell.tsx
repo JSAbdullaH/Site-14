@@ -16,7 +16,7 @@ const MAIN: NavItem[] = [
 const RECORDS: NavItem[] = [
   { to: "/devices", label: "Devices", soon: true },
   { to: "/history", label: "History" },
-  { to: "/reports", label: "Reports", soon: true },
+  { to: "/reports", label: "Reports" },
 ];
 
 type Props = {

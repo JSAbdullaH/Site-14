@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmployeeTable from "./EmployeeTable";
 import AddEmployeeDialog from "./AddEmployeeDialog";
+import ImportCsvDialog from "./ImportCsvDialog";
+import { Upload } from "lucide-react";
 import { listEmployees } from "../api";
 import type { Employee } from "../types";
 
@@ -15,6 +17,7 @@ export default function EmployeesTab() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -52,17 +55,23 @@ export default function EmployeesTab() {
         </p>
       )}
 
-      <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="mb-4 flex items-center justify-between gap-4">
         <Input
           placeholder="Search by name, job or number"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="max-w-sm"
         />
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus />
-          Add employee
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload />
+            Import CSV
+          </Button>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus />
+            Add employee
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -87,12 +96,20 @@ export default function EmployeesTab() {
       ) : (
         <EmployeeTable employees={filtered} />
       )}
-
       <AddEmployeeDialog
         open={addOpen}
         onOpenChange={setAddOpen}
         onCreated={load}
-        onImportClick={() => {}}
+        onImportClick={() => {
+          setAddOpen(false);
+          setImportOpen(true);
+        }}
+      />
+
+      <ImportCsvDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={load}
       />
     </>
   );

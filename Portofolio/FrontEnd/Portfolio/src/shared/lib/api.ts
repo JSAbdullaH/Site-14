@@ -53,11 +53,13 @@ function refreshOnce(): Promise<string | null> {
 }
 
 function send(path: string, options: RequestInit, token: string | null) {
+  const isForm = options.body instanceof FormData;
+
   return fetch(BASE + path, {
     ...options,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(isForm ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -100,4 +102,31 @@ export async function apiFetch<T>(
   }
 
   return data as T;
+}
+
+export async function apiRaw(
+  path: string,
+  options: RequestInit = {},
+): Promise<Response> {
+  let res = await send(path, options, getToken());
+
+  if (res.status === 401) {
+    const fresh = await refreshOnce();
+    if (!fresh) {
+      clearToken();
+      if (!window.location.pathname.startsWith("/signin")) {
+        window.location.href = "/signin";
+      }
+      throw new ApiError(401, "Your session has ended. Sign in again.", "UNAUTHENTICATED");
+    }
+    res = await send(path, options, fresh);
+  }
+
+  return res;
+}
+
+export async function apiBlob(path: string): Promise<Blob> {
+  const res = await apiRaw(path);
+  if (!res.ok) throw new ApiError(res.status, "Could not download the file.");
+  return res.blob();
 }
