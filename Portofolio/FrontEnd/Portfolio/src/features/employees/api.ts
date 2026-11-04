@@ -32,3 +32,26 @@ export const updateEmployee = (
 
 export const deactivateEmployee = (id: string) =>
   apiFetch<void>(`/employees/${id}`, { method: "DELETE" });
+import { apiBlob } from "@/shared/lib/api";
+import type { ImportPreviewResponse, ImportCommitResponse } from "./types";
+
+export const downloadImportTemplate = () =>
+  apiBlob("/employees/import/template");
+
+export function previewImport(file: File) {
+  const body = new FormData();
+  body.append("file", file);
+  return apiFetch<ImportPreviewResponse>("/employees/import/preview", {
+    method: "POST",
+    body,
+  });
+}
+
+export function commitImport(file: File) {
+  const body = new FormData();
+  body.append("file", file);
+  return apiFetch<ImportCommitResponse>("/employees/import", {
+    method: "POST",
+    body,
+  });
+}

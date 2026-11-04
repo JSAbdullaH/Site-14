@@ -26,3 +26,34 @@ export type CreateEmployeeInput = {
   site_id?: string | null;
   consent?: boolean;
 };
+
+// --- CSV import -------------------------------------------------------
+
+export type ImportValidRow = {
+  row: number;
+  full_name: string;
+  employee_number: string | null;
+  job_category: string;
+  site_name: string | null;
+};
+
+export type ImportInvalidRow = { row: number; reason: string };
+
+export type ImportDuplicateRow = {
+  row: number;
+  employee_number: string;
+  reason: string;
+};
+
+export type ImportPreviewResponse = {
+  total_rows: number;
+  valid_rows: ImportValidRow[];
+  invalid_rows: ImportInvalidRow[];
+  duplicates: ImportDuplicateRow[];
+};
+
+export type ImportCommitResponse = {
+  created: number;
+  skipped: ImportDuplicateRow[];
+  errors: ImportInvalidRow[];
+};
