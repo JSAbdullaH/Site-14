@@ -8,6 +8,7 @@ const employeeRoutes = require('./employee.routes');
 const geofenceRoutes = require('./geofence.routes');
 const locationRoutes = require('./location.routes');
 const taskRoutes = require('./task.routes');
+const reportRoutes = require('./report.routes');
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/employees', employeeRoutes);
 router.use('/geofences', geofenceRoutes);
 router.use('/locations', locationRoutes);
 router.use('/tasks', taskRoutes);
+router.use('/reports', reportRoutes);
 
 module.exports = router;

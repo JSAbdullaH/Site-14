@@ -104,19 +104,29 @@ export async function apiFetch<T>(
   return data as T;
 }
 
-export async function apiBlob(path: string): Promise<Blob> {
-  let res = await send(path, {}, getToken());
+export async function apiRaw(
+  path: string,
+  options: RequestInit = {},
+): Promise<Response> {
+  let res = await send(path, options, getToken());
 
   if (res.status === 401) {
     const fresh = await refreshOnce();
     if (!fresh) {
       clearToken();
-      window.location.href = "/signin";
+      if (!window.location.pathname.startsWith("/signin")) {
+        window.location.href = "/signin";
+      }
       throw new ApiError(401, "Your session has ended. Sign in again.", "UNAUTHENTICATED");
     }
-    res = await send(path, {}, fresh);
+    res = await send(path, options, fresh);
   }
 
-  if (!res.ok) throw new ApiError(res.status, "Could not download the template.");
+  return res;
+}
+
+export async function apiBlob(path: string): Promise<Blob> {
+  const res = await apiRaw(path);
+  if (!res.ok) throw new ApiError(res.status, "Could not download the file.");
   return res.blob();
 }
