@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { todayInRiyadh } = require('./day');
 
 const email = z.string().trim().toLowerCase().email('Enter a valid email address').max(255);
 
@@ -234,6 +235,34 @@ const listTasksQuery = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
+const calendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use the format YYYY-MM-DD')
+  .refine((d) => !Number.isNaN(Date.parse(`${d}T00:00:00Z`)) && new Date(`${d}T00:00:00Z`).toISOString().startsWith(d), 'Not a real date');
+
+const dayQuery = z.object({ date: calendarDate.default(() => todayInRiyadh()) });
+
+const clockTime24 = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const correctionSchema = z
+  .object({
+    date: calendarDate,
+    field: z.enum(['first_seen', 'last_seen', 'worked_minutes'], { message: 'Choose what to correct' }),
+    corrected_value: z.union([z.string().trim(), z.number()]).transform((v) => String(v)),
+    reason: z.string().trim().min(5, 'Give the reason for the correction').max(500, 'Use at most 500 characters'),
+    site_id: z.string().uuid('Invalid site').optional(),
+  })
+  .strict()
+  .superRefine((o, ctx) => {
+    if (o.field === 'worked_minutes') {
+      const minutes = Number(o.corrected_value);
+      if (!/^\d+$/.test(o.corrected_value) || minutes > 1440) {
+        ctx.addIssue({ code: 'custom', path: ['corrected_value'], message: 'Enter the minutes worked, from 0 to 1440' });
+      }
+    } else if (!clockTime24.test(o.corrected_value)) {
+      ctx.addIssue({ code: 'custom', path: ['corrected_value'], message: 'Use the 24-hour format HH:MM' });
+    }
+  });
 
 const idParams = z.object({ id: z.string().uuid('Invalid id') });
 const tokenParams = z.object({ token: linkToken });
@@ -256,6 +285,8 @@ module.exports = {
   updateEmployeeSchema,
   listEmployeesQuery,
   importColumnMap,
+  dayQuery,
+  correctionSchema,
   createSiteSchema,
   updateSiteSchema,
   listSitesQuery,

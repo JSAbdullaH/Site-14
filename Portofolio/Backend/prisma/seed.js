@@ -191,7 +191,7 @@ async function createSite(companyId, spec) {
 }
 
 // One worker's shift: the session row, its readings, and the last reading.
-async function createShift({ companyId, worker, start, end, heartSpikeAt }) {
+async function createShift({ companyId, worker, start, end, heartSpikeAt, placeAt, offline }) {
   const session = await prisma.workSession.create({
     data: {
       companyId, employeeId: worker.employee.id, siteId: worker.site.id, deviceId: worker.device.id,
@@ -203,10 +203,11 @@ async function createShift({ companyId, worker, start, end, heartSpikeAt }) {
   const readings = [];
   let battery = between(85, 100);
   for (let t = start; t <= until; t = addMinutes(t, READING_EVERY_MIN)) {
+    if (offline && t >= offline.from && t < offline.to) continue;
     const spike = heartSpikeAt && t.getTime() === heartSpikeAt.getTime();
     readings.push({
       sessionId: session.id,
-      ...jitter(worker.zone ? worker.zone.area : worker.site.area),
+      ...jitter(placeAt ? placeAt(t) : worker.zone ? worker.zone.area : worker.site.area),
       batteryPercent: Math.max(battery, 5),
       heartRateBpm: spike ? between(155, 165) : between(72, 105),
       recordedAt: t,
@@ -214,6 +215,22 @@ async function createShift({ companyId, worker, start, end, heartSpikeAt }) {
     battery -= random() < 0.5 ? 1 : 0;
   }
   return { session, readings, last: readings[readings.length - 1] };
+}
+
+function movingDay(worker, start, withGap) {
+  const [roof, warehouse] = worker.site.zones;
+  const yard = { lng: worker.site.area.lng, lat: worker.site.area.lat, half: 0.0003 };
+  const placeAt = (t) => {
+    const m = (t - start) / MINUTE;
+    if (m < 180) return roof.area;
+    if (m < 210) return yard;
+    if (m < 330) return warehouse.area;
+    return roof.area;
+  };
+  return {
+    placeAt,
+    offline: withGap ? { from: addMinutes(start, 360), to: addMinutes(start, 400) } : null,
+  };
 }
 
 async function seedAlbina(passwordHash) {
@@ -255,6 +272,8 @@ async function seedAlbina(passwordHash) {
   const alerts = [];
   const lastEnd = new Map();
 
+  const lastWorkday = riyadhDay(-1).isFriday ? -2 : -1;
+
   // The past 7 days (no work on Fridays).
   for (let offset = -7; offset <= -1; offset += 1) {
     const day = riyadhDay(offset);
@@ -267,7 +286,8 @@ async function seedAlbina(passwordHash) {
       const length = (worker.category === 'security' ? between(640, 715) : between(430, 478)) + overtime;
       const end = addMinutes(start, length);
       const heartSpikeAt = offset === -3 && n === 4 ? addMinutes(start, 240) : null;
-      const shift = await createShift({ companyId: company.id, worker, start, end, heartSpikeAt });
+      const moves = n === 0 ? movingDay(worker, start, offset === lastWorkday) : {};
+      const shift = await createShift({ companyId: company.id, worker, start, end, heartSpikeAt, ...moves });
       telemetry.push(...shift.readings);
       lastEnd.set(worker.employee.id, end);
 

@@ -338,6 +338,99 @@ describe('Prisma models', () => {
   });
 });
 
+describe('application role', () => {
+  const ROLE_DOWN_SQL = path.join(__dirname, '..', 'prisma', 'migrations', '20261103000000_append_only_role', 'down.sql');
+  const ROLE_SQL = path.join(__dirname, '..', 'prisma', 'migrations', '20261103000000_append_only_role', 'migration.sql');
+
+  async function asApp(sql, params) {
+    const client = await pool.connect();
+    try {
+      await client.query('SET ROLE site14_app');
+      await client.query(sql, params);
+      return null;
+    } catch (err) {
+      return err.code;
+    } finally {
+      await client.query('RESET ROLE');
+      client.release();
+    }
+  }
+
+  let c;
+  let sessionId;
+  beforeEach(async () => {
+    await truncateAll();
+    c = await makeCompany('A');
+    sessionId = await openSession(c);
+    await pool.query('INSERT INTO telemetry_logs (session_id, latitude, longitude, recorded_at) VALUES ($1, 24.7, 46.6, now())', [sessionId]);
+  });
+
+  test('the API role can write and read the log, but not change or delete it', async () => {
+    expect(await asApp('INSERT INTO telemetry_logs (session_id, latitude, longitude, recorded_at) VALUES ($1, 24.7, 46.6, now() - interval \'1 minute\')', [sessionId])).toBeNull();
+    expect(await asApp('SELECT * FROM telemetry_logs')).toBeNull();
+    expect(await asApp('UPDATE telemetry_logs SET latitude = 0')).toBe('42501');
+    expect(await asApp('DELETE FROM telemetry_logs')).toBe('42501');
+    expect(await asApp('TRUNCATE telemetry_logs')).toBe('42501');
+    expect((await pool.query('SELECT count(*)::int AS n FROM telemetry_logs')).rows[0].n).toBe(2);
+  });
+
+  test('corrections and reports are insert-only for the API role', async () => {
+    const correction = `INSERT INTO record_corrections (company_id, employee_id, site_id, work_date, field, original_value, corrected_value, reason, corrected_by)
+      VALUES ($1, $2, $3, current_date, 'worked_minutes', '420', '480', 'Battery died for an hour', $4)`;
+    expect(await asApp(correction, [c.companyId, c.employeeId, c.siteId, c.userId])).toBeNull();
+    expect(await asApp("UPDATE record_corrections SET corrected_value = '500'")).toBe('42501');
+    expect(await asApp('DELETE FROM record_corrections')).toBe('42501');
+    expect(await asApp("UPDATE reports SET file_path = '/x.pdf'")).toBe('42501');
+    expect(await asApp('DELETE FROM reports')).toBe('42501');
+  });
+
+  test('on an alert, the API role can fill in the handling and nothing else', async () => {
+    const { rows } = await pool.query(
+      "INSERT INTO alerts (session_id, alert_type, latitude, longitude, triggered_at, limit_bpm, observed_bpm) VALUES ($1, 'heart_rate_high', 24.7, 46.6, now(), 150, 160) RETURNING id",
+      [sessionId],
+    );
+    const id = rows[0].id;
+    expect(await asApp('UPDATE alerts SET acknowledged_by = $2, acknowledged_at = now() WHERE id = $1', [id, c.userId])).toBeNull();
+    expect(await asApp('UPDATE alerts SET resolved_at = now() WHERE id = $1', [id])).toBeNull();
+    expect(await asApp('UPDATE alerts SET observed_bpm = 120 WHERE id = $1', [id])).toBe('42501');
+    expect(await asApp('DELETE FROM alerts WHERE id = $1', [id])).toBe('42501');
+  });
+
+  test('the rest of the schema stays usable, without TRUNCATE or the migration history', async () => {
+    expect(await asApp("UPDATE employees SET full_name = 'Renamed' WHERE id = $1", [c.employeeId])).toBeNull();
+    expect(await asApp('UPDATE employee_current_state SET latitude = 0')).toBeNull();
+    expect(await asApp('SELECT * FROM daily_work_records')).toBeNull();
+    expect(await asApp('DELETE FROM daily_work_records')).not.toBeNull();
+    expect(await asApp('TRUNCATE employees')).toBe('42501');
+  });
+
+  test('the owner is still stopped by the triggers', async () => {
+    expect(await sqlState('UPDATE telemetry_logs SET latitude = 0')).toBe('AO001');
+    expect(await sqlState('DELETE FROM telemetry_logs')).toBe('AO001');
+  });
+
+  test('the daily record says whether the day was corrected', async () => {
+    const view = async () => (await pool.query('SELECT has_corrections FROM daily_work_records WHERE employee_id = $1', [c.employeeId])).rows[0];
+    expect(await view()).toEqual({ has_corrections: false });
+    await pool.query(
+      `INSERT INTO record_corrections (company_id, employee_id, site_id, work_date, field, original_value, corrected_value, reason, corrected_by)
+       SELECT $1, $2, $3, work_date, 'worked_minutes', '60', '45', 'Left early, confirmed by the supervisor', $4
+       FROM daily_work_records WHERE employee_id = $2`,
+      [c.companyId, c.employeeId, c.siteId, c.userId],
+    );
+    expect(await view()).toEqual({ has_corrections: true });
+  });
+
+  test('the role migration rolls back and applies again', async () => {
+    await pool.query(fs.readFileSync(ROLE_DOWN_SQL, 'utf8'));
+    const granted = async () => (await pool.query("SELECT has_table_privilege('site14_app', 'employees', 'UPDATE') AS ok")).rows[0].ok;
+    expect(await granted()).toBe(false);
+    await pool.query(fs.readFileSync(ROLE_SQL, 'utf8'));
+    expect(await granted()).toBe(true);
+    expect(await asApp('UPDATE telemetry_logs SET latitude = 0')).toBe('42501');
+  });
+});
+
 // ================================================================ 3. seed (SITE-75)
 
 describe('seed', () => {
