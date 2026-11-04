@@ -9,7 +9,7 @@ type NavItem = { to: string; label: string; soon?: boolean };
 const MAIN: NavItem[] = [
   { to: "/home", label: "Map" },
   { to: "/sites", label: "Sites & Zones" },
-  { to: "/tasks", label: "Tasks", soon: true },
+  { to: "/tasks", label: "Tasks" },
   { to: "/team", label: "Team" },
 ];
 

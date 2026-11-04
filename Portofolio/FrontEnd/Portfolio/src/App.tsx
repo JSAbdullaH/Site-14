@@ -10,6 +10,7 @@ import TeamPage from "@/features/team/TeamPage";
 import MapPage from "@/features/map/MapPage";
 import SitesPage from "@/features/sites/SitesPage";
 import SiteEditPage from "@/features/sites/SiteEditPage";
+import TasksPage from "@/features/tasks/TasksPage";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
       <Route path="/sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
       <Route path="/sites/new" element={<ProtectedRoute><SiteEditPage /></ProtectedRoute>} />
       <Route path="/sites/:id" element={<ProtectedRoute><SiteEditPage /></ProtectedRoute>} />
+      <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
 
