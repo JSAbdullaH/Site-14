@@ -86,6 +86,15 @@ export const correctionSchema = z
     }
   });
 
+// Same rule as the backend: the serial printed on the device, compared upper-case.
+export const deviceSerial = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .min(3, "Use at least 3 characters")
+  .max(64, "Use at most 64 characters")
+  .regex(/^[A-Z0-9][A-Z0-9._:-]*$/, "Use letters, digits, dots, dashes, colons or underscores");
+
 export type FieldErrors = Record<string, string>;
 
 export function validate<T>(

@@ -27,6 +27,17 @@ export type CreateEmployeeInput = {
   consent?: boolean;
 };
 
+// Only the fields that change are sent. null clears the number or the site.
+export type UpdateEmployeeInput = {
+  full_name?: string;
+  job_category?: string;
+  employee_number?: string | null;
+  site_id?: string | null;
+  consent?: boolean;
+};
+
+export type DeviceOption = { id: string; serial_number: string };
+
 // --- CSV import -------------------------------------------------------
 
 export type ImportValidRow = {

@@ -14,7 +14,7 @@ const MAIN: NavItem[] = [
 ];
 
 const RECORDS: NavItem[] = [
-  { to: "/devices", label: "Devices", soon: true },
+  { to: "/devices", label: "Devices" },
   { to: "/history", label: "History" },
   { to: "/reports", label: "Reports" },
 ];

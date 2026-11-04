@@ -234,14 +234,20 @@ model Employee {
 // ---------------------------------------------------------------- 8. devices
 
 model Device {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId    String   @map("company_id") @db.Uuid
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String    @map("company_id") @db.Uuid
   // One device per employee: unique.
-  employeeId   String?  @unique @map("employee_id") @db.Uuid
-  serialNumber String   @unique @map("serial_number") @db.VarChar(64)
-  apiKeyHash   String   @map("api_key_hash") @db.VarChar(255)
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  employeeId         String?   @unique @map("employee_id") @db.Uuid
+  serialNumber       String    @unique @map("serial_number") @db.VarChar(64)
+  apiKeyHash         String    @map("api_key_hash") @db.VarChar(255)
+  isActive           Boolean   @default(true) @map("is_active")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  // Server clock of the last ingest call.
+  lastSeenAt         DateTime? @map("last_seen_at") @db.Timestamptz(6)
+  // Device clock of the newest accepted reading. A reading must be newer to be stored.
+  lastRecordedAt     DateTime? @map("last_recorded_at") @db.Timestamptz(6)
+  // Server clock minus device clock, measured on the last call that sent sent_at.
+  clockOffsetSeconds Int?      @map("clock_offset_seconds")
 
   company      Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
   employee     Employee?     @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)

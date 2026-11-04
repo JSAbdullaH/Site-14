@@ -2,6 +2,7 @@ const AppError = require('../utils/AppError');
 const { verifyAccessToken } = require('../utils/jwt');
 const userModel = require('../models/user.model');
 const { forCompany } = require('../config/db');
+const ingestService = require('../services/ingest.service');
 
 const unauthenticated = (message = 'Authentication required') => new AppError(401, 'UNAUTHENTICATED',
 message);
@@ -28,4 +29,10 @@ const requireRole = (...allowed) => (req, _res, next) => {
 
 const requireAdmin = requireRole('company_admin');
 
-module.exports = { authenticate, requireRole, requireAdmin };
+// Devices do not sign in. Each sends its serial and the key it was given at registration.
+async function authenticateDevice(req, _res, next) {
+    req.device = await ingestService.authenticate(req.get('X-Device-Serial'), req.get('X-Device-Key'));
+    next();
+}
+
+module.exports = { authenticate, requireRole, requireAdmin, authenticateDevice };

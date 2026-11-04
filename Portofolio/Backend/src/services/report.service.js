@@ -1,7 +1,6 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const puppeteer = require('puppeteer');
 const AppError = require('../utils/AppError');
 const reportModel = require('../models/report.model');
 const template = require('../templates/attendance.html');
@@ -141,6 +140,8 @@ let browser = null;
 
 async function getBrowser() {
   if (!browser) {
+    // Loaded on first use: puppeteer is ESM-only, and only the PDF export needs it.
+    const puppeteer = require('puppeteer');
     browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   }
   return browser;

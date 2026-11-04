@@ -1,9 +1,11 @@
 ﻿import { apiFetch } from "@/shared/lib/api";
 import type {
   CreateEmployeeInput,
+  DeviceOption,
   Employee,
   EmployeeStatus,
   ListEmployeesResponse,
+  UpdateEmployeeInput,
 } from "./types";
 
 export function listEmployees(params?: {
@@ -25,10 +27,26 @@ export function listEmployees(params?: {
 export const createEmployee = (body: CreateEmployeeInput) =>
   apiFetch<Employee>("/employees", { method: "POST", body: JSON.stringify(body) });
 
-export const updateEmployee = (
-  id: string,
-  body: Partial<Pick<Employee, "full_name" | "job_category" | "site_id">>,
-) => apiFetch<Employee>(`/employees/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const updateEmployee = (id: string, body: UpdateEmployeeInput) =>
+  apiFetch<Employee>(`/employees/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+
+// --- the employee's device. Called here rather than from the devices feature,
+// so the two features stay independent.
+
+export const listFreeDevices = () =>
+  apiFetch<{ data: DeviceOption[] }>("/devices?status=active&assigned=false&limit=100");
+
+export const registerDevice = (serialNumber: string) =>
+  apiFetch<DeviceOption & { api_key: string }>("/devices", {
+    method: "POST",
+    body: JSON.stringify({ serial_number: serialNumber }),
+  });
+
+export const assignDevice = (deviceId: string, employeeId: string | null) =>
+  apiFetch<DeviceOption>(`/devices/${deviceId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ employee_id: employeeId }),
+  });
 
 export const deactivateEmployee = (id: string) =>
   apiFetch<void>(`/employees/${id}`, { method: "DELETE" });
