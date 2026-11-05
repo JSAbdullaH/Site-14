@@ -66,6 +66,35 @@ export const employeeSchema = z.object({
   consent: z.boolean().optional(),
 });
 
+export const correctionSchema = z
+  .object({
+    field: z.enum(["first_seen", "last_seen", "worked_minutes"]),
+    clock: z.string(),
+    hours: z.string(),
+    minutes: z.string(),
+    reason: z.string().trim().min(5, "Give the reason for the correction").max(500, "Use at most 500 characters"),
+  })
+  .superRefine((v, ctx) => {
+    if (v.field === "worked_minutes") {
+      const h = Number(v.hours || 0);
+      const m = Number(v.minutes || 0);
+      if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0 || m > 59 || h * 60 + m > 1440) {
+        ctx.addIssue({ code: "custom", path: ["hours"], message: "Enter hours (0 to 24) and minutes (0 to 59)" });
+      }
+    } else if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v.clock)) {
+      ctx.addIssue({ code: "custom", path: ["clock"], message: "Enter a time" });
+    }
+  });
+
+// Same rule as the backend: the serial printed on the device, compared upper-case.
+export const deviceSerial = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .min(3, "Use at least 3 characters")
+  .max(64, "Use at most 64 characters")
+  .regex(/^[A-Z0-9][A-Z0-9._:-]*$/, "Use letters, digits, dots, dashes, colons or underscores");
+
 export type FieldErrors = Record<string, string>;
 
 export function validate<T>(

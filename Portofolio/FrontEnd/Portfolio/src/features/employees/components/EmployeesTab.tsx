@@ -7,7 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import EmployeeTable from "./EmployeeTable";
 import AddEmployeeDialog from "./AddEmployeeDialog";
 import ImportCsvDialog from "./ImportCsvDialog";
+import EditEmployeeDialog from "./EditEmployeeDialog";
+import EmployeeDeviceDialog from "./EmployeeDeviceDialog";
 import { Upload } from "lucide-react";
+import { isAdmin } from "@/shared/lib/auth";
 import { listEmployees } from "../api";
 import type { Employee } from "../types";
 
@@ -18,6 +21,9 @@ export default function EmployeesTab() {
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [editing, setEditing] = useState<Employee | null>(null);
+  const [deviceFor, setDeviceFor] = useState<Employee | null>(null);
+  const admin = isAdmin();
 
   async function load() {
     setLoading(true);
@@ -94,7 +100,30 @@ export default function EmployeesTab() {
           }
         />
       ) : (
-        <EmployeeTable employees={filtered} />
+        <EmployeeTable
+          employees={filtered}
+          canEdit={admin}
+          onEdit={setEditing}
+          onDevice={setDeviceFor}
+        />
+      )}
+
+      {editing && (
+        <EditEmployeeDialog
+          key={editing.id}
+          employee={editing}
+          onClose={() => setEditing(null)}
+          onSaved={load}
+        />
+      )}
+
+      {deviceFor && (
+        <EmployeeDeviceDialog
+          key={deviceFor.id}
+          employee={deviceFor}
+          onClose={() => setDeviceFor(null)}
+          onChanged={load}
+        />
       )}
       <AddEmployeeDialog
         open={addOpen}

@@ -9,6 +9,8 @@ const geofenceRoutes = require('./geofence.routes');
 const locationRoutes = require('./location.routes');
 const taskRoutes = require('./task.routes');
 const reportRoutes = require('./report.routes');
+const deviceRoutes = require('./device.routes');
+const ingestRoutes = require('./ingest.routes');
 
 const router = Router();
 
@@ -22,5 +24,7 @@ router.use('/geofences', geofenceRoutes);
 router.use('/locations', locationRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/reports', reportRoutes);
+router.use('/devices', deviceRoutes);
+router.use('/ingest', ingestRoutes);
 
 module.exports = router;

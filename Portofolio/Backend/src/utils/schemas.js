@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { todayInRiyadh } = require('./day');
 
 const email = z.string().trim().toLowerCase().email('Enter a valid email address').max(255);
 
@@ -178,6 +179,74 @@ const listGeofencesQuery = z.object({
 
 const liveLocationsQuery = z.object({ site_id: z.string().uuid('Invalid site id') });
 
+// ---------- devices ----------
+
+// The serial printed on the device. Stored upper-case, so "gps-001" and "GPS-001" are one device.
+const serialNumber = z
+  .string({ invalid_type_error: 'Enter a serial number' })
+  .trim()
+  .toUpperCase()
+  .min(3, 'Use at least 3 characters')
+  .max(64, 'Use at most 64 characters')
+  .regex(/^[A-Z0-9][A-Z0-9._:-]*$/, 'Use letters, digits, dots, dashes, colons or underscores');
+
+const MAX_DEVICE_BATCH = 500;
+
+const createDeviceSchema = z.object({ serial_number: serialNumber }).strict();
+
+const createDeviceBatchSchema = z
+  .object({
+    serial_numbers: z
+      .array(serialNumber)
+      .min(1, 'Enter at least one serial number')
+      .max(MAX_DEVICE_BATCH, `Register at most ${MAX_DEVICE_BATCH} devices at once`),
+  })
+  .strict();
+
+const updateDeviceSchema = z
+  .object({
+    employee_id: z.string().uuid('Invalid employee').nullable().optional(),
+    is_active: z.boolean().optional(),
+  })
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
+
+const listDevicesQuery = z.object({
+  search: z.string().trim().min(1).max(64).optional(),
+  status: z.enum(['active', 'inactive', 'all']).default('active'),
+  assigned: booleanQuery,
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+// ---------- device ingest ----------
+
+// Ten minutes of readings at one every five seconds, the most a device buffers while offline.
+const MAX_READINGS_PER_BATCH = 120;
+
+const deviceTime = z
+  .string()
+  .datetime({ offset: true, message: 'Use an ISO 8601 time with a zone, like 2026-11-04T09:30:00Z' })
+  .transform((v) => new Date(v));
+
+// Not strict: newer firmware may send fields this version does not store.
+const readingSchema = z.object({
+  recorded_at: deviceTime,
+  latitude: z.number().finite().min(-90, 'Latitude must be between -90 and 90').max(90, 'Latitude must be between -90 and 90'),
+  longitude: z.number().finite().min(-180, 'Longitude must be between -180 and 180').max(180, 'Longitude must be between -180 and 180'),
+  battery_percent: z.number().int().min(0).max(100).nullable().optional(),
+  heart_rate_bpm: z.number().int().min(20).max(250).nullable().optional(),
+});
+
+const ingestSchema = z.object({
+  // The device clock when the batch left the device, to measure its drift.
+  sent_at: deviceTime.optional(),
+  readings: z
+    .array(readingSchema)
+    .min(1, 'Send at least one reading')
+    .max(MAX_READINGS_PER_BATCH, `Send at most ${MAX_READINGS_PER_BATCH} readings at once`),
+});
+
 const importColumnMap = z.object({
   column_map: z
     .string()
@@ -234,6 +303,34 @@ const listTasksQuery = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
+const calendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use the format YYYY-MM-DD')
+  .refine((d) => !Number.isNaN(Date.parse(`${d}T00:00:00Z`)) && new Date(`${d}T00:00:00Z`).toISOString().startsWith(d), 'Not a real date');
+
+const dayQuery = z.object({ date: calendarDate.default(() => todayInRiyadh()) });
+
+const clockTime24 = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const correctionSchema = z
+  .object({
+    date: calendarDate,
+    field: z.enum(['first_seen', 'last_seen', 'worked_minutes'], { message: 'Choose what to correct' }),
+    corrected_value: z.union([z.string().trim(), z.number()]).transform((v) => String(v)),
+    reason: z.string().trim().min(5, 'Give the reason for the correction').max(500, 'Use at most 500 characters'),
+    site_id: z.string().uuid('Invalid site').optional(),
+  })
+  .strict()
+  .superRefine((o, ctx) => {
+    if (o.field === 'worked_minutes') {
+      const minutes = Number(o.corrected_value);
+      if (!/^\d+$/.test(o.corrected_value) || minutes > 1440) {
+        ctx.addIssue({ code: 'custom', path: ['corrected_value'], message: 'Enter the minutes worked, from 0 to 1440' });
+      }
+    } else if (!clockTime24.test(o.corrected_value)) {
+      ctx.addIssue({ code: 'custom', path: ['corrected_value'], message: 'Use the 24-hour format HH:MM' });
+    }
+  });
 
 const idParams = z.object({ id: z.string().uuid('Invalid id') });
 const tokenParams = z.object({ token: linkToken });
@@ -272,6 +369,8 @@ module.exports = {
   updateEmployeeSchema,
   listEmployeesQuery,
   importColumnMap,
+  dayQuery,
+  correctionSchema,
   createSiteSchema,
   updateSiteSchema,
   listSitesQuery,
@@ -279,6 +378,13 @@ module.exports = {
   updateGeofenceSchema,
   listGeofencesQuery,
   liveLocationsQuery,
+  createDeviceSchema,
+  createDeviceBatchSchema,
+  updateDeviceSchema,
+  listDevicesQuery,
+  ingestSchema,
+  MAX_DEVICE_BATCH,
+  MAX_READINGS_PER_BATCH,
   idParams,
   tokenParams,
 };

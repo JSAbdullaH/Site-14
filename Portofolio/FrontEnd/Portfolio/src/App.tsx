@@ -5,6 +5,7 @@ import Signin from "@/features/auth/Signin";
 import Signup from "@/features/auth/Signup";
 import ForgotPassword from "@/features/auth/ForgotPassword";
 import ResetPassword from "@/features/auth/ResetPassword";
+import AcceptInvite from "@/features/auth/AcceptInvite";
 import Account from "@/features/account/Account";
 import TeamPage from "@/features/team/TeamPage";
 import MapPage from "@/features/map/MapPage";
@@ -12,6 +13,8 @@ import SitesPage from "@/features/sites/SitesPage";
 import SiteEditPage from "@/features/sites/SiteEditPage";
 import ReportsPage from "@/features/reports/ReportsPage";
 import TasksPage from "@/features/tasks/TasksPage";
+import HistoryPage from "@/features/history/HistoryPage";
+import DevicesPage from "@/features/devices/DevicesPage";
 
 export default function App() {
   return (
@@ -21,6 +24,7 @@ export default function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/invite/:token" element={<AcceptInvite />} />
 
       <Route path="/home" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
       <Route path="/sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
@@ -28,6 +32,8 @@ export default function App() {
       <Route path="/sites/:id" element={<ProtectedRoute><SiteEditPage /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
+      <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+      <Route path="/devices" element={<ProtectedRoute><DevicesPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
 
