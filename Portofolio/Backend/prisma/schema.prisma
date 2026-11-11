@@ -186,7 +186,6 @@ model User {
   reports            Report[]
   devicePairings     DevicePairing[]
   orders             Order[]
-  isAdmin            Boolean            @default(false)
 
   @@unique([companyId, id])
   @@index([companyId])
