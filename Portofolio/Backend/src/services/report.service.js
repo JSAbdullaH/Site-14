@@ -4,6 +4,7 @@ const path = require('node:path');
 const AppError = require('../utils/AppError');
 const reportModel = require('../models/report.model');
 const template = require('../templates/attendance.html');
+const { findChrome } = require('../utils/chrome');
 
 const TZ = '+03:00';
 const GAP_MINUTES = 10;
@@ -140,9 +141,12 @@ let browser = null;
 
 async function getBrowser() {
   if (!browser) {
-    // Loaded on first use: puppeteer is ESM-only, and only the PDF export needs it.
-    const puppeteer = require('puppeteer');
-    browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    const executablePath = findChrome();
+    if (!executablePath) {
+      throw new AppError(503, 'PDF_UNAVAILABLE', 'PDF export needs Chrome or Chromium on the server. Install it or set CHROME_PATH.');
+    }
+    const puppeteer = require('puppeteer-core');
+    browser = await puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   }
   return browser;
 }

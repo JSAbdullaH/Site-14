@@ -40,6 +40,7 @@ const schema = z.object({
   PLATFORM_JWT_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
   PAIRING_TTL_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
   VAT_PERCENT: z.coerce.number().min(0).max(100).default(15),
+  CHROME_PATH: z.string().trim().optional().transform((v) => v || undefined),
 });
 
 const parsed = schema.safeParse(process.env);
