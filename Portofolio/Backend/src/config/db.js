@@ -28,7 +28,12 @@ const OWNER = {
   TelemetryLog: (c) => ({ session: { companyId: c } }),
   Alert: (c) => ({ session: { companyId: c } }),
   EmployeeCurrentState: (c) => ({ employee: { companyId: c } }),
+  DevicePairing: (c) => ({ companyId: c }),
+  Order: (c) => ({ companyId: c }),
+  OrderItem: (c) => ({ order: { companyId: c } }),
 };
+
+const GLOBAL = new Set(['Product', 'PlatformAdmin']);
 
 const PARENT = {
   AuthToken: ['user', 'userId'],
@@ -37,9 +42,10 @@ const PARENT = {
   TelemetryLog: ['workSession', 'sessionId'],
   Alert: ['workSession', 'sessionId'],
   EmployeeCurrentState: ['employee', 'employeeId'],
+  OrderItem: ['order', 'orderId'],
 };
 
-const unscoped = Object.values(Prisma.ModelName).filter((m) => !OWNER[m]);
+const unscoped = Object.values(Prisma.ModelName).filter((m) => !OWNER[m] && !GLOBAL.has(m));
 if (unscoped.length) {
   throw new Error(`Tenant scope missing for: ${unscoped.join(', ')}. Add them to OWNER in src/config/db.js.`);
 }
@@ -66,6 +72,7 @@ function forCompany(companyId) {
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
+          if (GLOBAL.has(model)) throw new Error(`${model} is platform data and cannot be read through a company-scoped client`);
           const scope = OWNER[model](companyId);
           const a = { ...args };
 

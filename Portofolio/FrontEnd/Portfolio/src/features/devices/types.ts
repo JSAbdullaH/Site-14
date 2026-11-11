@@ -1,24 +1,34 @@
 import { deviceSerial } from "@/shared/lib/validation";
+import type { DeviceHealth, DeviceSource, DeviceType } from "@/shared/lib/deviceTypes";
+
+export type { DeviceHealth, DeviceSource, DeviceType };
 
 export type Device = {
   id: string;
   serial_number: string;
+  device_type: DeviceType;
+  source: DeviceSource;
+  name: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  os: { name: string; version: string | null } | null;
+  browser: string | null;
   is_active: boolean;
+  health: DeviceHealth;
   employee: {
     id: string;
     full_name: string;
     site: { id: string; name: string } | null;
   } | null;
-  // Server clock of the device's last call.
+  order: { id: string; reference_number: string; status: "placed" | "shipped" | "delivered" | "cancelled" } | null;
+  battery_percent: number | null;
+  paired_at: string | null;
   last_seen_at: string | null;
-  // Device clock of its newest accepted reading.
   last_recorded_at: string | null;
-  // Server clock minus device clock: positive means the device runs slow.
   clock_offset_seconds: number | null;
   created_at: string;
 };
 
-// Returned once, when a device is registered or given a new key.
 export type DeviceWithKey = Device & { api_key: string };
 
 export type ListDevicesResponse = {
@@ -28,6 +38,33 @@ export type ListDevicesResponse = {
   total: number;
 };
 
+export type DeviceSummary = {
+  active: number;
+  online: number;
+  offline: number;
+  never: number;
+  unassigned: number;
+  inactive: number;
+  in_transit: number;
+  pending_pairings: number;
+  by_type: Record<DeviceType, number>;
+};
+
+export type DeviceFilter = "active" | "online" | "offline" | "never" | "unassigned" | "inactive";
+
+export type Pairing = {
+  id: string;
+  status: "pending" | "claimed" | "cancelled" | "expired";
+  label: string | null;
+  employee: { id: string; full_name: string } | null;
+  device: Device | null;
+  expires_at: string;
+  claimed_at: string | null;
+  created_at: string;
+};
+
+export type NewPairing = Pairing & { code: string };
+
 export type EmployeeOption = {
   id: string;
   full_name: string;
@@ -36,33 +73,24 @@ export type EmployeeOption = {
   device: { id: string; serial_number: string } | null;
 };
 
-// Heard from in the last two minutes. Devices send every few seconds.
-const ONLINE_MS = 2 * 60_000;
-
-export type DeviceHealth = "online" | "offline" | "never" | "inactive";
-
-export function deviceHealth(d: Device, now = Date.now()): DeviceHealth {
-  if (!d.is_active) return "inactive";
-  if (!d.last_seen_at) return "never";
-  return now - Date.parse(d.last_seen_at) < ONLINE_MS ? "online" : "offline";
+export function displayName(d: Device) {
+  return d.name || [d.manufacturer, d.model].filter(Boolean).join(" ") || d.serial_number;
 }
 
-export function timeAgo(iso: string, now = Date.now()) {
-  const s = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
-  if (s < 60) return `${s} s ago`;
-  if (s < 3600) return `${Math.round(s / 60)} min ago`;
-  if (s < 86_400) return `${Math.round(s / 3600)} h ago`;
-  return new Date(iso).toLocaleDateString();
+export function deviceDetails(d: Device) {
+  const os = d.os ? [d.os.name, d.os.version].filter(Boolean).join(" ") : null;
+  return [os, d.browser].filter(Boolean).join(" · ");
 }
 
-// A few seconds either way is network delay, not drift.
+export function inTransit(d: Device) {
+  return d.order?.status === "placed" || d.order?.status === "shipped";
+}
+
 export function clockLabel(offset: number | null) {
   if (offset === null || Math.abs(offset) < 5) return null;
   return offset > 0 ? `${offset} s slow` : `${-offset} s fast`;
 }
 
-// One serial per line; tabs, commas and semicolons also separate them, so cells
-// pasted from a spreadsheet work too. Not spaces: "GPS 001" is a typo, not two devices.
 export function parseSerials(text: string) {
   const serials: string[] = [];
   const repeated = new Set<string>();
@@ -82,7 +110,11 @@ export function parseSerials(text: string) {
   return { serials, repeated: [...repeated], invalid };
 }
 
-// The file the simulator reads with --keys.
-export function keysCsv(devices: DeviceWithKey[]) {
+export function keysCsv(devices: { serial_number: string; api_key: string }[]) {
   return ["serial_number,api_key", ...devices.map((d) => `${d.serial_number},${d.api_key}`)].join("\n");
+}
+
+export function pairUrl(code: string) {
+  const base = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined)?.replace(/\/$/, "") || window.location.origin;
+  return `${base}/pair/${code}`;
 }

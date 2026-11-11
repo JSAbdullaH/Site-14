@@ -192,7 +192,12 @@ const serialNumber = z
 
 const MAX_DEVICE_BATCH = 500;
 
-const createDeviceSchema = z.object({ serial_number: serialNumber }).strict();
+const deviceType = z.enum(['phone', 'tablet', 'watch', 'laptop', 'desktop', 'tracker'], { message: 'Choose a device type' });
+const deviceName = z.string().trim().min(1, 'Enter a name').max(80, 'Use at most 80 characters');
+
+const createDeviceSchema = z
+  .object({ serial_number: serialNumber, device_type: deviceType.default('tracker'), name: deviceName.optional() })
+  .strict();
 
 const createDeviceBatchSchema = z
   .object({
@@ -200,6 +205,7 @@ const createDeviceBatchSchema = z
       .array(serialNumber)
       .min(1, 'Enter at least one serial number')
       .max(MAX_DEVICE_BATCH, `Register at most ${MAX_DEVICE_BATCH} devices at once`),
+    device_type: deviceType.default('tracker'),
   })
   .strict();
 
@@ -207,6 +213,8 @@ const updateDeviceSchema = z
   .object({
     employee_id: z.string().uuid('Invalid employee').nullable().optional(),
     is_active: z.boolean().optional(),
+    name: deviceName.nullable().optional(),
+    device_type: deviceType.optional(),
   })
   .strict()
   .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
@@ -215,8 +223,34 @@ const listDevicesQuery = z.object({
   search: z.string().trim().min(1).max(64).optional(),
   status: z.enum(['active', 'inactive', 'all']).default('active'),
   assigned: booleanQuery,
+  type: deviceType.optional(),
+  source: z.enum(['registered', 'paired', 'marketplace']).optional(),
+  health: z.enum(['online', 'offline', 'never']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+const createPairingSchema = z
+  .object({
+    employee_id: z.string().uuid('Invalid employee').nullable().optional(),
+    label: deviceName.optional(),
+  })
+  .strict();
+
+const pairingCodeParams = z.object({ code: z.string().trim().min(8).max(12) });
+
+const claimPairingSchema = z.object({
+  device_type: deviceType.optional(),
+  name: deviceName.optional(),
+  model: z.string().trim().max(80).optional(),
+  platform_version: z.string().trim().max(40).optional(),
+  touch_points: z.number().int().min(0).max(64).optional(),
+  has_battery: z.boolean().optional(),
+  battery_percent: z.number().int().min(0).max(100).nullable().optional(),
+});
+
+const heartbeatSchema = z.object({
+  battery_percent: z.number().int().min(0).max(100).nullable().optional(),
 });
 
 // ---------- device ingest ----------
@@ -349,7 +383,87 @@ const referenceParams = z.object({
   reference: z.string().trim().regex(/^SITE14-R-\d{8}-[0-9A-F]{8}$/, 'Invalid reference'),
 });
 
+const halalas = z.number().int('Use whole halalas').positive('Enter a price above zero').max(100_000_000);
+
+const productFeatures = z.array(z.string().trim().min(1).max(120)).max(12, 'List at most 12 features');
+
+const productFields = {
+  name: z.string().trim().min(2, 'Enter a product name').max(120),
+  description: z.string().trim().min(10, 'Describe the product in at least 10 characters').max(1000),
+  device_type: deviceType,
+  manufacturer: z.string().trim().max(60).nullable().optional(),
+  model: z.string().trim().max(80).nullable().optional(),
+  serial_prefix: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{2,8}$/, 'Use 2 to 8 letters or digits'),
+  price_halalas: halalas,
+  stock: z.number().int().min(0, 'Stock cannot be negative').max(1_000_000),
+  features: productFeatures.default([]),
+  image_url: z.string().trim().url('Enter a full URL').max(500).nullable().optional(),
+  is_active: z.boolean().default(true),
+};
+
+const createProductSchema = z
+  .object({ sku: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9-]{2,39}$/, 'Use 3 to 40 letters, digits or dashes'), ...productFields })
+  .strict();
+
+const updateProductSchema = z
+  .object({ ...productFields, features: productFeatures, is_active: z.boolean() })
+  .partial()
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
+
+const MAX_ORDER_QUANTITY = 500;
+
+const placeOrderSchema = z
+  .object({
+    items: z
+      .array(
+        z.object({
+          product_id: z.string().uuid('Invalid product'),
+          quantity: z.number().int().min(1, 'Order at least one').max(MAX_ORDER_QUANTITY, `Order at most ${MAX_ORDER_QUANTITY} at once`),
+        }).strict(),
+      )
+      .min(1, 'Add at least one product')
+      .max(20, 'Order at most 20 different products at once'),
+    shipping_address: z.string().trim().min(10, 'Enter the full delivery address').max(500),
+    contact_phone: z.string().trim().regex(/^\+?[0-9 ()-]{7,30}$/, 'Enter a valid phone number'),
+    notes: z.string().trim().max(500).optional(),
+  })
+  .strict();
+
+const listOrdersQuery = z.object({
+  status: z.enum(['placed', 'shipped', 'delivered', 'cancelled']).optional(),
+  search: z.string().trim().min(1).max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+
+const platformLoginSchema = z.object({ email, password: z.string().min(1, 'Enter your password').max(128) });
+
+const platformListQuery = z.object({
+  search: z.string().trim().min(1).max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+
+const platformDevicesQuery = platformListQuery.extend({
+  type: deviceType.optional(),
+  health: z.enum(['online', 'offline', 'never']).optional(),
+  company_id: z.string().uuid('Invalid company').optional(),
+});
+
 module.exports = {
+  createPairingSchema,
+  pairingCodeParams,
+  claimPairingSchema,
+  heartbeatSchema,
+  createProductSchema,
+  updateProductSchema,
+  placeOrderSchema,
+  listOrdersQuery,
+  platformLoginSchema,
+  platformListQuery,
+  platformDevicesQuery,
+  MAX_ORDER_QUANTITY,
   generateReportQuery,
   referenceParams,
   createTaskSchema,

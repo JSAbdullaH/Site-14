@@ -7,7 +7,7 @@ const ingestController = require('../controllers/ingest.controller');
 
 const router = Router();
 
-// Called by the devices themselves, not by people. See DEVICES.md.
 router.post('/readings', authenticateDevice, deviceLimiter, validateBody(s.ingestSchema), ingestController.readings);
+router.post('/heartbeat', authenticateDevice, deviceLimiter, validateBody(s.heartbeatSchema), ingestController.heartbeat);
 
 module.exports = router;

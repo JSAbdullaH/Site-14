@@ -15,6 +15,7 @@
     "db:reset": "prisma migrate reset",
     "db:rollback": "prisma db execute --file prisma/migrations/20261015000000_init/down.sql",
     "db:seed": "prisma db seed",
+    "platform:admin": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/create-platform-admin.js",
     "simulate:move": "node scripts/simulate-move.js",
     "simulate:devices": "node scripts/simulate-devices.js",
     "db:studio": "prisma studio",

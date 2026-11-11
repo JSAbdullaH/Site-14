@@ -71,6 +71,42 @@ enum ReportType {
   @@map("report_type")
 }
 
+enum DeviceType {
+  phone
+  tablet
+  watch
+  laptop
+  desktop
+  tracker
+
+  @@map("device_type")
+}
+
+enum DeviceSource {
+  registered
+  paired
+  marketplace
+
+  @@map("device_source")
+}
+
+enum PairingStatus {
+  pending
+  claimed
+  cancelled
+
+  @@map("pairing_status")
+}
+
+enum OrderStatus {
+  placed
+  shipped
+  delivered
+  cancelled
+
+  @@map("order_status")
+}
+
 // ---------------------------------------------------------------- 1. companies
 
 model Company {
@@ -90,6 +126,8 @@ model Company {
   tasks             Task[]
   recordCorrections RecordCorrection[]
   reports           Report[]
+  devicePairings    DevicePairing[]
+  orders            Order[]
 
   @@map("companies")
 }
@@ -133,6 +171,9 @@ model User {
   createdTasks       Task[]
   corrections        RecordCorrection[]
   reports            Report[]
+  devicePairings     DevicePairing[]
+  orders             Order[]
+  isAdmin            Boolean            @default(false)
 
   @@unique([companyId, id])
   @@index([companyId])
@@ -224,6 +265,7 @@ model Employee {
   currentState      EmployeeCurrentState?
   tasks             Task[]
   recordCorrections RecordCorrection[]
+  devicePairings    DevicePairing[]
 
   @@unique([companyId, id])
   @@unique([companyId, employeeNumber])
@@ -234,28 +276,144 @@ model Employee {
 // ---------------------------------------------------------------- 8. devices
 
 model Device {
-  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId          String    @map("company_id") @db.Uuid
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String       @map("company_id") @db.Uuid
   // One device per employee: unique.
-  employeeId         String?   @unique @map("employee_id") @db.Uuid
-  serialNumber       String    @unique @map("serial_number") @db.VarChar(64)
-  apiKeyHash         String    @map("api_key_hash") @db.VarChar(255)
-  isActive           Boolean   @default(true) @map("is_active")
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  employeeId         String?      @unique @map("employee_id") @db.Uuid
+  serialNumber       String       @unique @map("serial_number") @db.VarChar(64)
+  apiKeyHash         String       @map("api_key_hash") @db.VarChar(255)
+  isActive           Boolean      @default(true) @map("is_active")
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   // Server clock of the last ingest call.
-  lastSeenAt         DateTime? @map("last_seen_at") @db.Timestamptz(6)
+  lastSeenAt         DateTime?    @map("last_seen_at") @db.Timestamptz(6)
   // Device clock of the newest accepted reading. A reading must be newer to be stored.
-  lastRecordedAt     DateTime? @map("last_recorded_at") @db.Timestamptz(6)
+  lastRecordedAt     DateTime?    @map("last_recorded_at") @db.Timestamptz(6)
   // Server clock minus device clock, measured on the last call that sent sent_at.
-  clockOffsetSeconds Int?      @map("clock_offset_seconds")
+  clockOffsetSeconds Int?         @map("clock_offset_seconds")
+  deviceType         DeviceType   @default(tracker) @map("device_type")
+  source             DeviceSource @default(registered)
+  name               String?      @db.VarChar(80)
+  manufacturer       String?      @db.VarChar(60)
+  model              String?      @db.VarChar(80)
+  osName             String?      @map("os_name") @db.VarChar(40)
+  osVersion          String?      @map("os_version") @db.VarChar(40)
+  browser            String?      @db.VarChar(60)
+  userAgent          String?      @map("user_agent") @db.VarChar(512)
+  lastBatteryPercent Int?         @map("last_battery_percent") @db.SmallInt
+  pairedAt           DateTime?    @map("paired_at") @db.Timestamptz(6)
+  orderItemId        String?      @map("order_item_id") @db.Uuid
 
-  company      Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  employee     Employee?     @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
+  company      Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  employee     Employee?      @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
+  orderItem    OrderItem?     @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
   workSessions WorkSession[]
+  pairing      DevicePairing?
 
   @@unique([companyId, id])
   @@unique([companyId, employeeId])
+  @@index([companyId, deviceType])
+  @@index([orderItemId])
   @@map("devices")
+}
+
+model DevicePairing {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String        @map("company_id") @db.Uuid
+  createdBy  String        @map("created_by") @db.Uuid
+  employeeId String?       @map("employee_id") @db.Uuid
+  codeHash   String        @unique @map("code_hash") @db.Char(64)
+  label      String?       @db.VarChar(80)
+  status     PairingStatus @default(pending)
+  expiresAt  DateTime      @map("expires_at") @db.Timestamptz(6)
+  claimedAt  DateTime?     @map("claimed_at") @db.Timestamptz(6)
+  deviceId   String?       @unique @map("device_id") @db.Uuid
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  creator  User      @relation(fields: [companyId, createdBy], references: [companyId, id], onDelete: Restrict)
+  employee Employee? @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
+  device   Device?   @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@map("device_pairings")
+}
+
+model Product {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sku          String     @unique @db.VarChar(40)
+  name         String     @db.VarChar(120)
+  description  String     @db.VarChar(1000)
+  deviceType   DeviceType @map("device_type")
+  manufacturer String?    @db.VarChar(60)
+  model        String?    @db.VarChar(80)
+  serialPrefix String     @map("serial_prefix") @db.VarChar(8)
+  priceHalalas Int        @map("price_halalas")
+  stock        Int        @default(0)
+  features     Json       @default("[]") @db.JsonB
+  imageUrl     String?    @map("image_url") @db.VarChar(500)
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String      @map("company_id") @db.Uuid
+  createdBy       String      @map("created_by") @db.Uuid
+  referenceNumber String      @unique @map("reference_number") @db.VarChar(40)
+  status          OrderStatus @default(placed)
+  subtotalHalalas Int         @map("subtotal_halalas")
+  vatHalalas      Int         @map("vat_halalas")
+  totalHalalas    Int         @map("total_halalas")
+  shippingAddress String      @map("shipping_address") @db.VarChar(500)
+  contactPhone    String      @map("contact_phone") @db.VarChar(30)
+  notes           String?     @db.VarChar(500)
+  shippedAt       DateTime?   @map("shipped_at") @db.Timestamptz(6)
+  deliveredAt     DateTime?   @map("delivered_at") @db.Timestamptz(6)
+  cancelledAt     DateTime?   @map("cancelled_at") @db.Timestamptz(6)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  creator User        @relation(fields: [companyId, createdBy], references: [companyId, id], onDelete: Restrict)
+  items   OrderItem[]
+
+  @@index([companyId, createdAt])
+  @@index([status, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String @map("order_id") @db.Uuid
+  productId        String @map("product_id") @db.Uuid
+  productName      String @map("product_name") @db.VarChar(120)
+  quantity         Int    @db.SmallInt
+  unitPriceHalalas Int    @map("unit_price_halalas")
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  product Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  devices Device[]
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model PlatformAdmin {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fullName         String    @map("full_name") @db.VarChar(120)
+  email            String    @unique @db.VarChar(255)
+  passwordHash     String    @map("password_hash") @db.VarChar(255)
+  isActive         Boolean   @default(true) @map("is_active")
+  failedLoginCount Int       @default(0) @map("failed_login_count") @db.SmallInt
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("platform_admins")
 }
 
 // ---------------------------------------------------------------- 9. geofences

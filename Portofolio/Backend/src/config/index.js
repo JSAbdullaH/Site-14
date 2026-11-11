@@ -35,6 +35,11 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default('SITE14 <no-reply@site14.local>'),
+
+  PLATFORM_JWT_SECRET: z.string().min(32, 'PLATFORM_JWT_SECRET must be at least 32 characters').optional(),
+  PLATFORM_JWT_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  PAIRING_TTL_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
+  VAT_PERCENT: z.coerce.number().min(0).max(100).default(15),
 });
 
 const parsed = schema.safeParse(process.env);

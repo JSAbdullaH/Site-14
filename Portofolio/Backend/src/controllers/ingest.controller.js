@@ -4,4 +4,8 @@ async function readings(req, res) {
   res.json(await ingestService.ingest(req.device, req.body));
 }
 
-module.exports = { readings };
+async function heartbeat(req, res) {
+  res.json(await ingestService.heartbeat(req.device, req.body));
+}
+
+module.exports = { readings, heartbeat };

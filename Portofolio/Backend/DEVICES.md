@@ -2,6 +2,32 @@
 
 How a tracking device (watch, badge, phone) talks to SITE14, and how to run without hardware.
 
+## 0. Three ways a device joins a company
+
+| Way | For | What happens |
+|---|---|---|
+| **Connect a device** (QR code or link) | Phones, tablets, laptops, watches with a browser | The admin opens Devices, **Connect a device**. A QR code, a link (`/pair/XXXXXXXX`) and an 8-character code are shown for 10 minutes. The device opens it, the server reads its real type, model, OS and browser from the request (User-Agent and Client Hints), and the device becomes a tracker at `/tracker`. The admin's screen updates as soon as it connects. |
+| **Marketplace** | Devices bought from SITE14 | The company admin orders from **Marketplace**. The devices are created in the company's inventory at once, typed and named from the product. The SITE14 team ships the order from the owner console (`/admin`), which issues each device's key to load before shipping. On first power-on they connect to the company with no setup. |
+| **Register by serial** | Hardware with its own firmware | Section 1 below. |
+
+A device that has never sent anything shows as **Not connected**. Only devices that have actually called the server show as online.
+
+### Phones and laptops as trackers
+
+- Browsers share location only on **https**. For a real phone in development, serve the frontend over https (a tunnel such as `cloudflared` or `ngrok`, or Vite with a certificate) and set `VITE_PUBLIC_APP_URL` to that address so the QR code points there.
+- The tracker page sends a heartbeat every 30 s (`POST /api/v1/ingest/heartbeat`) and a reading every 5 s in batches of 10 s, buffers while offline, and keeps the screen awake while sharing.
+
+### Owner console (website owners, not companies)
+
+`/admin` is for the SITE14 team: revenue, every company, every device, the product catalog and order fulfilment. It has its own accounts and tokens; company accounts cannot open it.
+
+```bash
+npm run db:deploy
+npm run platform:admin -- --email you@site14.sa --name "Your Name" --catalog
+```
+
+`--catalog` adds the default products. Set `PLATFORM_JWT_SECRET` (32+ characters) in `.env`.
+
 ## 1. Register and assign (Devices page, company admin)
 
 1. **Register devices** and paste the serials, one per line (up to 500). The batch is all or nothing: if one serial is already registered, none are.

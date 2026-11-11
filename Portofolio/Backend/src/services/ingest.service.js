@@ -166,7 +166,7 @@ async function apply(tx, d, readings, now) {
   let status = 'off_site';
   if (session) status = state && state.geofenceId ? 'in_zone' : 'on_site';
 
-  return { result, newest, session, status };
+  return { result, newest, session, status, battery: latest ? latest.battery_percent ?? undefined : undefined };
 }
 
 async function ingest(device, { sent_at: sentAt, readings }) {
@@ -208,8 +208,11 @@ async function ingest(device, { sent_at: sentAt, readings }) {
       return { refused };
     }
 
-    const { result, newest, session, status } = await apply(tx, d, readings, now);
-    await tx.device.update({ where: { id: d.id }, data: { ...seen, lastRecordedAt: newest } });
+    const { result, newest, session, status, battery } = await apply(tx, d, readings, now);
+    await tx.device.update({
+      where: { id: d.id },
+      data: { ...seen, lastRecordedAt: newest, ...(battery !== undefined && { lastBatteryPercent: battery }) },
+    });
 
     return {
       body: {
@@ -226,9 +229,42 @@ async function ingest(device, { sent_at: sentAt, readings }) {
   return outcome.body;
 }
 
+async function heartbeat(device, { battery_percent: battery }) {
+  const now = new Date();
+  const d = await prisma.device.update({
+    where: { id: device.id },
+    data: { lastSeenAt: now, ...(battery !== undefined && { lastBatteryPercent: battery }) },
+    select: {
+      serialNumber: true,
+      name: true,
+      deviceType: true,
+      company: { select: { name: true } },
+      employee: {
+        select: {
+          fullName: true,
+          consentGivenAt: true,
+          site: { select: { name: true, isActive: true, boundary: true } },
+        },
+      },
+    },
+  });
+  const refused = refusal(d);
+  const site = d.employee && d.employee.site;
+  return {
+    server_time: now.toISOString(),
+    device: { serial_number: d.serialNumber, name: d.name, device_type: d.deviceType },
+    company_name: d.company.name,
+    wearer: d.employee ? { full_name: d.employee.fullName } : null,
+    site: site && site.isActive ? { name: site.name, boundary: site.boundary } : null,
+    ready: !refused,
+    reason: refused ? refused.code : null,
+  };
+}
+
 module.exports = {
   authenticate,
   ingest,
+  heartbeat,
   MAX_CLOCK_AHEAD_SECONDS,
   MAX_READING_AGE_HOURS,
   MIN_READING_INTERVAL_SECONDS,

@@ -15,6 +15,16 @@ import ReportsPage from "@/features/reports/ReportsPage";
 import TasksPage from "@/features/tasks/TasksPage";
 import HistoryPage from "@/features/history/HistoryPage";
 import DevicesPage from "@/features/devices/DevicesPage";
+import MarketplacePage from "@/features/marketplace/MarketplacePage";
+import PairPage from "@/features/pair/PairPage";
+import TrackerPage from "@/features/pair/TrackerPage";
+import AdminRoute from "@/features/admin/components/AdminRoute";
+import AdminSignin from "@/features/admin/AdminSignin";
+import OverviewPage from "@/features/admin/OverviewPage";
+import OrdersPage from "@/features/admin/OrdersPage";
+import ProductsPage from "@/features/admin/ProductsPage";
+import CompaniesPage from "@/features/admin/CompaniesPage";
+import AllDevicesPage from "@/features/admin/AllDevicesPage";
 
 export default function App() {
   return (
@@ -25,6 +35,9 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/invite/:token" element={<AcceptInvite />} />
+      <Route path="/pair" element={<PairPage />} />
+      <Route path="/pair/:code" element={<PairPage />} />
+      <Route path="/tracker" element={<TrackerPage />} />
 
       <Route path="/home" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
       <Route path="/sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
@@ -34,8 +47,16 @@ export default function App() {
       <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
       <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
       <Route path="/devices" element={<ProtectedRoute><DevicesPage /></ProtectedRoute>} />
+      <Route path="/marketplace" element={<ProtectedRoute><MarketplacePage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+
+      <Route path="/admin/signin" element={<AdminSignin />} />
+      <Route path="/admin" element={<AdminRoute><OverviewPage /></AdminRoute>} />
+      <Route path="/admin/orders" element={<AdminRoute><OrdersPage /></AdminRoute>} />
+      <Route path="/admin/products" element={<AdminRoute><ProductsPage /></AdminRoute>} />
+      <Route path="/admin/companies" element={<AdminRoute><CompaniesPage /></AdminRoute>} />
+      <Route path="/admin/devices" element={<AdminRoute><AllDevicesPage /></AdminRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
