@@ -87,6 +87,14 @@ Content-Type: application/json
 | `422` | The batch is malformed. Fix the firmware; do not retry. |
 | `429`, `5xx`, no answer | Keep the buffer and retry later. Retrying is always safe. |
 
+### Zones, alerts and offline
+
+The answer also carries `out_of_zone` (on site but outside every active zone of the site), `zone` (the zone the newest reading is in) and `events` (what this batch changed, in order: `site_enter`, `zone_enter`, `zone_exit`, `site_exit`, `device_online`). `location_status` keeps its three values.
+
+- Leaving a zone while on site opens a `zone_exit` alert. Entering any zone again, or leaving the site, resolves it.
+- A device that is silent for `DEVICE_OFFLINE_MINUTES` (default 3) while its wearer is on shift is marked offline: the live map shows the worker as **Offline** and a `device_offline` notification is sent. The next call from the device sends `device_online`.
+- Managers see every event in the bell (top right), as pop-up toasts, and on the **Alerts** page, where open alerts can be acknowledged.
+
 ### What the server does with them
 
 - The first reading inside the site's boundary **opens a shift** at that reading's device time. The first reading outside **closes it**. Hours are the shift's length.

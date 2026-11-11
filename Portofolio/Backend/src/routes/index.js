@@ -14,6 +14,8 @@ const ingestRoutes = require('./ingest.routes');
 const pairingRoutes = require('./pairing.routes');
 const marketplaceRoutes = require('./marketplace.routes');
 const platformRoutes = require('./platform.routes');
+const alertRoutes = require('./alert.routes');
+const notificationRoutes = require('./notification.routes');
 
 const router = Router();
 
@@ -32,5 +34,7 @@ router.use('/ingest', ingestRoutes);
 router.use('/pairing', pairingRoutes);
 router.use('/marketplace', marketplaceRoutes);
 router.use('/platform', platformRoutes);
+router.use('/alerts', alertRoutes);
+router.use('/notifications', notificationRoutes);
 
 module.exports = router;

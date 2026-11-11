@@ -19,11 +19,11 @@ const MAX_BUFFER = 120;
 type WakeLockSentinel = { release: () => Promise<void> };
 type WakeLockNavigator = Navigator & { wakeLock?: { request: (type: "screen") => Promise<WakeLockSentinel> } };
 
-const LOCATION_TEXT: Record<IngestResult["location_status"], string> = {
-  in_zone: "On site, inside a work zone",
-  on_site: "On site",
-  off_site: "Off site. Location is not recorded.",
-};
+function whereText(r: IngestResult) {
+  if (r.location_status === "off_site") return "Off site. Location is not recorded.";
+  if (r.zone) return `In ${r.zone.name}`;
+  return r.out_of_zone ? "Out of your work zone" : "On site";
+}
 
 export default function TrackerPage() {
   const [device, setDevice] = useState(() => loadStoredDevice());
@@ -36,7 +36,7 @@ export default function TrackerPage() {
   const [position, setPosition] = useState<GeolocationCoordinates | null>(null);
   const [battery, setBattery] = useState<number | null>(null);
   const [lastSent, setLastSent] = useState<string | null>(null);
-  const [location, setLocation] = useState<IngestResult["location_status"] | null>(null);
+  const [location, setLocation] = useState<IngestResult | null>(null);
   const [queued, setQueued] = useState(0);
   const [, setTick] = useState(0);
 
@@ -78,7 +78,7 @@ export default function TrackerPage() {
       const res = await sendReadings(device, batch);
       buffer.current = buffer.current.slice(batch.length);
       setLastSent(new Date().toISOString());
-      setLocation(res.location_status);
+      setLocation(res);
       setRefusal(null);
     } catch (err) {
       if (err instanceof ApiError && (err.status === 409 || err.status === 422)) buffer.current = buffer.current.slice(batch.length);
@@ -299,9 +299,9 @@ export default function TrackerPage() {
           <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
             <div>
               <dt className="text-xs text-muted-foreground">Where</dt>
-              <dd className="mt-0.5 flex items-start gap-1.5 font-medium">
+              <dd className={`mt-0.5 flex items-start gap-1.5 font-medium ${location?.out_of_zone ? "text-danger" : ""}`}>
                 <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                {location ? LOCATION_TEXT[location] : position ? "Locating..." : "—"}
+                {location ? whereText(location) : position ? "Locating..." : "—"}
               </dd>
             </div>
             <div>

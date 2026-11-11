@@ -1,7 +1,8 @@
+import { API_BASE } from "@/shared/lib/config";
 import { ApiError } from "@/shared/lib/api";
 import type { ClaimInput, ClaimResponse, Heartbeat, IngestResult, PairingInfo, Reading, StoredDevice } from "./types";
 
-const BASE = "/api/v1";
+const BASE = API_BASE;
 const STORE_KEY = "site14_device";
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {

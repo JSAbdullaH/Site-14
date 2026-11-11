@@ -1,6 +1,7 @@
-﻿import { clearToken, getToken, saveToken, saveUser } from "./auth";
+import { API_BASE } from "@/shared/lib/config";
+import { clearToken, getToken, saveToken, saveUser } from "./auth";
 
-const BASE = "/api/v1";
+const BASE = API_BASE;
 
 // Every failed response has the shape { error: { code, message, fields? } }.
 export class ApiError extends Error {

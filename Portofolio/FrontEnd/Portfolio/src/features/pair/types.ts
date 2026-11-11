@@ -67,6 +67,8 @@ export type IngestResult = {
   accepted: number;
   stored: number;
   location_status: "in_zone" | "on_site" | "off_site";
+  out_of_zone: boolean;
+  zone: { id: string; name: string } | null;
 };
 
 export type DetectedDevice = ClaimInput & {

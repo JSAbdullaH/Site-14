@@ -451,7 +451,32 @@ const platformDevicesQuery = platformListQuery.extend({
   company_id: z.string().uuid('Invalid company').optional(),
 });
 
+const EVENT_TYPES = ['site_enter', 'site_exit', 'zone_enter', 'zone_exit', 'device_offline', 'device_online'];
+
+const listAlertsQuery = z.object({
+  status: z.enum(['open', 'resolved', 'all']).default('open'),
+  type: z.enum(['zone_exit', 'hour_limit', 'midday_ban', 'heart_rate_high', 'heart_rate_low']).optional(),
+  site_id: z.string().uuid('Invalid site').optional(),
+  employee_id: z.string().uuid('Invalid employee').optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+const listNotificationsQuery = z.object({
+  after: z.string().datetime({ offset: true, message: 'Use an ISO 8601 time' }).transform((v) => new Date(v)).optional(),
+  site_id: z.string().uuid('Invalid site').optional(),
+  employee_id: z.string().uuid('Invalid employee').optional(),
+  type: z
+    .string()
+    .transform((v) => v.split(',').map((t) => t.trim()).filter(Boolean))
+    .pipe(z.array(z.enum(EVENT_TYPES)).min(1))
+    .optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+});
+
 module.exports = {
+  listAlertsQuery,
+  listNotificationsQuery,
   createPairingSchema,
   pairingCodeParams,
   claimPairingSchema,

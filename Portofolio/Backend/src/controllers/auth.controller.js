@@ -4,8 +4,8 @@ const authService = require('../services/auth.service');
 const REFRESH_COOKIE = 'site14_refresh';
 const cookieOptions = () => ({
   httpOnly: true,
-  secure: config.NODE_ENV === 'production',
-  sameSite: 'strict',
+  secure: config.NODE_ENV === 'production' || config.COOKIE_SAMESITE === 'none',
+  sameSite: config.COOKIE_SAMESITE,
   path: '/api/v1/auth',
 });
 

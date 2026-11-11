@@ -12,6 +12,19 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1),
   APP_URL: z.string().url().default('http://localhost:5173'),
+  CORS_ORIGINS: z
+    .string()
+    .optional()
+    .transform((v) => (v || '').split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean)),
+  TRUST_PROXY: z
+    .string()
+    .optional()
+    .transform((v) => {
+      if (!v || v === 'false') return false;
+      if (v === 'true') return true;
+      return /^\d+$/.test(v) ? Number(v) : v;
+    }),
+  COOKIE_SAMESITE: z.enum(['strict', 'lax', 'none']).default('strict'),
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
@@ -40,6 +53,7 @@ const schema = z.object({
   PLATFORM_JWT_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
   PAIRING_TTL_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
   VAT_PERCENT: z.coerce.number().min(0).max(100).default(15),
+  DEVICE_OFFLINE_MINUTES: z.coerce.number().int().min(1).max(120).default(3),
   CHROME_PATH: z.string().trim().optional().transform((v) => v || undefined),
 });
 

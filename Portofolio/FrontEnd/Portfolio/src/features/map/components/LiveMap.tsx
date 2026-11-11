@@ -14,7 +14,7 @@ import {
   type Polygon,
   type LiveWorker,
 } from "../api";
-import { STATUS } from "./status";
+import { EMPTY_COUNTS, STATUS } from "./status";
 import WorkerPanel from "./WorkerPanel";
 import ZonePanel from "./ZonePanel";
 
@@ -34,7 +34,7 @@ const escape = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
 
 function workerIcon(w: LiveWorker) {
-  const s = STATUS[w.location_status];
+  const s = STATUS[w.status];
   const name = escape(w.full_name.split(" ")[0]);
   return L.divIcon({
     className: "",
@@ -224,7 +224,7 @@ export default function LiveMap({ siteId, notice }: Props) {
     const seen = new Set<string>();
     for (const w of workers) {
       seen.add(w.employee_id);
-      const key = `${w.latitude},${w.longitude},${w.location_status},${w.full_name}`;
+      const key = `${w.latitude},${w.longitude},${w.status},${w.full_name}`;
       const entry = markers.get(w.employee_id);
       if (entry && entry.key === key) continue;
       if (entry) {
@@ -275,12 +275,16 @@ export default function LiveMap({ siteId, notice }: Props) {
   useEffect(() => {
     const outline = siteOutlineRef.current;
     if (!outline) return;
-    const off = workers.filter((w) => w.location_status === "off_site").length;
+    const off = workers.filter((w) => w.status === "off_site").length;
+    const out = workers.filter((w) => w.status === "out_of_zone").length;
+    const offline = workers.filter((w) => w.status === "offline").length;
     const on = workers.length - off;
     outline.setTooltipContent(
       `<div style="font:13px system-ui;line-height:1.5">` +
         `<div style="font-weight:700;margin-bottom:2px">${escape(siteName || "Site")}</div>` +
         `<div><span style="color:${STATUS.on_site.color};font-weight:700">${on}</span> on site</div>` +
+        `<div><span style="color:${STATUS.out_of_zone.color};font-weight:700">${out}</span> out of zone</div>` +
+        `<div><span style="color:${STATUS.offline.color};font-weight:700">${offline}</span> offline</div>` +
         `<div><span style="color:${STATUS.off_site.color};font-weight:700">${off}</span> off site</div>` +
         `</div>`,
     );
@@ -292,7 +296,7 @@ export default function LiveMap({ siteId, notice }: Props) {
     const points: LatLng[] = [
       ...(siteBoundary ? toPath(siteBoundary) : []),
       ...zones.flatMap((z) => toPath(z.boundary)),
-      ...workers.filter((w) => w.location_status !== "off_site").map((w) => ({ lat: w.latitude, lng: w.longitude })),
+      ...workers.filter((w) => w.status !== "off_site").map((w) => ({ lat: w.latitude, lng: w.longitude })),
     ];
     if (!points.length) return;
     map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 18 });
@@ -372,15 +376,12 @@ export default function LiveMap({ siteId, notice }: Props) {
 
   const worker = workers.find((w) => w.employee_id === selectedWorker) || null;
   const editingZone = mode.kind === "editing" ? zones.find((z) => z.id === mode.zoneId) || null : null;
-  const counts = workers.reduce(
-    (acc, w) => ({ ...acc, [w.location_status]: acc[w.location_status] + 1 }),
-    { in_zone: 0, on_site: 0, off_site: 0 },
-  );
+  const counts = workers.reduce((acc, w) => ({ ...acc, [w.status]: acc[w.status] + 1 }), EMPTY_COUNTS);
 
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="flex flex-wrap items-center gap-3">
-        {(Object.keys(STATUS) as (keyof typeof STATUS)[]).map((k) => (
+        {(Object.keys(STATUS) as (keyof typeof STATUS)[]).filter((k) => k !== "on_site" || counts.on_site > 0).map((k) => (
           <span
             key={k}
             className="inline-flex items-center gap-2 h-8 px-3 rounded-full text-[13px] font-bold"

@@ -1,7 +1,8 @@
+import { API_BASE } from "@/shared/lib/config";
 import { ApiError } from "./api";
 import { clearPlatformSession, getPlatformToken } from "./platformAuth";
 
-const BASE = "/api/v1/platform";
+const BASE = `${API_BASE}/platform`;
 
 export async function platformFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getPlatformToken();

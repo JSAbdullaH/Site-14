@@ -3,15 +3,12 @@ const AppError = require('../utils/AppError');
 const { sha256, safeEqual } = require('../utils/tokens');
 const { pointInPolygon, findZone } = require('../utils/geo');
 const { OFFLINE_GAP_MINUTES } = require('../utils/day');
+const presence = require('./presence.service');
 
 const SECOND = 1000;
 
-// A device clock may run this far ahead of the server. Further ahead, the reading
-// would block every real reading after it (readings must get newer), so it is refused.
 const MAX_CLOCK_AHEAD_SECONDS = 120;
-// Older readings would reopen days that are already reported.
 const MAX_READING_AGE_HOURS = 24;
-// Closer readings add nothing to the hours or the path, so they are dropped.
 const MIN_READING_INTERVAL_SECONDS = 3;
 
 const unauthenticated = () => new AppError(401, 'DEVICE_UNAUTHENTICATED', 'Unknown device or wrong key');
@@ -24,14 +21,12 @@ async function authenticate(serial, key) {
     where: { serialNumber: String(serial).trim().toUpperCase() },
     select: { id: true, companyId: true, serialNumber: true, apiKeyHash: true, isActive: true },
   });
-  // Hash even for an unknown serial, so the answer takes the same time either way.
   const matches = safeEqual(sha256(String(key)), device ? device.apiKeyHash : DUMMY_HASH);
   if (!device || !matches) throw unauthenticated();
   if (!device.isActive) throw new AppError(403, 'DEVICE_INACTIVE', 'This device is deactivated');
   return { id: device.id, companyId: device.companyId, serialNumber: device.serialNumber };
 }
 
-// Refusals that concern the whole batch. Nothing is stored, and the device must not retry.
 function refusal(d) {
   const e = d.employee;
   if (!e) return new AppError(409, 'DEVICE_UNASSIGNED', 'This device is not assigned to an employee. Readings are not stored.');
@@ -57,22 +52,49 @@ function check(reading, now, newest) {
   return null;
 }
 
+async function currentZone(tx, employeeId, session, zones) {
+  if (!session) return null;
+  const state = await tx.employeeCurrentState.findUnique({
+    where: { employeeId },
+    select: { sessionId: true, geofenceId: true },
+  });
+  if (!state || state.sessionId !== session.id || !state.geofenceId) return null;
+  return zones.find((z) => z.id === state.geofenceId) || null;
+}
+
 async function apply(tx, d, readings, now) {
   const employee = d.employee;
   const site = employee.site;
+  const zones = site.geofences;
+  const zoned = zones.length > 0;
   const result = { accepted: 0, duplicates: 0, throttled: 0, rejected: [], stored: 0 };
+  const events = [];
+
+  const event = (eventType, at, point, extra = {}) =>
+    events.push({
+      companyId: d.companyId,
+      employeeId: employee.id,
+      siteId: site.id,
+      deviceId: d.id,
+      eventType,
+      latitude: point ? point.latitude : null,
+      longitude: point ? point.longitude : null,
+      occurredAt: at,
+      ...extra,
+    });
 
   let session = await tx.workSession.findFirst({
     where: { employeeId: employee.id, endedAt: null },
     select: { id: true, siteId: true, startedAt: true },
   });
   let lastOnSite = session ? await lastReadingOf(tx, session) : null;
-  // The wearer was moved to another site during a shift: that shift ended at its last reading.
   if (session && session.siteId !== site.id) {
     await tx.workSession.update({ where: { id: session.id }, data: { endedAt: lastOnSite } });
+    await presence.resolveZoneAlert(tx, session.id, lastOnSite);
     session = null;
   }
 
+  let zone = await currentZone(tx, employee.id, session, zones);
   let newest = d.lastRecordedAt;
   let latest = null;
   const rows = [];
@@ -101,16 +123,31 @@ async function apply(tx, d, readings, now) {
         data: { companyId: d.companyId, employeeId: employee.id, siteId: site.id, deviceId: d.id, startedAt: r.recorded_at },
         select: { id: true, siteId: true, startedAt: true },
       });
+      zone = null;
+      event('site_enter', r.recorded_at, r);
     } else if (!onSite && session) {
-      // A device that went silent on site and is next heard outside: the time it was
-      // not heard is not counted as work. The shift ends at its last reading on site.
       const silent = r.recorded_at - lastOnSite > OFFLINE_GAP_MINUTES * 60 * SECOND;
-      await tx.workSession.update({ where: { id: session.id }, data: { endedAt: silent ? lastOnSite : r.recorded_at } });
+      const endedAt = silent ? lastOnSite : r.recorded_at;
+      await tx.workSession.update({ where: { id: session.id }, data: { endedAt } });
+      await presence.resolveZoneAlert(tx, session.id, endedAt);
+      event('site_exit', endedAt, r, zone ? { geofenceId: zone.id, zoneName: zone.name } : {});
       session = null;
+      zone = null;
     }
 
-    // Only positions on the site are kept. Outside it, the wearer is off duty.
     if (onSite) {
+      const next = zoned ? findZone(r.longitude, r.latitude, zones) : null;
+      if (zoned && (next ? next.id : null) !== (zone ? zone.id : null)) {
+        if (next) {
+          await presence.resolveZoneAlert(tx, session.id, r.recorded_at);
+          event('zone_enter', r.recorded_at, r, { geofenceId: next.id, zoneName: next.name, fromZoneName: zone ? zone.name : null });
+        } else {
+          const alertId = await presence.openZoneAlert(tx, session.id, zone, r);
+          event('zone_exit', r.recorded_at, r, { geofenceId: zone.id, zoneName: zone.name, alertId });
+        }
+        zone = next;
+      }
+
       rows.push({
         sessionId: session.id,
         latitude: r.latitude,
@@ -128,14 +165,12 @@ async function apply(tx, d, readings, now) {
   }
 
   if (rows.length) {
-    // The unique (session_id, recorded_at) index is the last guard against a reading stored twice.
     result.stored = (await tx.telemetryLog.createMany({ data: rows, skipDuplicates: true })).count;
   }
 
   if (latest) {
     const battery = latest.battery_percent ?? null;
     if (latest.onSite) {
-      const zone = findZone(latest.longitude, latest.latitude, site.geofences);
       const state = {
         sessionId: session.id,
         geofenceId: zone ? zone.id : null,
@@ -151,7 +186,6 @@ async function apply(tx, d, readings, now) {
         update: state,
       });
     } else {
-      // Off site: the map keeps the last position on site, and no heart rate is kept.
       await tx.employeeCurrentState.updateMany({
         where: { employeeId: employee.id },
         data: { sessionId: null, geofenceId: null, batteryPercent: battery, heartRateBpm: null, recordedAt: latest.recorded_at },
@@ -159,21 +193,27 @@ async function apply(tx, d, readings, now) {
     }
   }
 
-  const state = await tx.employeeCurrentState.findUnique({
-    where: { employeeId: employee.id },
-    select: { geofenceId: true },
-  });
-  let status = 'off_site';
-  if (session) status = state && state.geofenceId ? 'in_zone' : 'on_site';
+  if (events.length) await tx.presenceEvent.createMany({ data: events });
 
-  return { result, newest, session, status, battery: latest ? latest.battery_percent ?? undefined : undefined };
+  let status = 'off_site';
+  if (session) status = zone ? 'in_zone' : 'on_site';
+  const outOfZone = Boolean(session && zoned && !zone);
+
+  return {
+    result,
+    newest,
+    session,
+    status,
+    outOfZone,
+    zone,
+    events: events.map((e) => e.eventType),
+    battery: latest ? latest.battery_percent ?? undefined : undefined,
+  };
 }
 
 async function ingest(device, { sent_at: sentAt, readings }) {
   const outcome = await prisma.$transaction(async (tx) => {
-    // One call at a time per device, so a retry that races the original is seen as a duplicate.
     await tx.$queryRaw`SELECT id FROM devices WHERE id = ${device.id}::uuid FOR UPDATE`;
-    // Server clock, read once, so every reading in the batch has the same received_at.
     const now = new Date();
     const clockOffsetSeconds = sentAt ? Math.round((now - sentAt) / SECOND) : undefined;
 
@@ -192,7 +232,7 @@ async function ingest(device, { sent_at: sentAt, readings }) {
                 id: true,
                 isActive: true,
                 boundary: true,
-                geofences: { where: { isActive: true }, select: { id: true, boundary: true } },
+                geofences: { where: { isActive: true }, select: { id: true, name: true, boundary: true } },
               },
             },
           },
@@ -200,15 +240,15 @@ async function ingest(device, { sent_at: sentAt, readings }) {
       },
     });
 
-    // A refused device still counts as seen: the admin can tell it is switched on.
     const seen = { lastSeenAt: now, ...(clockOffsetSeconds !== undefined && { clockOffsetSeconds }) };
+    await presence.backOnline(tx, d.id, now);
     const refused = refusal(d);
     if (refused) {
       await tx.device.update({ where: { id: d.id }, data: seen });
       return { refused };
     }
 
-    const { result, newest, session, status, battery } = await apply(tx, d, readings, now);
+    const { result, newest, session, status, outOfZone, zone, events, battery } = await apply(tx, d, readings, now);
     await tx.device.update({
       where: { id: d.id },
       data: { ...seen, lastRecordedAt: newest, ...(battery !== undefined && { lastBatteryPercent: battery }) },
@@ -220,6 +260,9 @@ async function ingest(device, { sent_at: sentAt, readings }) {
         clock_offset_seconds: clockOffsetSeconds ?? null,
         ...result,
         location_status: status,
+        out_of_zone: outOfZone,
+        zone: zone ? { id: zone.id, name: zone.name } : null,
+        events,
         session: session ? { id: String(session.id), started_at: session.startedAt.toISOString() } : null,
       },
     };
@@ -231,22 +274,25 @@ async function ingest(device, { sent_at: sentAt, readings }) {
 
 async function heartbeat(device, { battery_percent: battery }) {
   const now = new Date();
-  const d = await prisma.device.update({
-    where: { id: device.id },
-    data: { lastSeenAt: now, ...(battery !== undefined && { lastBatteryPercent: battery }) },
-    select: {
-      serialNumber: true,
-      name: true,
-      deviceType: true,
-      company: { select: { name: true } },
-      employee: {
-        select: {
-          fullName: true,
-          consentGivenAt: true,
-          site: { select: { name: true, isActive: true, boundary: true } },
+  const d = await prisma.$transaction(async (tx) => {
+    await presence.backOnline(tx, device.id, now);
+    return tx.device.update({
+      where: { id: device.id },
+      data: { lastSeenAt: now, ...(battery !== undefined && { lastBatteryPercent: battery }) },
+      select: {
+        serialNumber: true,
+        name: true,
+        deviceType: true,
+        company: { select: { name: true } },
+        employee: {
+          select: {
+            fullName: true,
+            consentGivenAt: true,
+            site: { select: { name: true, isActive: true } },
+          },
         },
       },
-    },
+    });
   });
   const refused = refusal(d);
   const site = d.employee && d.employee.site;
@@ -255,7 +301,7 @@ async function heartbeat(device, { battery_percent: battery }) {
     device: { serial_number: d.serialNumber, name: d.name, device_type: d.deviceType },
     company_name: d.company.name,
     wearer: d.employee ? { full_name: d.employee.fullName } : null,
-    site: site && site.isActive ? { name: site.name, boundary: site.boundary } : null,
+    site: site && site.isActive ? { name: site.name } : null,
     ready: !refused,
     reason: refused ? refused.code : null,
   };

@@ -2,12 +2,15 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "@/shared/lib/api";
 import { clearToken, getUser } from "@/shared/lib/auth";
+import { useAlertFeed } from "@/shared/lib/useAlertFeed";
+import { Toaster } from "@/components/ui/sonner";
+import NotificationBell from "./NotificationBell";
 
-type NavItem = { to: string; label: string; soon?: boolean };
+type NavItem = { to: string; label: string; soon?: boolean; badge?: number };
 
-// "soon": the page is not built yet, so the item is shown but not linked.
 const MAIN: NavItem[] = [
   { to: "/home", label: "Map" },
+  { to: "/alerts", label: "Alerts" },
   { to: "/sites", label: "Sites & Zones" },
   { to: "/tasks", label: "Tasks" },
   { to: "/team", label: "Team" },
@@ -40,18 +43,16 @@ export default function AppShell({ title, subtitle, children }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
   const user = getUser();
+  const feed = useAlertFeed();
+  const openAlerts = feed.summary?.open ?? 0;
 
   async function logout() {
-    try {
-      await apiFetch("/auth/logout", { method: "POST", body: JSON.stringify({}) });
-    } catch {
-      // the session is ending either way
-    }
+    await apiFetch("/auth/logout", { method: "POST", body: JSON.stringify({}) }).catch(() => undefined);
     clearToken();
     navigate("/signin", { replace: true });
   }
 
-  function NavLink({ to, label, soon }: NavItem) {
+  function NavLink({ to, label, soon, badge }: NavItem) {
     if (soon) {
       return (
         <span
@@ -70,13 +71,23 @@ export default function AppShell({ title, subtitle, children }: Props) {
     return (
       <Link
         to={to}
-        className={`flex h-10 items-center rounded-md px-4 text-sm font-medium transition-colors ${
+        className={`flex h-10 items-center justify-between rounded-md px-4 text-sm font-medium transition-colors ${
           active
             ? "bg-primary text-primary-foreground"
             : "text-sidebar-foreground hover:bg-sidebar-accent"
         }`}
       >
         {label}
+        {badge ? (
+          <span
+            aria-label={`${badge} open`}
+            className={`min-w-5 rounded-full px-1.5 text-center text-[11px] font-semibold tabular-nums ${
+              active ? "bg-primary-foreground text-primary" : "bg-danger text-white"
+            }`}
+          >
+            {badge}
+          </span>
+        ) : null}
       </Link>
     );
   }
@@ -93,7 +104,7 @@ export default function AppShell({ title, subtitle, children }: Props) {
         </p>
         <nav className="mb-7 flex flex-col gap-1">
           {MAIN.map((item) => (
-            <NavLink key={item.to} {...item} />
+            <NavLink key={item.to} {...item} badge={item.to === "/alerts" ? openAlerts : undefined} />
           ))}
         </nav>
 
@@ -143,10 +154,12 @@ export default function AppShell({ title, subtitle, children }: Props) {
               </p>
             )}
           </div>
+          <NotificationBell events={feed.events} unread={feed.unread} capped={feed.capped} onOpen={feed.markRead} />
         </header>
 
         <main className="min-w-0 flex-1 p-8">{children}</main>
       </div>
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 }

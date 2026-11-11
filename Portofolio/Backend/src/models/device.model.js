@@ -1,7 +1,8 @@
 const crypto = require('node:crypto');
+const config = require('../config');
 const { sha256, randomToken } = require('../utils/tokens');
 
-const ONLINE_WINDOW_MS = 2 * 60_000;
+const ONLINE_WINDOW_MS = config.DEVICE_OFFLINE_MINUTES * 60_000;
 
 const SERIAL_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 

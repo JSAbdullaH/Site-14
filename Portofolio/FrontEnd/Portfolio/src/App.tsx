@@ -16,6 +16,7 @@ import TasksPage from "@/features/tasks/TasksPage";
 import HistoryPage from "@/features/history/HistoryPage";
 import DevicesPage from "@/features/devices/DevicesPage";
 import MarketplacePage from "@/features/marketplace/MarketplacePage";
+import AlertsPage from "@/features/alerts/AlertsPage";
 import PairPage from "@/features/pair/PairPage";
 import TrackerPage from "@/features/pair/TrackerPage";
 import AdminRoute from "@/features/admin/components/AdminRoute";
@@ -47,6 +48,7 @@ export default function App() {
       <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
       <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
       <Route path="/devices" element={<ProtectedRoute><DevicesPage /></ProtectedRoute>} />
+      <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
       <Route path="/marketplace" element={<ProtectedRoute><MarketplacePage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
