@@ -5,6 +5,7 @@ import {
   createZone,
   deactivateZone,
   getLive,
+  isPositioned,
   listZones,
   toPath,
   toPolygon,
@@ -13,8 +14,10 @@ import {
   type LatLng,
   type Polygon,
   type LiveWorker,
+  type PositionedWorker,
 } from "../api";
-import { EMPTY_COUNTS, STATUS } from "./status";
+import { EMPTY_COUNTS, MAP_STATUSES, STATUS } from "./status";
+import RosterSheet from "./RosterSheet";
 import WorkerPanel from "./WorkerPanel";
 import ZonePanel from "./ZonePanel";
 
@@ -33,7 +36,7 @@ type MarkerEntry = { marker: L.Marker; key: string };
 const escape = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
 
-function workerIcon(w: LiveWorker) {
+function workerIcon(w: PositionedWorker) {
   const s = STATUS[w.status];
   const name = escape(w.full_name.split(" ")[0]);
   return L.divIcon({
@@ -222,7 +225,7 @@ export default function LiveMap({ siteId, notice }: Props) {
     if (!ready || !map) return;
     const markers = markersRef.current;
     const seen = new Set<string>();
-    for (const w of workers) {
+    for (const w of workers.filter(isPositioned)) {
       seen.add(w.employee_id);
       const key = `${w.latitude},${w.longitude},${w.status},${w.full_name}`;
       const entry = markers.get(w.employee_id);
@@ -296,7 +299,7 @@ export default function LiveMap({ siteId, notice }: Props) {
     const points: LatLng[] = [
       ...(siteBoundary ? toPath(siteBoundary) : []),
       ...zones.flatMap((z) => toPath(z.boundary)),
-      ...workers.filter((w) => w.status !== "off_site").map((w) => ({ lat: w.latitude, lng: w.longitude })),
+      ...workers.filter(isPositioned).filter((w) => w.status !== "off_site").map((w) => ({ lat: w.latitude, lng: w.longitude })),
     ];
     if (!points.length) return;
     map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 18 });
@@ -375,13 +378,19 @@ export default function LiveMap({ siteId, notice }: Props) {
   }
 
   const worker = workers.find((w) => w.employee_id === selectedWorker) || null;
+
+  function focusWorker(w: LiveWorker) {
+    if (mode.kind !== "view") return;
+    setSelectedWorker(w.employee_id);
+    if (isPositioned(w)) mapRef.current?.flyTo([w.latitude, w.longitude], Math.max(mapRef.current.getZoom(), 18), { duration: 0.6 });
+  }
   const editingZone = mode.kind === "editing" ? zones.find((z) => z.id === mode.zoneId) || null : null;
   const counts = workers.reduce((acc, w) => ({ ...acc, [w.status]: acc[w.status] + 1 }), EMPTY_COUNTS);
 
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="flex flex-wrap items-center gap-3">
-        {(Object.keys(STATUS) as (keyof typeof STATUS)[]).filter((k) => k !== "on_site" || counts.on_site > 0).map((k) => (
+        {MAP_STATUSES.filter((k) => counts[k] > 0 || k === "in_zone" || k === "out_of_zone").map((k) => (
           <span
             key={k}
             className="inline-flex items-center gap-2 h-8 px-3 rounded-full text-[13px] font-bold"
@@ -424,7 +433,7 @@ export default function LiveMap({ siteId, notice }: Props) {
       {zoneError && mode.kind === "view" && <p className="text-[13px] text-signal font-semibold">{zoneError}</p>}
 
       <div
-        className={`relative flex-1 min-h-[480px] rounded-card overflow-hidden bg-sand ${
+        className={`relative flex-1 h-[calc(100svh-13rem)] min-h-[420px] md:h-auto md:min-h-[520px] rounded-card overflow-hidden bg-sand ${
           mode.kind === "drawing" ? "[&_.leaflet-container]:cursor-crosshair" : ""
         }`}
       >
@@ -435,6 +444,7 @@ export default function LiveMap({ siteId, notice }: Props) {
           </div>
         )}
         {worker && mode.kind === "view" && <WorkerPanel worker={worker} onClose={() => setSelectedWorker(null)} />}
+        {mode.kind === "view" && siteId && <RosterSheet workers={workers} selectedId={selectedWorker} onSelect={focusWorker} />}
         {(mode.kind === "naming" || editingZone) && (
           <ZonePanel
             zone={editingZone}
