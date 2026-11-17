@@ -1,12 +1,12 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import EmptyState from "@/shared/components/EmptyState";
 import { Button } from "@/components/ui/button";
+import MapTypeToggle from "@/shared/components/MapTypeToggle";
 import { toPath } from "@/features/map/api";
 import type { MovementHistory } from "../types";
 import { clock, formatMinutes } from "../format";
+import { MAP_STYLES, SATELLITE, dashed, fitPoints, hoverTip, htmlOverlay, useGoogleMaps, type HtmlOverlay } from "@/shared/lib/googleMaps";
 
 type Props = { history: MovementHistory };
 
@@ -25,18 +25,13 @@ const SPEEDS = [
   { label: "10x", ms: 60 },
 ];
 
-const markerIcon = L.divIcon({
-  className: "",
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-  html: '<div style="width:18px;height:18px;border-radius:50%;background:#DB4406;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.45)"></div>',
-});
-
 export default function PathReplay({ history }: Props) {
+  const { api, error } = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const trailRef = useRef<L.Polyline | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const trailRef = useRef<google.maps.Polyline | null>(null);
+  const markerRef = useRef<HtmlOverlay | null>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(SPEEDS[1]);
@@ -56,70 +51,99 @@ export default function PathReplay({ history }: Props) {
   }, [history]);
 
   useEffect(() => {
-    if (!containerRef.current || steps.length === 0) return;
-    const map = L.map(containerRef.current, { zoomControl: true });
-    const satellite = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      { maxZoom: 19, attribution: "Tiles &copy; Esri" },
-    );
-    const street = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    if (!api || !containerRef.current || steps.length === 0) return;
+    const map = new api.Map(containerRef.current, {
+      center: { lat: steps[0].lat, lng: steps[0].lng },
+      zoom: 17,
+      mapTypeId: SATELLITE,
+      styles: MAP_STYLES,
+      mapTypeControl: false,
+      streetViewControl: false,
+      clickableIcons: false,
+      tilt: 0,
     });
-    satellite.addTo(map);
-    L.control.layers({ Satellite: satellite, Street: street }).addTo(map);
+    const shapes: (google.maps.Polygon | google.maps.Polyline)[] = [];
+    const untips: (() => void)[] = [];
 
     for (const site of history.sites) {
-      L.polygon(toPath(site.boundary), { color: "#FACC15", weight: 3, fillOpacity: 0.06, interactive: false }).addTo(map);
+      shapes.push(
+        new api.Polygon({ map, paths: toPath(site.boundary), strokeColor: "#FACC15", strokeWeight: 3, fillColor: "#FACC15", fillOpacity: 0.06, clickable: false }),
+      );
     }
     for (const z of history.zones) {
       const color = z.is_outdoor ? "#DB4406" : "#4F7A5B";
-      L.polygon(toPath(z.boundary), { color, weight: 2, fillColor: color, fillOpacity: 0.12 })
-        .bindTooltip(z.name, { sticky: true })
-        .addTo(map);
+      const poly = new api.Polygon({ map, paths: toPath(z.boundary), strokeColor: color, strokeWeight: 2, fillColor: color, fillOpacity: 0.12 });
+      shapes.push(poly);
+      untips.push(hoverTip(api, map, poly, z.name));
     }
 
+    const line = (path: google.maps.LatLngLiteral[]) =>
+      shapes.push(new api.Polyline({ map, path, strokeColor: "#FFFFFF", strokeWeight: 2, strokeOpacity: 0.55, clickable: false, zIndex: 3 }));
     for (const s of history.sessions) {
-      let run: L.LatLngExpression[] = [];
+      let run: google.maps.LatLngLiteral[] = [];
       s.points.forEach((p, i) => {
-        run.push([p.latitude, p.longitude]);
+        run.push({ lat: p.latitude, lng: p.longitude });
         const gap = s.gaps.find((g) => g.from === p.recorded_at && !g.until_end);
         const next = s.points[i + 1];
         if (gap && next) {
-          L.polyline(run, { color: "#FFFFFF", weight: 2, opacity: 0.55, interactive: false }).addTo(map);
-          L.polyline([[p.latitude, p.longitude], [next.latitude, next.longitude]], {
-            color: "#F5B700",
-            weight: 2,
-            dashArray: "6 6",
-            interactive: false,
-          }).addTo(map);
+          line(run);
+          shapes.push(
+            new api.Polyline({
+              map,
+              path: [
+                { lat: p.latitude, lng: p.longitude },
+                { lat: next.latitude, lng: next.longitude },
+              ],
+              ...dashed("#F5B700"),
+              clickable: false,
+              zIndex: 3,
+            }),
+          );
           run = [];
         }
       });
-      if (run.length) L.polyline(run, { color: "#FFFFFF", weight: 2, opacity: 0.55, interactive: false }).addTo(map);
+      if (run.length) line(run);
     }
 
-    trailRef.current = L.polyline([], { color: "#DB4406", weight: 4, interactive: false }).addTo(map);
-    markerRef.current = L.marker([steps[0].lat, steps[0].lng], { icon: markerIcon, keyboard: false }).addTo(map);
-    map.fitBounds(L.latLngBounds(steps.map((s) => [s.lat, s.lng] as L.LatLngTuple)), { padding: [40, 40], maxZoom: 18 });
+    trailRef.current = new api.Polyline({ map, strokeColor: "#DB4406", strokeWeight: 4, clickable: false, zIndex: 4 });
+    const dot = document.createElement("div");
+    dot.className = "gm-dot";
+    markerRef.current = htmlOverlay(api, { el: dot, position: { lat: steps[0].lat, lng: steps[0].lng }, pane: "floatPane", map });
+    fitPoints(api, map, steps, 40, 18);
     mapRef.current = map;
+    setMap(map);
 
     return () => {
-      map.remove();
+      untips.forEach((fn) => fn());
+      shapes.forEach((s) => s.setMap(null));
+      trailRef.current?.setMap(null);
+      markerRef.current?.setMap(null);
+      api.event.clearInstanceListeners(map);
+      setMap(null);
       mapRef.current = null;
       trailRef.current = null;
       markerRef.current = null;
     };
-  }, [history, steps]);
+  }, [api, history, steps]);
 
   useEffect(() => {
     const step = steps[index];
     if (!step || !markerRef.current || !trailRef.current) return;
-    markerRef.current.setLatLng([step.lat, step.lng]);
-    trailRef.current.setLatLngs(steps.slice(0, index + 1).map((s) => [s.lat, s.lng] as L.LatLngTuple));
-    const map = mapRef.current;
-    if (map && !map.getBounds().pad(-0.1).contains([step.lat, step.lng])) map.panTo([step.lat, step.lng]);
-  }, [index, steps]);
+    const at = { lat: step.lat, lng: step.lng };
+    markerRef.current.setPosition(at);
+    trailRef.current.setPath(steps.slice(0, index + 1).map((s) => ({ lat: s.lat, lng: s.lng })));
+    // Follow the marker once it gets near the edge of the view.
+    const bounds = mapRef.current?.getBounds();
+    if (bounds) {
+      const ne = bounds.getNorthEast();
+      const sw = bounds.getSouthWest();
+      const padLat = (ne.lat() - sw.lat()) * 0.1;
+      const padLng = (ne.lng() - sw.lng()) * 0.1;
+      const inside =
+        at.lat < ne.lat() - padLat && at.lat > sw.lat() + padLat && at.lng < ne.lng() - padLng && at.lng > sw.lng() + padLng;
+      if (!inside) mapRef.current?.panTo(at);
+    }
+  }, [api, index, steps]);
 
   useEffect(() => {
     // Play button: moves index every speed.ms
@@ -150,7 +174,15 @@ export default function PathReplay({ history }: Props) {
 
   return (
     <div className="space-y-4">
-      <div ref={containerRef} className="h-[460px] w-full overflow-hidden rounded-lg border" />
+      <div className="relative h-[460px] w-full overflow-hidden rounded-lg border bg-muted">
+        <div ref={containerRef} className="absolute inset-0" />
+        <MapTypeToggle map={map} />
+        {(error || !api) && (
+          <p className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-muted-foreground">
+            {error ?? "Loading map…"}
+          </p>
+        )}
+      </div>
 
       <div className="rounded-lg border bg-background px-5 py-4">
         <div className="flex flex-wrap items-center gap-3">

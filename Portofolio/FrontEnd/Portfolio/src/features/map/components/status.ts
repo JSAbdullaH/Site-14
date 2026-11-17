@@ -15,7 +15,15 @@ export const STATUS: Record<LiveStatus, StatusStyle> = {
 
 export const STATUS_ORDER: LiveStatus[] = ["out_of_zone", "offline", "in_zone", "on_site", "off_site", "waiting", "no_consent", "no_device"];
 
-export const MAP_STATUSES: LiveStatus[] = ["in_zone", "out_of_zone", "offline", "on_site", "off_site"];
+// The chips in the map toolbar. Each one filters the map and the roster.
+export const FILTER_STATUSES: LiveStatus[] = ["out_of_zone", "offline", "in_zone", "on_site", "off_site"];
+
+// Roster sections, most urgent first.
+export const GROUPS: { id: string; label: string; statuses: LiveStatus[] }[] = [
+  { id: "attention", label: "Needs attention", statuses: ["out_of_zone", "offline"] },
+  { id: "working", label: "Working", statuses: ["in_zone", "on_site"] },
+  { id: "away", label: "Not on site", statuses: ["off_site", "waiting", "no_consent", "no_device"] },
+];
 
 export const EMPTY_COUNTS: Record<LiveStatus, number> = {
   in_zone: 0,
@@ -27,3 +35,9 @@ export const EMPTY_COUNTS: Record<LiveStatus, number> = {
   no_consent: 0,
   no_device: 0,
 };
+
+export const countByStatus = (items: { status: LiveStatus }[]) =>
+  items.reduce((acc, w) => {
+    acc[w.status] += 1;
+    return acc;
+  }, { ...EMPTY_COUNTS });

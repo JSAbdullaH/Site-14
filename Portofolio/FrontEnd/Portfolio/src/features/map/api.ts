@@ -14,6 +14,7 @@ export const getLive = (siteId: string) =>
   apiFetch<{
     site_id: string;
     site: { id: string; name: string; boundary: Polygon };
+    offline_after_minutes?: number;
     data: LiveWorker[];
   }>(`/locations/live?site_id=${siteId}`);
 

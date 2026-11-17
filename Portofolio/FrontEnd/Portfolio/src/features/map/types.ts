@@ -57,4 +57,10 @@ export type PositionedWorker = LiveWorker & { latitude: number; longitude: numbe
 export const isPositioned = (w: LiveWorker): w is PositionedWorker =>
   w.latitude !== null && w.longitude !== null && w.recorded_at !== null;
 
+// A worker is drawn on the live map only while their device is sending. Once the
+// device goes quiet the API reports them offline and the marker is taken off the map;
+// they stay in the roster with the time they were last heard.
+export const isOnMap = (w: LiveWorker): w is PositionedWorker =>
+  isPositioned(w) && w.status !== "offline" && Boolean(w.device?.online);
+
 export type SiteOption = { id: string; name: string };

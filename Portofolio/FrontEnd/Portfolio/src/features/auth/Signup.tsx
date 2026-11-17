@@ -6,6 +6,8 @@ import FormField from "@/shared/components/FormField";
 import { apiFetch } from "@/shared/lib/api";
 import { signupSchema, codeSchema } from "@/shared/lib/validation";
 import { useFormValidation } from "@/shared/lib/useFormValidation";
+import { isLoggedIn } from "@/shared/lib/auth";
+import SignedInNotice from "@/shared/components/SignedInNotice";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -20,6 +22,8 @@ export default function Signup() {
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // A session already in this browser must be ended first, or it would carry on past this form.
+  const [signedIn, setSignedIn] = useState(isLoggedIn);
   const details = useFormValidation(signupSchema);
   const codeForm = useFormValidation(codeSchema);
 
@@ -92,6 +96,10 @@ export default function Signup() {
   return (
     <main className="flex min-h-screen items-center justify-center px-5 py-12">
       <div className="w-full max-w-md rounded-xl border bg-card p-8">
+        {signedIn ? (
+          <SignedInNotice onSignedOut={() => setSignedIn(false)} />
+        ) : (
+        <>
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">
           {step === "details" ? "Create account" : "Confirm your email"}
         </h1>
@@ -173,6 +181,8 @@ export default function Signup() {
               {busy ? "Confirming..." : "Confirm email"}
             </Button>
           </form>
+        )}
+        </>
         )}
       </div>
     </main>

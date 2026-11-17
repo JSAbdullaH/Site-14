@@ -8,6 +8,8 @@ import { saveToken, saveUser } from "@/shared/lib/auth";
 import type { SessionUser } from "@/shared/lib/auth";
 import { signinSchema, codeSchema } from "@/shared/lib/validation";
 import { useFormValidation } from "@/shared/lib/useFormValidation";
+import { isLoggedIn } from "@/shared/lib/auth";
+import SignedInNotice from "@/shared/components/SignedInNotice";
 
 type Session = { access_token: string; user: SessionUser };
 
@@ -25,6 +27,8 @@ export default function Signin() {
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // A session already in this browser must be ended first, or it would carry on past this form.
+  const [signedIn, setSignedIn] = useState(isLoggedIn);
   const credentials = useFormValidation(signinSchema);
   const codeForm = useFormValidation(codeSchema);
 
@@ -75,6 +79,10 @@ export default function Signin() {
   return (
     <main className="flex min-h-screen items-center justify-center px-5">
       <div className="w-full max-w-md rounded-xl border bg-card p-8">
+        {signedIn ? (
+          <SignedInNotice onSignedOut={() => setSignedIn(false)} />
+        ) : (
+        <>
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">
           {step === "credentials" ? "Sign in" : "Check your email"}
         </h1>
@@ -168,6 +176,8 @@ export default function Signin() {
               Use a different email
             </button>
           </form>
+        )}
+        </>
         )}
       </div>
     </main>

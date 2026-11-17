@@ -1,7 +1,10 @@
 ﻿import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { Building2, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Geofence } from "../api";
+import { GLASS } from "./format";
 
 type Props = {
   zone: Geofence | null;
@@ -12,14 +15,39 @@ type Props = {
   onCancel: () => void;
 };
 
-export default function ZonePanel({
-  zone,
-  saving,
-  error,
-  onSave,
-  onDeactivate,
-  onCancel,
-}: Props) {
+function KindOption({
+  active,
+  onClick,
+  icon,
+  title,
+  hint,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  title: string;
+  hint: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      onClick={onClick}
+      className={`flex flex-1 flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+        active ? "border-primary bg-accent/60 ring-1 ring-primary" : "bg-background hover:bg-secondary"
+      }`}
+    >
+      <span className={`flex items-center gap-1.5 text-sm font-semibold ${active ? "text-accent-foreground" : ""}`}>
+        {icon}
+        {title}
+      </span>
+      <span className="text-[11px] leading-snug text-muted-foreground">{hint}</span>
+    </button>
+  );
+}
+
+export default function ZonePanel({ zone, saving, error, onSave, onDeactivate, onCancel }: Props) {
   const [name, setName] = useState(zone?.name ?? "");
   const [outdoor, setOutdoor] = useState(zone?.is_outdoor ?? false);
 
@@ -29,12 +57,12 @@ export default function ZonePanel({
   }, [zone]);
 
   return (
-    <aside className="absolute inset-x-3 bottom-3 z-10 rounded-xl border bg-card p-5 shadow-lg md:inset-x-auto md:bottom-auto md:right-4 md:top-4 md:w-72">
-      <p className="font-semibold">{zone ? "Edit zone" : "New zone"}</p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {zone
-          ? "Drag the corners on the map to reshape it."
-          : "Name the zone you drew."}
+    <aside
+      className={`pointer-events-auto absolute inset-x-2 bottom-7 z-40 rounded-2xl p-4 md:inset-x-auto md:bottom-auto md:right-3 md:top-16 md:w-80 ${GLASS} animate-in fade-in slide-in-from-bottom-3 duration-200 md:slide-in-from-bottom-0 md:slide-in-from-right-3`}
+    >
+      <p className="text-[15px] font-semibold">{zone ? "Edit zone" : "New zone"}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {zone ? "Drag the white corners on the map to reshape it." : "Give the zone you drew a name."}
       </p>
 
       <form
@@ -47,27 +75,37 @@ export default function ZonePanel({
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Zone name"
+          placeholder="Zone name, e.g. Block A scaffolding"
           maxLength={120}
           required
+          autoFocus
+          className="h-10"
         />
 
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={outdoor}
-            onChange={(e) => setOutdoor(e.target.checked)}
+        <div role="radiogroup" aria-label="Zone type" className="flex gap-2">
+          <KindOption
+            active={!outdoor}
+            onClick={() => setOutdoor(false)}
+            icon={<Building2 className="size-4" />}
+            title="Indoor"
+            hint="Shaded or covered work"
           />
-          Outdoor — midday ban applies
-        </label>
+          <KindOption
+            active={outdoor}
+            onClick={() => setOutdoor(true)}
+            icon={<Sun className="size-4" />}
+            title="Outdoor"
+            hint="Midday ban applies"
+          />
+        </div>
 
-        {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+        {error && <p className="rounded-lg bg-danger-bg px-3 py-2 text-xs font-medium text-danger">{error}</p>}
 
         <div className="flex gap-2">
-          <Button type="submit" disabled={saving || !name.trim()}>
-            {saving ? "Saving..." : "Save"}
+          <Button type="submit" size="lg" className="flex-1" disabled={saving || !name.trim()}>
+            {saving ? "Saving…" : zone ? "Save changes" : "Create zone"}
           </Button>
-          <Button type="button" variant="ghost" onClick={onCancel}>
+          <Button type="button" size="lg" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
         </div>
@@ -77,7 +115,7 @@ export default function ZonePanel({
             type="button"
             onClick={onDeactivate}
             disabled={saving}
-            className="text-left text-xs font-medium text-muted-foreground hover:text-destructive"
+            className="self-start text-xs font-medium text-muted-foreground transition-colors hover:text-destructive"
           >
             Deactivate zone
           </button>

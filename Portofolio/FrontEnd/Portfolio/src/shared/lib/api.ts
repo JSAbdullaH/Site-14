@@ -24,6 +24,9 @@ export class ApiError extends Error {
 
 const NO_REFRESH = ["/auth/login", "/auth/refresh", "/auth/register"];
 
+const PUBLIC_AUTH_PAGES = ["/signin", "/signup", "/forgot-password", "/reset-password", "/invite"];
+const onPublicAuthPage = () => PUBLIC_AUTH_PAGES.some((p) => window.location.pathname.startsWith(p));
+
 let refreshing: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -82,7 +85,7 @@ export async function apiFetch<T>(
       res = await send(path, options, fresh);
     } else {
       clearToken();
-      if (!window.location.pathname.startsWith("/signin")) {
+      if (!onPublicAuthPage()) {
         window.location.href = "/signin";
       }
       throw new ApiError(401, "Your session has ended. Sign in again.", "UNAUTHENTICATED");
@@ -115,7 +118,7 @@ export async function apiRaw(
     const fresh = await refreshOnce();
     if (!fresh) {
       clearToken();
-      if (!window.location.pathname.startsWith("/signin")) {
+      if (!onPublicAuthPage()) {
         window.location.href = "/signin";
       }
       throw new ApiError(401, "Your session has ended. Sign in again.", "UNAUTHENTICATED");

@@ -1,0 +1,31 @@
+/* Shared pieces drawn as HTML on top of Google Maps (see htmlOverlay in googleMaps.ts). */
+
+.gm-html {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.gm-tip {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fff;
+  color: #1a1a1a;
+  font: 600 12px/1.2 "Geist Variable", system-ui, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+.gm-html.gm-tip {
+  transform: translate(-50%, calc(-100% - 12px));
+}
+
+.gm-dot {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #db4406;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
