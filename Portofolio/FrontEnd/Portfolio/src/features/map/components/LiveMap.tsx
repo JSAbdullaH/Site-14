@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import "./map.css";
 import { toast } from "sonner";
-import { Check, Loader2, PenLine, Undo2, WifiOff, X } from "lucide-react";
+import { Check, Loader2, PanelLeftOpen, PenLine, Undo2, WifiOff, X } from "lucide-react";
 import {
   createZone,
   deactivateZone,
@@ -72,6 +72,16 @@ type Mode =
 type MarkerEntry = { overlay: HtmlOverlay; iconKey: string; pos: string; anim: number; leaving: number };
 type ZoneEntry = { poly: google.maps.Polygon; label: HtmlOverlay };
 type Draft = { fill: google.maps.Polygon; line: google.maps.Polyline; preview: google.maps.Polyline; dots: HtmlOverlay[] };
+
+// Whether the team sidebar is folded away, remembered per browser.
+const TEAM_HIDDEN_KEY = "s14_team_sidebar_hidden";
+function readTeamHidden() {
+  try {
+    return localStorage.getItem(TEAM_HIDDEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 // Below this width the details panels sit at the bottom of the map instead of on the right.
 const isPhone = () => !window.matchMedia("(min-width: 768px)").matches;
@@ -173,6 +183,16 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
   const [now, setNow] = useState(() => Date.now());
   const [base, setBase] = useState<BaseLayer>("satellite");
   const [fullscreen, setFullscreen] = useState(false);
+  const [teamHidden, setTeamHidden] = useState(readTeamHidden);
+
+  function toggleTeam(hidden: boolean) {
+    setTeamHidden(hidden);
+    try {
+      localStorage.setItem(TEAM_HIDDEN_KEY, hidden ? "1" : "0");
+    } catch {
+      // Private mode: the choice just lasts for this visit.
+    }
+  }
 
   const modeRef = useRef(mode);
   modeRef.current = mode;
@@ -817,6 +837,8 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
           onHover={hoverWorker}
           onClearFilter={() => setFilter(null)}
           hiddenOnSmall={!viewing || rightPanel}
+          collapsed={teamHidden}
+          onCollapse={() => toggleTeam(true)}
         />
       )}
 
@@ -873,6 +895,25 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
           </div>
         ) : (
           <div className="absolute inset-x-2 top-2 flex flex-wrap items-center gap-2 md:inset-x-3 md:top-3">
+            {/* Wide screens with the team sidebar folded away: one click brings it back. */}
+            {siteId && teamHidden && (
+              <button
+                type="button"
+                onClick={() => toggleTeam(false)}
+                aria-label="Show team list"
+                title="Show team list"
+                className={`pointer-events-auto hidden h-9 items-center gap-2 rounded-full pr-3 pl-2.5 text-[13px] font-semibold lg:inline-flex ${GLASS}`}
+              >
+                <PanelLeftOpen className="size-4.5" />
+                Team
+                <span className="rounded-full bg-ok-bg px-1.5 text-[12px] tabular-nums text-ok">{live.length}</span>
+                {counts.out_of_zone + counts.offline > 0 && (
+                  <span className="rounded-full bg-danger px-1.5 text-[12px] font-bold tabular-nums text-white">
+                    {counts.out_of_zone + counts.offline}
+                  </span>
+                )}
+              </button>
+            )}
             {siteSwitcher && <div className="pointer-events-auto">{siteSwitcher}</div>}
             <LivePill loading={loading} pollError={pollError} stale={stale} lastSync={lastSync} now={now} />
             {viewing && (

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
-import { BatteryLow, ChevronDown, ChevronUp, Search, Users, WifiOff, X } from "lucide-react";
+import { BatteryLow, ChevronDown, ChevronUp, PanelLeftClose, Search, Users, WifiOff, X } from "lucide-react";
 import type { LiveStatus, LiveWorker } from "../api";
 import { GROUPS, STATUS, STATUS_ORDER, countByStatus } from "./status";
 import { GLASS, ago, initials } from "./format";
@@ -16,6 +16,9 @@ type Props = {
   onClearFilter: () => void;
   /** Phones and tablets: the sheet steps aside while a worker or zone panel is open. */
   hiddenOnSmall?: boolean;
+  /** Wide screens: the sidebar is folded away, giving the map the full width. */
+  collapsed?: boolean;
+  onCollapse?: () => void;
 };
 
 const DRAG_THRESHOLD = 28;
@@ -53,6 +56,8 @@ export default function RosterSheet({
   onHover,
   onClearFilter,
   hiddenOnSmall = false,
+  collapsed = false,
+  onCollapse,
 }: Props) {
   const wide = useSyncExternalStore(subscribe, isWide, () => false);
   const [sheetOpen, setOpen] = useState(false);
@@ -108,8 +113,13 @@ export default function RosterSheet({
       className={`pointer-events-auto flex flex-col overflow-hidden
         absolute inset-x-2 bottom-7 z-[600] rounded-2xl transition-[max-height] duration-300 ease-out ${GLASS} ${open ? "max-h-[70%]" : "max-h-[78px]"}
         ${hiddenOnSmall ? "max-lg:hidden" : ""}
-        lg:static lg:z-auto lg:h-full lg:max-h-none lg:w-[300px] lg:shrink-0 lg:rounded-none lg:border-0 lg:border-r lg:border-black/10 lg:bg-card lg:supports-[backdrop-filter]:bg-card lg:shadow-none lg:ring-0 lg:backdrop-blur-none xl:w-[340px]`}
+        lg:static lg:z-auto lg:h-full lg:max-h-none lg:shrink-0 lg:rounded-none lg:border-0 lg:border-black/10 lg:bg-card lg:supports-[backdrop-filter]:bg-card lg:shadow-none lg:ring-0 lg:backdrop-blur-none lg:transition-[width] lg:duration-200
+        ${collapsed ? "lg:w-0" : "lg:w-[300px] lg:border-r xl:w-[340px]"}`}
+      // Folded away: nothing inside can be reached with Tab or a screen reader.
+      inert={wide && collapsed}
     >
+      {/* Fixed width inside, so the list slides out instead of squeezing while the sidebar folds. */}
+      <div className="flex min-h-0 flex-1 flex-col lg:w-[300px] xl:w-[340px]">
       {/* The header pulls the sheet up and down on small screens; on wide screens it is just a title. */}
       <div
         {...(wide
@@ -159,6 +169,17 @@ export default function RosterSheet({
             </p>
           </div>
           {!wide && (open ? <ChevronDown className="size-5 shrink-0 text-muted-foreground" /> : <ChevronUp className="size-5 shrink-0 text-muted-foreground" />)}
+          {wide && onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label="Hide team list"
+              title="Hide team list"
+              className="-mr-1 inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <PanelLeftClose className="size-4.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -262,6 +283,7 @@ export default function RosterSheet({
           </div>
         </div>
       )}
+      </div>
     </section>
   );
 }
