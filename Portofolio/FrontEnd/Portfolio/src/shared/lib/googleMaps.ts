@@ -212,3 +212,55 @@ export function dashed(color: string, opacity = 1, gap = 10): Partial<google.map
     icons: [{ icon: { path: "M 0,-1 0,1", strokeColor: color, strokeOpacity: opacity, scale: 2 }, offset: "0", repeat: `${gap}px` }],
   };
 }
+
+// ---------------------------------------------------------------- place search
+
+export type PlaceHit = { id: string; title: string; subtitle: string; prediction: google.maps.places.PlacePrediction };
+
+// Address search needs the Places API (New) enabled for the key. When it is not, the first
+// request fails and place search switches itself off instead of failing on every keystroke.
+let placesOff = false;
+let placesLib: Promise<google.maps.PlacesLibrary> | null = null;
+
+export const placesAvailable = () => !placesOff;
+
+export function newPlaceSession() {
+  return placesOff || typeof google === "undefined" || !google.maps.places?.AutocompleteSessionToken
+    ? null
+    : new google.maps.places.AutocompleteSessionToken();
+}
+
+export async function suggestPlaces(
+  input: string,
+  near: google.maps.LatLng | null,
+  session: google.maps.places.AutocompleteSessionToken | null,
+): Promise<PlaceHit[] | null> {
+  if (placesOff) return null;
+  try {
+    placesLib ??= google.maps.importLibrary("places") as Promise<google.maps.PlacesLibrary>;
+    const { AutocompleteSuggestion } = await placesLib;
+    const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+      input,
+      ...(near ? { locationBias: { center: near, radius: 30_000 } } : {}),
+      ...(session ? { sessionToken: session } : {}),
+    });
+    return suggestions.flatMap((s) => {
+      const p = s.placePrediction;
+      if (!p) return [];
+      return [{ id: p.placeId, title: p.mainText?.text ?? p.text.text, subtitle: p.secondaryText?.text ?? "", prediction: p }];
+    });
+  } catch {
+    placesOff = true;
+    return null;
+  }
+}
+
+export async function placeLocation(hit: PlaceHit): Promise<LatLngLiteral | null> {
+  try {
+    const place = hit.prediction.toPlace();
+    await place.fetchFields({ fields: ["location"] });
+    return place.location ? place.location.toJSON() : null;
+  } catch {
+    return null;
+  }
+}

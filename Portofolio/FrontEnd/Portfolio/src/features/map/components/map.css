@@ -144,6 +144,44 @@
   height: 16px;
 }
 
+/* A place found with the search: a pin with its name, until the search is cleared. */
+.gm-html.s14-place-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, calc(-100% + 8px));
+  pointer-events: none;
+  animation: s14-drop 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+}
+
+.s14-place-label {
+  order: -1;
+  margin-bottom: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #1a1a1a;
+  color: #fff;
+  font: 600 12px/1.2 "Geist Variable", system-ui, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.s14-place-dot {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.25), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes s14-drop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 12px));
+  }
+}
+
 @keyframes s14-pulse {
   0% {
     opacity: 0.55;
@@ -182,6 +220,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .s14-worker,
+  .gm-html.s14-place-pin,
   .s14-pulse,
   .s14-live-dot {
     animation: none;

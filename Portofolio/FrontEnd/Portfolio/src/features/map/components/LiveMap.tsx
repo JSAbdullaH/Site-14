@@ -26,6 +26,7 @@ import RosterSheet from "./RosterSheet";
 import WorkerPanel from "./WorkerPanel";
 import ZoneCard from "./ZoneCard";
 import ZonePanel from "./ZonePanel";
+import MapSearch from "./MapSearch";
 import {
   MAP_STYLES,
   SATELLITE,
@@ -34,11 +35,13 @@ import {
   fitPoints,
   hoverTip,
   htmlOverlay,
+  placeLocation,
   metres,
   pixelDistance,
   shiftDown,
   useGoogleMaps,
   type HtmlOverlay,
+  type PlaceHit,
 } from "@/shared/lib/googleMaps";
 
 const POLL_MS = 7000;
@@ -143,6 +146,7 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
     null,
   );
   const fittedRef = useRef<string | null>(null);
+  const placePinRef = useRef<HtmlOverlay | null>(null);
 
   // The zone being drawn: corners placed so far and the shapes that show them.
   const draftPointsRef = useRef<LatLng[]>([]);
@@ -228,6 +232,8 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
       siteShapesRef.current?.shapes.forEach((s) => s.setMap(null));
       siteShapesRef.current?.untip();
       siteShapesRef.current = null;
+      placePinRef.current?.setMap(null);
+      placePinRef.current = null;
       api.event.clearInstanceListeners(map);
       mapRef.current = null;
       markers.clear();
@@ -735,6 +741,43 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
     }
   }
 
+  // ---------------------------------------------------------------- search
+
+  const searchNear = useCallback(() => mapRef.current?.getCenter() ?? null, []);
+
+  function clearPlacePin() {
+    placePinRef.current?.setMap(null);
+    placePinRef.current = null;
+  }
+
+  function focusZone(z: Geofence) {
+    const map = mapRef.current;
+    if (!api || !map || mode.kind !== "view") return;
+    clearPlacePin();
+    setSelectedWorker(null);
+    setSelectedZone(z.id);
+    fitPoints(api, map, toPath(z.boundary), 96, 19);
+  }
+
+  async function focusPlace(hit: PlaceHit) {
+    const map = mapRef.current;
+    if (!api || !map) return;
+    const at = await placeLocation(hit);
+    if (!at) {
+      toast.error(`Could not find “${hit.title}” on the map`);
+      return;
+    }
+    clearPlacePin();
+    setSelectedWorker(null);
+    setSelectedZone(null);
+    const el = document.createElement("div");
+    el.className = "s14-place-pin";
+    el.innerHTML = `<span class="s14-place-dot"></span><span class="s14-place-label">${escapeHtml(hit.title)}</span>`;
+    placePinRef.current = htmlOverlay(api, { el, position: at, pane: "floatPane", map });
+    if ((map.getZoom() ?? 0) < 17) map.setZoom(17);
+    map.panTo(at);
+  }
+
   function zoomBy(step: number) {
     const map = mapRef.current;
     if (map) map.setZoom((map.getZoom() ?? 16) + step);
@@ -814,6 +857,22 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
           <div className="absolute inset-x-2 top-2 flex flex-wrap items-center gap-2 md:inset-x-3 md:top-3">
             {siteSwitcher && <div className="pointer-events-auto">{siteSwitcher}</div>}
             <LivePill loading={loading} pollError={pollError} stale={stale} lastSync={lastSync} now={now} />
+            {viewing && (
+              <MapSearch
+                workers={workers}
+                onMapIds={onMapIds}
+                zones={zones}
+                near={searchNear}
+                onWorker={(w) => {
+                  clearPlacePin();
+                  setFilter(null);
+                  focusWorker(w);
+                }}
+                onZone={focusZone}
+                onPlace={focusPlace}
+                onClear={clearPlacePin}
+              />
+            )}
 
             <div className="order-last w-full md:order-none md:w-auto md:min-w-0 md:flex-1">
               <div className="pointer-events-auto -mr-2 flex max-w-full gap-1.5 overflow-x-auto pr-6 [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)] [scrollbar-width:none] md:w-fit">
@@ -976,9 +1035,10 @@ function LivePill({
     dot = "bg-warn";
     text = "Reconnecting…";
   } else {
+    // Phones show just the green dot when all is well, so the top bar fits on one row.
     text = (
       <>
-        Live
+        <span className="sr-only sm:not-sr-only">Live</span>
         <span className="hidden font-normal text-muted-foreground sm:inline">
           · {lastSync ? (ago(new Date(lastSync).toISOString(), now) ?? "now") : "now"}
         </span>
@@ -989,7 +1049,7 @@ function LivePill({
     <div
       role="status"
       title={pollError ? `Live positions: ${pollError}` : "Positions refresh every few seconds"}
-      className={`pointer-events-auto inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-[13px] font-semibold ${GLASS}`}
+      className={`pointer-events-auto inline-flex h-9 min-w-9 items-center justify-center gap-2 rounded-full px-3 text-[13px] font-semibold sm:px-3.5 ${GLASS}`}
     >
       {!loading && <span className={`size-2 rounded-full ${dot} ${!pollError && !stale ? "s14-live-dot" : ""}`} />}
       {text}

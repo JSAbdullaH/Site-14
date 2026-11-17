@@ -232,6 +232,36 @@ test('a worker with recorded activity is deactivated, and the activity stays', a
     expect(counts.rows[0]).toEqual({ employees: 1, sessions: 1, readings: 1 });
     expect((await A.get(e.id).expect(200)).body.status).toBe('inactive');
   });
+
+  test('a shift still open is closed at the last reading, and its zone alert resolved', async () => {
+    const siteId = await siteOf(admin.companyId);
+    const { body: e } = await A.create({ ...ahmed, site_id: siteId, consent: true }).expect(201);
+    const { rows: [device] } = await pool.query(
+      "INSERT INTO devices (company_id, employee_id, serial_number, api_key_hash) VALUES ($1, $2, 'GPS-1', 'x') RETURNING id",
+      [admin.companyId, e.id],
+    );
+    const { rows: [session] } = await pool.query(
+      "INSERT INTO work_sessions (company_id, employee_id, site_id, device_id, started_at) VALUES ($1, $2, $3, $4, now() - interval '3 hours') RETURNING id",
+      [admin.companyId, e.id, siteId, device.id],
+    );
+    const { rows: [reading] } = await pool.query(
+      "INSERT INTO telemetry_logs (session_id, latitude, longitude, recorded_at) VALUES ($1, 24.7, 46.6, now() - interval '20 minutes') RETURNING recorded_at",
+      [session.id],
+    );
+    await pool.query(
+      "INSERT INTO alerts (session_id, alert_type, latitude, longitude, triggered_at) VALUES ($1, 'zone_exit', 24.7, 46.6, now() - interval '30 minutes')",
+      [session.id],
+    );
+
+    await A.remove(e.id).expect(204);
+    const { rows: [after] } = await pool.query(
+      "SELECT s.ended_at, a.resolved_at FROM work_sessions s JOIN alerts a ON a.session_id = s.id WHERE s.id = $1",
+      [session.id],
+    );
+    expect(after.ended_at).toEqual(reading.recorded_at);
+    expect(after.resolved_at).toEqual(reading.recorded_at);
+    await A.remove(e.id).expect(204);
+  });
 });
 
 describe('roles', () => {

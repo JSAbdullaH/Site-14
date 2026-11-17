@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, QrCode, ShoppingBag } from "lucide-react";
+import { toast } from "sonner";
 import AppShell from "@/shared/components/AppShell";
+import ConfirmDialog from "@/shared/components/ConfirmDialog";
 import EmptyState from "@/shared/components/EmptyState";
 import DeviceIcon from "@/shared/components/DeviceIcon";
 import { isAdmin } from "@/shared/lib/auth";
@@ -40,6 +42,7 @@ export default function DevicesPage() {
   const [assigning, setAssigning] = useState<Device | null>(null);
   const [renaming, setRenaming] = useState<Device | null>(null);
   const [keys, setKeys] = useState<DeviceWithKey[]>([]);
+  const [pending, setPending] = useState<Pending | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -77,25 +80,36 @@ export default function DevicesPage() {
     }
   }
 
-  const unassign = (d: Device) => {
-    if (!window.confirm(`Take ${displayName(d)} back from ${d.employee?.full_name}?`)) return;
-    run(() => updateDevice(d.id, { employee_id: null }));
-  };
+  const unassign = (d: Device) => setPending({ kind: "unassign", device: d });
+  const newKey = (d: Device) => setPending({ kind: "newKey", device: d });
+  const remove = (d: Device) => setPending({ kind: "remove", device: d });
+  // Reactivating is harmless, so only deactivating asks first.
+  const toggleActive = (d: Device) =>
+    d.is_active ? setPending({ kind: "deactivate", device: d }) : run(() => updateDevice(d.id, { is_active: true }));
 
-  const toggleActive = (d: Device) => {
-    if (d.is_active && !window.confirm(`Deactivate ${displayName(d)}? It stops being accepted at once, and is taken back from its wearer.`)) return;
-    run(() => updateDevice(d.id, { is_active: !d.is_active }));
-  };
-
-  const newKey = (d: Device) => {
-    if (!window.confirm(`Make a new key for ${displayName(d)}? The current key stops working at once.`)) return;
-    run(async () => setKeys([await rotateDeviceKey(d.id)]));
-  };
-
-  const remove = (d: Device) => {
-    if (!window.confirm(`Remove ${displayName(d)} from your company? It must connect again to come back.`)) return;
-    run(() => removeDevice(d.id));
-  };
+  // Errors thrown here are shown inside the dialog, which stays open.
+  const confirm = pending ? confirmation(pending, {
+    unassign: async (d) => {
+      await updateDevice(d.id, { employee_id: null });
+      toast.success(`${displayName(d)} taken back`);
+      await load();
+    },
+    deactivate: async (d) => {
+      await updateDevice(d.id, { is_active: false });
+      toast.success(`${displayName(d)} deactivated`);
+      await load();
+    },
+    newKey: async (d) => {
+      const withKey = await rotateDeviceKey(d.id);
+      setKeys([withKey]);
+      await load();
+    },
+    remove: async (d) => {
+      await removeDevice(d.id);
+      toast.success(`${displayName(d)} removed`);
+      await load();
+    },
+  }) : null;
 
   const changeFilter = (next: DeviceFilter) => {
     setLoading(true);
@@ -248,6 +262,64 @@ export default function DevicesPage() {
       />
 
       <DeviceKeysDialog devices={keys} onClose={() => setKeys([])} />
+
+      {confirm && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setPending(null)}
+          {...confirm}
+        />
+      )}
     </AppShell>
   );
+}
+
+type Pending = { kind: "unassign" | "deactivate" | "newKey" | "remove"; device: Device };
+type Actions = Record<Pending["kind"], (d: Device) => Promise<void>>;
+
+function confirmation({ kind, device: d }: Pending, actions: Actions) {
+  const name = displayName(d);
+  const onConfirm = () => actions[kind](d);
+  switch (kind) {
+    case "unassign":
+      return {
+        title: `Take ${name} back?`,
+        description: `${d.employee?.full_name ?? "The wearer"} stops being tracked until they get a device again.`,
+        details: ["The device stays in your inventory, ready to give to someone else."],
+        confirmLabel: "Take back",
+        tone: "default" as const,
+        onConfirm,
+      };
+    case "deactivate":
+      return {
+        title: `Deactivate ${name}?`,
+        description: "It stops being accepted at once.",
+        details: [
+          ...(d.employee ? [`It is taken back from ${d.employee.full_name}.`] : []),
+          "Its recorded shifts stay in History and on reports.",
+          "You can reactivate it later from the Deactivated list.",
+        ],
+        confirmLabel: "Deactivate",
+        onConfirm,
+      };
+    case "newKey":
+      return {
+        title: `Make a new key for ${name}?`,
+        description: "The current key stops working at once. The device must be set up again with the new one.",
+        confirmLabel: "Make new key",
+        tone: "default" as const,
+        onConfirm,
+      };
+    case "remove":
+      return {
+        title: `Remove ${name}?`,
+        description: "It is deleted from your company. To use it again, it must be connected or registered again.",
+        details: [
+          ...(d.employee ? [`It is taken back from ${d.employee.full_name}.`] : []),
+          "It has no recorded shifts, so no history is lost.",
+        ],
+        confirmLabel: "Remove device",
+        onConfirm,
+      };
+  }
 }

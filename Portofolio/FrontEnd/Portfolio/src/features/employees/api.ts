@@ -10,7 +10,7 @@ import type {
 
 export function listEmployees(params?: {
   siteId?: string;
-  status?: EmployeeStatus;
+  status?: EmployeeStatus | "all";
   search?: string;
   limit?: number;
 }) {

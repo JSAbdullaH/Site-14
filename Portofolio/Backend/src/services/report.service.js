@@ -14,6 +14,7 @@ const dayStart = (isoDate) => new Date(`${isoDate}T00:00:00${TZ}`);
 const dayEnd = (isoDate) => new Date(`${isoDate}T24:00:00${TZ}`);
 const minutesBetween = (a, b) => Math.max(0, Math.round((b - a) / 60000));
 const hhmmOf = (t) => new Date(t).toISOString().slice(11, 16);
+const riyadhDay = (t) => new Date(t.getTime() + 3 * 3600_000).toISOString().slice(0, 10);
 
 const longDate = (isoDate) =>
   new Date(`${isoDate}T12:00:00${TZ}`).toLocaleDateString('en-GB', {
@@ -38,12 +39,7 @@ async function buildDailyRecords(auth, siteId, from, to) {
   });
   if (!site) throw new AppError(404, 'NOT_FOUND', 'Site not found');
 
-  const [employees, sessions, doneTasks] = await Promise.all([
-    auth.db.employee.findMany({
-      where: { siteId, status: 'active' },
-      select: { id: true, fullName: true, employeeNumber: true, jobCategory: true, consentGivenAt: true },
-      orderBy: { fullName: 'asc' },
-    }),
+  const [sessions, doneTasks] = await Promise.all([
     auth.db.workSession.findMany({
       where: {
         siteId,
@@ -54,7 +50,10 @@ async function buildDailyRecords(auth, siteId, from, to) {
         employeeId: true,
         startedAt: true,
         endedAt: true,
-        alerts: { select: { alertType: true, triggeredAt: true, geofence: { select: { name: true } } } },
+        alerts: {
+          where: { triggeredAt: { gte: start, lt: end } },
+          select: { alertType: true, triggeredAt: true, geofence: { select: { name: true } } },
+        },
       },
       orderBy: { startedAt: 'asc' },
     }),
@@ -64,6 +63,15 @@ async function buildDailyRecords(auth, siteId, from, to) {
       _count: { _all: true },
     }),
   ]);
+
+  // The register lists today's crew, plus anyone who worked here during the period and has
+  // since moved to another site or been removed: their hours on this site stay on record.
+  const workedHere = [...new Set(sessions.map((s) => s.employeeId))];
+  const employees = await auth.db.employee.findMany({
+    where: { OR: [{ siteId, status: 'active' }, { id: { in: workedHere } }] },
+    select: { id: true, fullName: true, employeeNumber: true, jobCategory: true, consentGivenAt: true },
+    orderBy: { fullName: 'asc' },
+  });
 
   const byEmployee = new Map(employees.map((e) => [e.id, []]));
   for (const s of sessions) byEmployee.get(s.employeeId)?.push(s);
@@ -93,33 +101,39 @@ async function buildDailyRecords(auth, siteId, from, to) {
       }
     }
 
-    if (!e.consentGivenAt) {
-      return { ...base, state: 'no_consent', first_seen: null, last_seen: null, total_minutes: 0, has_gap: false };
-    }
-
+    // Recorded shifts count even if consent was withdrawn afterwards; without any, a worker
+    // who never consented could not have been tracked, which is not the same as absent.
     if (own.length === 0) {
-      return { ...base, state: 'absent', first_seen: null, last_seen: null, total_minutes: 0, has_gap: false };
+      const state = e.consentGivenAt ? 'absent' : 'no_consent';
+      return { ...base, state, first_seen: null, last_seen: null, total_minutes: 0, has_gap: false };
     }
 
     let minutes = 0;
     let hasGap = false;
     let previousEnd = null;
     let firstSeen = null;
-    let lastSeen = null;
+    let stillOn = false;
 
     for (const s of own) {
-      const a = s.startedAt < start ? start : s.startedAt;
       const rawEnd = s.endedAt ?? now;
       const b = rawEnd > end ? end : rawEnd;
+      let a = s.startedAt < start ? start : s.startedAt;
+      // Overlapping sessions (a device swap mid-shift) count their shared time once.
+      if (previousEnd && a < previousEnd) a = previousEnd;
 
-      if (s.endedAt === null) provisional = true;
-      if (firstSeen === null) firstSeen = a;
-      lastSeen = s.endedAt === null ? null : b;
+      if (s.endedAt === null) {
+        provisional = true;
+        stillOn = true;
+      }
+      if (firstSeen === null) firstSeen = s.startedAt < start ? start : s.startedAt;
 
-      minutes += minutesBetween(a, b);
-      if (previousEnd && minutesBetween(previousEnd, a) > GAP_MINUTES) hasGap = true;
-      previousEnd = b;
+      if (b > a) minutes += minutesBetween(a, b);
+      // A break inside one working day is a gap; the night between two days is not.
+      if (previousEnd && riyadhDay(previousEnd) === riyadhDay(a) && minutesBetween(previousEnd, a) > GAP_MINUTES) hasGap = true;
+      if (!previousEnd || b > previousEnd) previousEnd = b;
     }
+    // Still on site: there is no "last seen" yet.
+    const lastSeen = stillOn ? null : previousEnd;
 
     return { ...base, state: 'present', first_seen: firstSeen, last_seen: lastSeen, total_minutes: minutes, has_gap: hasGap };
   });

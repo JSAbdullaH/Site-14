@@ -163,14 +163,15 @@ export default function DeviceTable({
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          className={d.is_active ? "text-destructive" : undefined}
+                          variant={d.is_active ? "destructive" : "default"}
                           onClick={() => onToggleActive(d)}
                         >
                           {d.is_active ? "Deactivate" : "Reactivate"}
                         </DropdownMenuItem>
-                        {d.source !== "marketplace" && (
-                          <DropdownMenuItem className="text-destructive" onClick={() => onRemove(d)}>
-                            Remove
+                        {/* Purchased devices and devices with recorded shifts stay for the records. */}
+                        {d.source !== "marketplace" && !d.has_history && (
+                          <DropdownMenuItem variant="destructive" onClick={() => onRemove(d)}>
+                            Remove device
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>

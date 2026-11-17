@@ -27,6 +27,8 @@ export type Device = {
   last_recorded_at: string | null;
   clock_offset_seconds: number | null;
   created_at: string;
+  /** Has recorded shifts: kept for the records, so it can be deactivated but not removed. */
+  has_history?: boolean;
 };
 
 export type DeviceWithKey = Device & { api_key: string };

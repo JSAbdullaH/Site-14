@@ -28,6 +28,7 @@ const FIELDS = {
   clockOffsetSeconds: true,
   employee: { select: { id: true, fullName: true, site: { select: { id: true, name: true } } } },
   orderItem: { select: { order: { select: { id: true, referenceNumber: true, status: true } } } },
+  _count: { select: { workSessions: true } },
 };
 
 const iso = (d) => (d ? d.toISOString() : null);
@@ -60,6 +61,8 @@ function toPublic(d) {
     last_recorded_at: iso(d.lastRecordedAt),
     clock_offset_seconds: d.clockOffsetSeconds,
     created_at: d.createdAt.toISOString(),
+    // A device with recorded shifts is kept for the records: it can be deactivated, not deleted.
+    has_history: Boolean(d._count && d._count.workSessions),
   };
 }
 

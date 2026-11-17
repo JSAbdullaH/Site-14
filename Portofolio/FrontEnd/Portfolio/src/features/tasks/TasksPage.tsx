@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Lock, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import AppShell from "@/shared/components/AppShell";
+import ConfirmDialog from "@/shared/components/ConfirmDialog";
 import EmptyState from "@/shared/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,7 +19,7 @@ import { getActiveSiteId, listSites } from "@/features/sites/api";
 import type { SiteSummary } from "@/features/sites/types";
 import { listEmployees } from "@/features/employees/api";
 import type { Employee } from "@/features/employees/types";
-import { listTasks } from "./api";
+import { deleteTask, listTasks } from "./api";
 import { STATUS_LABEL } from "./types";
 import type { Task, TaskStatus } from "./types";
 import NewTaskDialog from "./components/NewTaskDialog";
@@ -51,6 +53,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState<Task | null>(null);
 
   useEffect(() => {
     listSites(true)
@@ -107,6 +110,13 @@ export default function TasksPage() {
       return;
     }
     setTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)));
+  }
+
+  async function remove(task: Task) {
+    await deleteTask(task.id);
+    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+    setTotal((n) => n - 1);
+    toast.success(`Task “${task.title}” deleted`);
   }
 
   const employee = employees.find((e) => e.id === employeeId);
@@ -239,6 +249,9 @@ export default function TasksPage() {
                 <TableHead>Day</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Given by</TableHead>
+                <TableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
 
@@ -261,12 +274,45 @@ export default function TasksPage() {
                     <TaskStatusSelect task={task} onChanged={replace} onError={setError} />
                   </TableCell>
                   <TableCell className="text-muted-foreground">{task.created_by.full_name}</TableCell>
+                  <TableCell>
+                    {task.status === "done" ? (
+                      <span
+                        className="inline-flex size-8 items-center justify-center text-muted-foreground/60"
+                        title="Completed tasks stay on the worker's record"
+                      >
+                        <Lock className="size-3.5" />
+                        <span className="sr-only">Completed tasks cannot be deleted</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setDeleting(task)}
+                        aria-label={`Delete ${task.title}`}
+                        title="Delete task"
+                        className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger-bg hover:text-danger"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title={`Delete “${deleting?.title ?? "this task"}”?`}
+        description={
+          deleting ? `${deleting.employee.full_name} no longer sees it for ${dayLabel(deleting.scheduled_for)}.` : ""
+        }
+        details={["This cannot be undone. Completed tasks are never deleted: they stay on the worker's record."]}
+        confirmLabel="Delete task"
+        onConfirm={() => deleting && remove(deleting)}
+      />
 
       <NewTaskDialog
         open={dialogOpen}

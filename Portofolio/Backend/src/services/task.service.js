@@ -96,4 +96,15 @@ async function update(auth, id, input) {
   return toPublic(await auth.db.task.update({ where: { id }, data, select: FIELDS }));
 }
 
-module.exports = { create, list, update, toPublic };
+// A finished task is part of the worker's record and is counted on attendance reports,
+// so only tasks that are not done yet can be deleted.
+async function remove(auth, id) {
+  const current = await auth.db.task.findUnique({ where: { id }, select: { status: true } });
+  if (!current) throw notFound();
+  if (current.status === 'done') {
+    throw new AppError(409, 'TASK_DONE', 'A completed task is part of the worker\'s record and cannot be deleted.');
+  }
+  await auth.db.task.delete({ where: { id } });
+}
+
+module.exports = { create, list, update, remove, toPublic };

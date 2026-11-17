@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import { MoreHorizontal } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { History, MoreHorizontal, Pencil, Smartphone, UserMinus } from "lucide-react";
 import StatusBadge from "@/shared/components/StatusBadge";
 import {
   Table,
@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Employee } from "../types";
@@ -23,9 +24,11 @@ type Props = {
   canEdit?: boolean;
   onEdit?: (employee: Employee) => void;
   onDevice?: (employee: Employee) => void;
+  onRemove?: (employee: Employee) => void;
 };
 
-export default function EmployeeTable({ employees, canEdit = false, onEdit, onDevice }: Props) {
+export default function EmployeeTable({ employees, canEdit = false, onEdit, onDevice, onRemove }: Props) {
+  const navigate = useNavigate();
   return (
     <div className="rounded-lg border">
       <Table>
@@ -36,13 +39,15 @@ export default function EmployeeTable({ employees, canEdit = false, onEdit, onDe
             <TableHead>Site</TableHead>
             <TableHead>Device</TableHead>
             <TableHead>Status</TableHead>
-            {canEdit && <TableHead className="w-12" />}
+            {canEdit && <TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>}
           </TableRow>
         </TableHeader>
 
         <TableBody>
-          {employees.map((e) => (
-            <TableRow key={e.id}>
+          {employees.map((e) => {
+            const active = e.status === "active";
+            return (
+            <TableRow key={e.id} className={active ? undefined : "text-muted-foreground"}>
               <TableCell className="font-medium">
                 {/* name -> History page */}
                 <Link to={`/history?employee=${e.id}`} className="hover:text-signal hover:underline">
@@ -59,9 +64,11 @@ export default function EmployeeTable({ employees, canEdit = false, onEdit, onDe
               </TableCell>
 
               <TableCell>
-                {e.device ? (
+                {!active ? (
+                  <span className="text-muted-foreground">&mdash;</span>
+                ) : e.device ? (
                   <span className="font-mono text-xs">{e.device.serial_number}</span>
-                ) : canEdit && e.status === "active" ? (
+                ) : canEdit ? (
                   <button
                     type="button"
                     onClick={() => onDevice?.(e)}
@@ -75,9 +82,7 @@ export default function EmployeeTable({ employees, canEdit = false, onEdit, onDe
               </TableCell>
 
               <TableCell>
-                <StatusBadge tone={e.status === "active" ? "ok" : "neutral"}>
-                  {e.status === "active" ? "Active" : "Inactive"}
-                </StatusBadge>
+                <StatusBadge tone={active ? "ok" : "neutral"}>{active ? "Active" : "Removed"}</StatusBadge>
               </TableCell>
 
               {canEdit && (
@@ -87,21 +92,39 @@ export default function EmployeeTable({ employees, canEdit = false, onEdit, onDe
                       <MoreHorizontal className="size-4" />
                     </DropdownMenuTrigger>
 
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit?.(e)}>
-                        Edit details and site
+                    <DropdownMenuContent align="end" className="min-w-52">
+                      {active && (
+                        <>
+                          <DropdownMenuItem onClick={() => onEdit?.(e)}>
+                            <Pencil />
+                            Edit details and site
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onDevice?.(e)}>
+                            <Smartphone />
+                            {e.device ? "Change device" : "Add device"}
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      <DropdownMenuItem onClick={() => navigate(`/history?employee=${e.id}`)}>
+                        <History />
+                        View history
                       </DropdownMenuItem>
-                      {e.status === "active" && (
-                        <DropdownMenuItem onClick={() => onDevice?.(e)}>
-                          {e.device ? "Change device" : "Add device"}
-                        </DropdownMenuItem>
+                      {active && onRemove && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem variant="destructive" onClick={() => onRemove(e)}>
+                            <UserMinus />
+                            Remove employee
+                          </DropdownMenuItem>
+                        </>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
               )}
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
     </div>
