@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import type { PointerEvent } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import type { KeyboardEvent, PointerEvent } from "react";
 import { BatteryLow, ChevronDown, ChevronUp, Search, Users, WifiOff, X } from "lucide-react";
 import type { LiveStatus, LiveWorker } from "../api";
 import { GROUPS, STATUS, STATUS_ORDER, countByStatus } from "./status";
@@ -14,6 +14,8 @@ type Props = {
   onSelect: (worker: LiveWorker) => void;
   onHover: (id: string | null) => void;
   onClearFilter: () => void;
+  /** Phones and tablets: the sheet steps aside while a worker or zone panel is open. */
+  hiddenOnSmall?: boolean;
 };
 
 const DRAG_THRESHOLD = 28;
@@ -30,10 +32,31 @@ function detail(w: LiveWorker, now: number) {
   return STATUS[w.status].hint;
 }
 
-const isDesktop = () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches;
+// From laptop width the team is a sidebar docked beside the map, always open.
+// Below that there is no room for a column next to the app's own navigation,
+// so it is a bottom sheet that can be pulled up or down.
+const WIDE = "(min-width: 1024px)";
+const subscribe = (cb: () => void) => {
+  const mq = window.matchMedia(WIDE);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+const isWide = () => window.matchMedia(WIDE).matches;
 
-export default function RosterSheet({ workers, onMapIds, filter, selectedId, now, onSelect, onHover, onClearFilter }: Props) {
-  const [open, setOpen] = useState(isDesktop);
+export default function RosterSheet({
+  workers,
+  onMapIds,
+  filter,
+  selectedId,
+  now,
+  onSelect,
+  onHover,
+  onClearFilter,
+  hiddenOnSmall = false,
+}: Props) {
+  const wide = useSyncExternalStore(subscribe, isWide, () => false);
+  const [sheetOpen, setOpen] = useState(false);
+  const open = wide || sheetOpen;
   const [query, setQuery] = useState("");
   const dragStart = useRef<number | null>(null);
   const dragged = useRef(false);
@@ -56,7 +79,7 @@ export default function RosterSheet({ workers, onMapIds, filter, selectedId, now
   }, [workers, query, filter]);
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
-    if (isDesktop()) return;
+    if (wide) return;
     dragStart.current = e.clientY;
     dragged.current = false;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -82,29 +105,35 @@ export default function RosterSheet({ workers, onMapIds, filter, selectedId, now
   return (
     <section
       aria-label="Employees assigned to this site"
-      className={`pointer-events-auto absolute z-30 flex flex-col overflow-hidden transition-[max-height] duration-300 ease-out ${GLASS}
-        inset-x-2 bottom-7 rounded-2xl ${open ? "max-h-[70%]" : "max-h-[78px]"}
-        md:inset-x-auto md:bottom-auto md:left-3 md:top-16 md:w-[340px] md:rounded-2xl md:border-x md:border-b ${open ? "md:max-h-[calc(100%-6.5rem)]" : "md:max-h-[64px]"}`}
+      className={`pointer-events-auto flex flex-col overflow-hidden
+        absolute inset-x-2 bottom-7 z-[600] rounded-2xl transition-[max-height] duration-300 ease-out ${GLASS} ${open ? "max-h-[70%]" : "max-h-[78px]"}
+        ${hiddenOnSmall ? "max-lg:hidden" : ""}
+        lg:static lg:z-auto lg:h-full lg:max-h-none lg:w-[300px] lg:shrink-0 lg:rounded-none lg:border-0 lg:border-r lg:border-black/10 lg:bg-card lg:supports-[backdrop-filter]:bg-card lg:shadow-none lg:ring-0 lg:backdrop-blur-none xl:w-[340px]`}
     >
+      {/* The header pulls the sheet up and down on small screens; on wide screens it is just a title. */}
       <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-        onClick={() => {
-          if (!dragged.current) setOpen((v) => !v);
-          dragged.current = false;
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setOpen((v) => !v);
-          }
-        }}
-        className="shrink-0 cursor-pointer touch-none select-none px-4 pt-2 pb-3 md:pt-3"
+        {...(wide
+          ? {}
+          : {
+              role: "button",
+              tabIndex: 0,
+              "aria-expanded": open,
+              onPointerDown,
+              onPointerUp,
+              onClick: () => {
+                if (!dragged.current) setOpen((v) => !v);
+                dragged.current = false;
+              },
+              onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setOpen((v) => !v);
+                }
+              },
+            })}
+        className={`shrink-0 px-4 pt-2 pb-3 lg:pt-4 ${wide ? "" : "cursor-pointer touch-none select-none"}`}
       >
-        <span className="mx-auto mb-2 block h-1 w-10 rounded-full bg-steel md:hidden" />
+        <span className="mx-auto mb-2 block h-1 w-10 rounded-full bg-steel lg:hidden" />
         <div className="flex items-center gap-3">
           <span className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
             <Users className="size-4.5" />
@@ -129,11 +158,7 @@ export default function RosterSheet({ workers, onMapIds, filter, selectedId, now
               )}
             </p>
           </div>
-          {open ? (
-            <ChevronDown className="size-5 shrink-0 text-muted-foreground md:rotate-180" />
-          ) : (
-            <ChevronUp className="size-5 shrink-0 text-muted-foreground md:rotate-180" />
-          )}
+          {!wide && (open ? <ChevronDown className="size-5 shrink-0 text-muted-foreground" /> : <ChevronUp className="size-5 shrink-0 text-muted-foreground" />)}
         </div>
       </div>
 

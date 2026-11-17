@@ -73,6 +73,9 @@ type MarkerEntry = { overlay: HtmlOverlay; iconKey: string; pos: string; anim: n
 type ZoneEntry = { poly: google.maps.Polygon; label: HtmlOverlay };
 type Draft = { fill: google.maps.Polygon; line: google.maps.Polyline; preview: google.maps.Polyline; dots: HtmlOverlay[] };
 
+// Below this width the details panels sit at the bottom of the map instead of on the right.
+const isPhone = () => !window.matchMedia("(min-width: 768px)").matches;
+
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function workerHtml(w: PositionedWorker, selected: boolean) {
@@ -423,7 +426,7 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
           setSelectedZone(null);
           setSelectedWorker(id);
           const map = mapRef.current;
-          if (map && map.getDiv().clientWidth < 768) {
+          if (map && isPhone()) {
             const at = entryLatLng(id);
             if (at) revealRef.current(at, map.getZoom() ?? FOCUS_ZOOM);
           }
@@ -725,8 +728,7 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
   function reveal(at: LatLng, zoom: number) {
     const map = mapRef.current;
     if (!map) return;
-    const div = map.getDiv();
-    const offset = div.clientWidth < 768 ? div.clientHeight * 0.25 : 0;
+    const offset = isPhone() ? map.getDiv().clientHeight * 0.25 : 0;
     if ((map.getZoom() ?? zoom) !== zoom) map.setZoom(zoom);
     map.panTo(shiftDown(map, at, offset, zoom));
   }
@@ -799,10 +801,26 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
   return (
     <div
       ref={wrapperRef}
-      className={`s14-map relative isolate h-[calc(100svh-6rem)] min-h-[480px] overflow-hidden rounded-card bg-[#1f1d1a] md:h-[calc(100svh-9rem)] ${
+      className={`s14-map relative isolate flex h-[calc(100svh-6rem)] min-h-[480px] overflow-hidden rounded-card bg-[#1f1d1a] md:h-[calc(100svh-9rem)] ${
         fullscreen ? "rounded-none" : "shadow-sm ring-1 ring-black/5"
       } ${mode.kind === "drawing" ? "s14-drawing" : ""}`}
     >
+      {/* Wide screens: the team sidebar docked left of the map. Smaller: a sheet over the map. */}
+      {siteId && (
+        <RosterSheet
+          workers={workers}
+          onMapIds={onMapIds}
+          filter={filter}
+          selectedId={selectedWorker}
+          now={now}
+          onSelect={focusWorker}
+          onHover={hoverWorker}
+          onClearFilter={() => setFilter(null)}
+          hiddenOnSmall={!viewing || rightPanel}
+        />
+      )}
+
+      <div className="relative h-full min-w-0 flex-1">
       <div ref={containerRef} className="absolute inset-0 z-0" />
 
       {/* Everything floating over the map. The layer itself lets the map be dragged between panels. */}
@@ -936,7 +954,7 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
         )}
 
         {viewing && lastSync !== null && !stale && live.length === 0 && workers.length > 0 && !worker && !zone && (
-          <div className="absolute bottom-[124px] left-1/2 w-max max-w-[90%] -translate-x-1/2 md:bottom-8">
+          <div className="absolute bottom-[124px] left-1/2 w-max max-w-[90%] -translate-x-1/2 lg:bottom-8">
             <div className={`rounded-full px-4 py-2 text-[13px] font-medium text-muted-foreground ${GLASS}`}>
               No one is live on the map right now
             </div>
@@ -945,7 +963,7 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
 
         {/* Bottom offsets keep Google's logo and terms (bottom corners) visible, as its terms require. */}
         <MapControls
-          className={`absolute right-2 bottom-[124px] transition-[right] duration-200 md:bottom-8 ${rightPanel ? "md:right-[21.5rem]" : "md:right-3"}`}
+          className={`absolute right-2 bottom-[124px] transition-[right] duration-200 lg:bottom-8 ${rightPanel ? "md:right-[21.5rem]" : "md:right-3"}`}
           base={base}
           fullscreen={fullscreen}
           onZoomIn={() => zoomBy(1)}
@@ -954,19 +972,6 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
           onToggleBase={() => setBase((b) => (b === "satellite" ? "street" : "satellite"))}
           onToggleFullscreen={toggleFullscreen}
         />
-
-        {viewing && siteId && (
-          <RosterSheet
-            workers={workers}
-            onMapIds={onMapIds}
-            filter={filter}
-            selectedId={selectedWorker}
-            now={now}
-            onSelect={focusWorker}
-            onHover={hoverWorker}
-            onClearFilter={() => setFilter(null)}
-          />
-        )}
 
         {worker && viewing && (
           <WorkerPanel
@@ -1002,6 +1007,7 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
             onCancel={cancelZone}
           />
         )}
+      </div>
       </div>
     </div>
   );
