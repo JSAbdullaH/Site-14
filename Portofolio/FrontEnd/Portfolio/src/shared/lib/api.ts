@@ -22,7 +22,7 @@ export class ApiError extends Error {
   }
 }
 
-const NO_REFRESH = ["/auth/login", "/auth/refresh", "/auth/register"];
+const NO_REFRESH = ["/auth/login", "/auth/refresh", "/auth/register", "/auth/check-email", "/auth/verify-email"];
 
 const PUBLIC_AUTH_PAGES = ["/signin", "/signup", "/forgot-password", "/reset-password", "/invite"];
 const onPublicAuthPage = () => PUBLIC_AUTH_PAGES.some((p) => window.location.pathname.startsWith(p));

@@ -11,8 +11,10 @@ import { DEVICE_TYPE_LABEL } from "@/shared/lib/deviceTypes";
 import type { DeviceType } from "@/shared/lib/deviceTypes";
 import { ApiError } from "@/shared/lib/api";
 import PairLayout from "./components/PairLayout";
+import GetAppCard from "./components/GetAppCard";
 import { claimPairing, forgetStoredDevice, loadStoredDevice, lookupPairing, saveStoredDevice } from "./api";
 import { detectThisDevice } from "./detect";
+import { detectPlatform } from "./geolocation";
 import type { DetectedDevice, PairingInfo } from "./types";
 
 const clean = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
@@ -29,6 +31,7 @@ export default function PairPage() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [needsApp] = useState(() => detectPlatform() === "ios");
 
   useEffect(() => {
     detectThisDevice().then((d) => {
@@ -52,8 +55,8 @@ export default function PairPage() {
 
   useEffect(() => {
     const initial = clean(params.code ?? "");
-    if (initial.length === 8 && !stored) check(initial);
-  }, [params.code, stored]);
+    if (initial.length === 8 && !stored && !needsApp) check(initial);
+  }, [params.code, stored, needsApp]);
 
   function submitCode(e: FormEvent) {
     e.preventDefault();
@@ -93,6 +96,16 @@ export default function PairPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (needsApp && !stored) {
+    return (
+      <PairLayout>
+        <h1 className="text-2xl font-semibold tracking-tight">Connect this iPhone</h1>
+        <p className="mt-1 mb-6 text-sm text-muted-foreground">Your company uses SITE14 to record time on site.</p>
+        <GetAppCard code={code} />
+      </PairLayout>
+    );
   }
 
   if (stored) {

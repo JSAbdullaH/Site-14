@@ -51,7 +51,7 @@ export type Heartbeat = {
   device: { serial_number: string; name: string | null; device_type: DeviceType };
   company_name: string;
   wearer: { full_name: string } | null;
-  site: { name: string } | null;
+  site: { id: string; name: string } | null;
   ready: boolean;
   reason: RefusalCode | null;
 };

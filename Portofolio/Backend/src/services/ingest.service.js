@@ -3,6 +3,7 @@ const AppError = require('../utils/AppError');
 const { sha256, safeEqual } = require('../utils/tokens');
 const { pointInPolygon, findZone } = require('../utils/geo');
 const { OFFLINE_GAP_MINUTES } = require('../utils/day');
+const { fromTime } = require('../models/site.model');
 const presence = require('./presence.service');
 
 const SECOND = 1000;
@@ -288,7 +289,7 @@ async function heartbeat(device, { battery_percent: battery }) {
           select: {
             fullName: true,
             consentGivenAt: true,
-            site: { select: { name: true, isActive: true } },
+            site: { select: { id: true, name: true, isActive: true } },
           },
         },
       },
@@ -301,7 +302,57 @@ async function heartbeat(device, { battery_percent: battery }) {
     device: { serial_number: d.serialNumber, name: d.name, device_type: d.deviceType },
     company_name: d.company.name,
     wearer: d.employee ? { full_name: d.employee.fullName } : null,
-    site: site && site.isActive ? { name: site.name } : null,
+    site: site && site.isActive ? { id: site.id, name: site.name } : null,
+    ready: !refused,
+    reason: refused ? refused.code : null,
+  };
+}
+
+// The site the wearer works on, with its boundary and active zones, so the app can show
+// where the site is and whether the wearer is on it. Asked again when heartbeat's site.id changes.
+async function siteOf(device) {
+  const d = await prisma.device.findUnique({
+    where: { id: device.id },
+    select: {
+      employee: {
+        select: {
+          consentGivenAt: true,
+          site: {
+            select: {
+              id: true,
+              name: true,
+              client: true,
+              boundary: true,
+              shiftStart: true,
+              shiftEnd: true,
+              isActive: true,
+              geofences: {
+                where: { isActive: true },
+                orderBy: { name: 'asc' },
+                select: { id: true, name: true, isOutdoor: true, boundary: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  const refused = refusal(d);
+  const site = d.employee && d.employee.site;
+  return {
+    server_time: new Date().toISOString(),
+    site: site && site.isActive
+      ? {
+        id: site.id,
+        name: site.name,
+        client: site.client,
+        boundary: site.boundary,
+        shift_start: fromTime(site.shiftStart),
+        shift_end: fromTime(site.shiftEnd),
+        time_zone: 'Asia/Riyadh',
+        zones: site.geofences.map((g) => ({ id: g.id, name: g.name, is_outdoor: g.isOutdoor, boundary: g.boundary })),
+      }
+      : null,
     ready: !refused,
     reason: refused ? refused.code : null,
   };
@@ -311,6 +362,7 @@ module.exports = {
   authenticate,
   ingest,
   heartbeat,
+  siteOf,
   MAX_CLOCK_AHEAD_SECONDS,
   MAX_READING_AGE_HOURS,
   MIN_READING_INTERVAL_SECONDS,

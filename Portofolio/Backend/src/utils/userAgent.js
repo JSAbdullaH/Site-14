@@ -34,8 +34,12 @@ const FROZEN_VERSIONS = new Set(['10.15.7', '10.15']);
 
 const dotted = (v) => (v ? v.replace(/_/g, '.') : null);
 
+// The SITE14 iPhone and Apple Watch apps send "SITE14/1.2 (iPhone; iOS 17.5; iPhone15,2)".
+const APP_UA = /^SITE14\/([\d.]+) \((iPhone|iPad|Watch); (iOS|iPadOS|watchOS) ([\d.]+)/;
+
 function parseOs(ua) {
   let m;
+  if ((m = ua.match(APP_UA))) return { name: m[3], version: m[4] };
   if ((m = ua.match(/watchOS[ /]([\d_.]+)/i))) return { name: 'watchOS', version: dotted(m[1]) };
   if (/Wear ?OS|wearos/i.test(ua)) return { name: 'Wear OS', version: (ua.match(/Android ([\d.]+)/) || [])[1] || null };
   if ((m = ua.match(/Tizen[ /]?([\d.]+)?/i))) return { name: 'Tizen', version: m[1] || null };
@@ -53,6 +57,8 @@ function parseOs(ua) {
 }
 
 function parseBrowser(ua) {
+  const app = ua.match(APP_UA);
+  if (app) return `SITE14 app ${app[1]}`;
   const rules = [
     [/EdgA?\/([\d.]+)/, 'Edge'],
     [/EdgiOS\/([\d.]+)/, 'Edge'],
@@ -76,7 +82,7 @@ function parseHardware(ua) {
   if (/\biPhone/.test(ua)) return { manufacturer: 'Apple', model: 'iPhone' };
   if (/\biPad/.test(ua)) return { manufacturer: 'Apple', model: 'iPad' };
   if (/\biPod/.test(ua)) return { manufacturer: 'Apple', model: 'iPod touch' };
-  if (/\bWatch/.test(ua) && /AppleWebKit/.test(ua) && !/Android/.test(ua)) return { manufacturer: 'Apple', model: 'Apple Watch' };
+  if (/\bWatch/.test(ua) && (/AppleWebKit/.test(ua) || APP_UA.test(ua)) && !/Android/.test(ua)) return { manufacturer: 'Apple', model: 'Apple Watch' };
   if (/Macintosh/.test(ua)) return { manufacturer: 'Apple', model: 'Mac' };
   const m = ua.match(/Android[^;)]*;(?: [a-z]{2}[-_][a-z]{2};)? ([^;)]+?)(?: Build\/[^;)]*)?\)/i);
   const model = m && m[1].trim() !== 'K' ? m[1].trim() : null;

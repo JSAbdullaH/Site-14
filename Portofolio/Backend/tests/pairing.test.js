@@ -77,6 +77,23 @@ describe('device pairing', () => {
     expect(beat.body).toMatchObject({ ready: true, wearer: { full_name: 'Sara' }, company_name: 'Company A' });
   });
 
+  test('the SITE14 iPhone app pairs as a phone and is named after its model', async () => {
+    const created = await request(app).post(api('/devices/pairings')).set(bearer(a)).send({}).expect(201);
+    const claimed = await request(app)
+      .post(api(`/pairing/${created.body.code}/claim`))
+      .set('User-Agent', 'SITE14/1.0 (iPhone; iOS 17.5; iPhone16,1) CFNetwork/1494.0.7 Darwin/23.4.0')
+      .send({ device_type: 'phone', model: 'iPhone 15 Pro', platform_version: '17.5', battery_percent: 90 })
+      .expect(201);
+    expect(claimed.body.device).toMatchObject({
+      device_type: 'phone',
+      name: 'iPhone 15 Pro',
+      manufacturer: 'Apple',
+      model: 'iPhone 15 Pro',
+      os: { name: 'iOS', version: '17.5' },
+      browser: 'SITE14 app 1.0',
+    });
+  });
+
   test('the browser cannot claim to be a different kind of device', async () => {
     const { body } = await request(app).post(api('/devices/pairings')).set(bearer(a)).send({}).expect(201);
     const claimed = await request(app)

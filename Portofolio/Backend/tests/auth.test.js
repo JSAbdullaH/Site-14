@@ -5,6 +5,7 @@ const request = require('supertest');
 const app = require('../src/app');
 const { prisma } = require('../src/config/db');
 const { outbox } = require('../src/services/mail.service');
+const config = require('../src/config');
 const { pool, truncateAll } = require('./setup');
 
 const account = {
@@ -113,6 +114,52 @@ describe('POST /auth/register', () => {
   });
 });
 
+describe('POST /auth/check-email', () => {
+  const check = (email) => post('/auth/check-email', { email });
+
+  test('an unknown email does not exist', async () => {
+    await check('nobody@albina.test').expect(200, { exists: false, invitation_pending: false });
+  });
+
+  test('a registered email exists, whatever its case', async () => {
+    await register().expect(201);
+    await check('SARA@albina.test').expect(200, { exists: true, invitation_pending: false });
+  });
+
+  test('rejects an invalid email with 422', async () => {
+    await check('not-an-email').expect(422);
+  });
+});
+
+describe('register without email verification', () => {
+  const original = config.REQUIRE_EMAIL_VERIFICATION;
+  beforeEach(() => {
+    config.REQUIRE_EMAIL_VERIFICATION = false;
+  });
+  afterEach(() => {
+    config.REQUIRE_EMAIL_VERIFICATION = original;
+  });
+
+  test('signs the new admin in straight away and sends no code', async () => {
+    const res = await register().expect(201);
+    expect(res.body).toMatchObject({
+      verification_required: false,
+      access_token: expect.any(String),
+      refresh_token: expect.any(String),
+      user: { email: 'sara@albina.test', role: 'company_admin' },
+    });
+    expect(res.headers['set-cookie'].join(';')).toMatch(/site14_refresh=.+HttpOnly/);
+    expect(outbox).toHaveLength(0);
+    await request(app).get(api('/companies/me')).set(bearer(res.body.access_token)).expect(200);
+  });
+
+  test('a taken email still gets no session', async () => {
+    await register().expect(201);
+    const res = await register({ ...account, company_name: 'Another Co' }).expect(201);
+    expect(res.body).not.toHaveProperty('access_token');
+  });
+});
+
 describe('email verification', () => {
   beforeEach(() => register().expect(201));
 
@@ -121,9 +168,17 @@ describe('email verification', () => {
     expect(res.body.error.code).toBe('EMAIL_NOT_VERIFIED');
   });
 
-  test('the code verifies the email once', async () => {
+  test('the code verifies the email once and signs the admin in', async () => {
     const code = verifyCode(account.email);
-    await verify('SARA@albina.test', code).expect(200, { verified: true });
+    const res = await verify('SARA@albina.test', code).expect(200);
+    expect(res.body).toMatchObject({
+      verified: true,
+      access_token: expect.any(String),
+      refresh_token: expect.any(String),
+      user: { email: 'sara@albina.test', role: 'company_admin', is_email_verified: true },
+    });
+    expect(res.headers['set-cookie'].join(';')).toMatch(/site14_refresh=.+HttpOnly/);
+    await request(app).get(api('/companies/me')).set(bearer(res.body.access_token)).expect(200);
     await verify(account.email, code).expect(401);
     const { rows } = await pool.query('SELECT is_email_verified FROM users');
     expect(rows[0].is_email_verified).toBe(true);

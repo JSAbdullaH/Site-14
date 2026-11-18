@@ -8,6 +8,7 @@ const ingestController = require('../controllers/ingest.controller');
 const router = Router();
 
 router.post('/readings', authenticateDevice, deviceLimiter, validateBody(s.ingestSchema), ingestController.readings);
+router.get('/site', authenticateDevice, deviceLimiter, ingestController.site);
 router.post('/heartbeat', authenticateDevice, deviceLimiter, validateBody(s.heartbeatSchema), ingestController.heartbeat);
 
 module.exports = router;

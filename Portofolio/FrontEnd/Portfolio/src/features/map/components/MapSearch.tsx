@@ -10,7 +10,6 @@ type Props = {
   workers: LiveWorker[];
   onMapIds: Set<string>;
   zones: Geofence[];
-  /** Where to look for addresses first: the middle of the map. */
   near: () => google.maps.LatLng | null;
   onWorker: (w: LiveWorker) => void;
   onZone: (z: Geofence) => void;
@@ -28,7 +27,6 @@ const MAX_ZONES = 4;
 const PLACE_MIN_CHARS = 3;
 const PLACE_DELAY_MS = 300;
 
-// Case and Arabic diacritics do not matter when matching.
 const norm = (s: string) => s.toLocaleLowerCase().normalize("NFKD").replace(/\p{M}/gu, "");
 
 function rank(text: string, q: string) {
@@ -41,7 +39,7 @@ function rank(text: string, q: string) {
 export default function MapSearch({ workers, onMapIds, zones, near, onWorker, onZone, onPlace, onClear }: Props) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
-  const [expanded, setExpanded] = useState(false); // phones: the icon opens a full-width field
+  const [expanded, setExpanded] = useState(false); 
   const [active, setActive] = useState(0);
   const [placesFor, setPlaces] = useState<{ text: string; hits: PlaceHit[] }>({ text: "", hits: [] });
   const [placesLoading, setPlacesLoading] = useState(false);
@@ -61,7 +59,6 @@ export default function MapSearch({ workers, onMapIds, zones, near, onWorker, on
         return { w, score: scores.length ? Math.min(...scores) : -1 };
       })
       .filter((r) => r.score >= 0)
-      // Live on the map first, then the best match, then by name.
       .sort((a, b) => Number(onMapIds.has(b.w.employee_id)) - Number(onMapIds.has(a.w.employee_id)) || a.score - b.score || a.w.full_name.localeCompare(b.w.full_name))
       .slice(0, MAX_PEOPLE)
       .map((r) => r.w);
@@ -72,7 +69,6 @@ export default function MapSearch({ workers, onMapIds, zones, near, onWorker, on
     [zones, q],
   );
 
-  // Addresses come from Google, a moment after typing stops, so each keystroke is not a request.
   const placeText = query.trim();
   const wantPlaces = focused && placeText.length >= PLACE_MIN_CHARS && placesAvailable();
   useEffect(() => {
@@ -91,7 +87,6 @@ export default function MapSearch({ workers, onMapIds, zones, near, onWorker, on
       window.clearTimeout(t);
     };
   }, [placeText, wantPlaces, near]);
-  // Only results for what is typed now; older ones vanish instead of lingering.
   const places = wantPlaces && placesFor.text === placeText ? placesFor.hits : [];
 
   const items: Item[] = [
@@ -100,7 +95,6 @@ export default function MapSearch({ workers, onMapIds, zones, near, onWorker, on
     ...places.map((p) => ({ kind: "place" as const, key: `p-${p.id}`, place: p })),
   ];
 
-  // "/" jumps to the search from anywhere on the page, as on most map apps.
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -113,7 +107,6 @@ export default function MapSearch({ workers, onMapIds, zones, near, onWorker, on
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Clicking anywhere else closes the results.
   useEffect(() => {
     if (!focused) return;
     const onDown = (e: PointerEvent) => {
@@ -128,7 +121,7 @@ export default function MapSearch({ workers, onMapIds, zones, near, onWorker, on
     else if (item.kind === "zone") onZone(item.zone);
     else {
       onPlace(item.place);
-      sessionRef.current = null; // a selection ends Google's billing session
+      sessionRef.current = null;
     }
     setFocused(false);
     inputRef.current?.blur();
@@ -193,7 +186,6 @@ export default function MapSearch({ workers, onMapIds, zones, near, onWorker, on
         expanded ? "absolute inset-x-0 top-0 z-20 md:static md:z-auto" : "ml-auto md:ml-0"
       } md:w-64 lg:w-72`}
     >
-      {/* Phones: an icon until it is needed, so the top bar stays one row. */}
       {!expanded && (
         <button
           type="button"

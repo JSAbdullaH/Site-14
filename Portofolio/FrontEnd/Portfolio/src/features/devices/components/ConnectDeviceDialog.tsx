@@ -157,9 +157,10 @@ export default function ConnectDeviceDialog({ open, onOpenChange, onConnected }:
             <DialogHeader>
               <DialogTitle>Connect a device</DialogTitle>
               <DialogDescription>
-                Turn a phone, tablet, laptop or watch into a tracker. You get a QR
+                Turn a phone, tablet or laptop into a tracker. You get a QR
                 code and a link. Open it on the device and it connects to your
-                company on its own.
+                company on its own. iPhones connect through the SITE14 app, which
+                also brings the Apple Watch.
               </DialogDescription>
             </DialogHeader>
 
@@ -214,7 +215,8 @@ export default function ConnectDeviceDialog({ open, onOpenChange, onConnected }:
             <DialogHeader>
               <DialogTitle>Scan with the device</DialogTitle>
               <DialogDescription>
-                Point the device camera at the code, or open the link on it.
+                Point the device camera at the code, or open the link on it. On
+                iPhone, scan it from the SITE14 app.
                 {pairing.employee ? ` It will be given to ${pairing.employee.full_name}.` : ""}
               </DialogDescription>
             </DialogHeader>
@@ -288,7 +290,10 @@ export default function ConnectDeviceDialog({ open, onOpenChange, onConnected }:
                 <CheckCircle2 className="size-5 text-ok" />
                 Device connected
               </DialogTitle>
-              <DialogDescription>It is now part of your company and sending from its browser.</DialogDescription>
+              <DialogDescription>
+                It is now part of your company and sending
+                {device.browser?.startsWith("SITE14 app") ? " from the SITE14 app." : " from its browser."}
+              </DialogDescription>
             </DialogHeader>
 
             <div className="my-2 flex items-center gap-4 rounded-lg border p-4">

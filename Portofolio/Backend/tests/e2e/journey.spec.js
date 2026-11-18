@@ -1,5 +1,3 @@
-// SITE-77: the critical journey, end to end in a real browser.
-//
 // The journey from the story, in order. Each step is a test.step, so when one
 // breaks the report names it. Steps whose feature is not built yet are listed
 // below as test.fixme: they show as "skipped" with their name, and each one
@@ -9,7 +7,6 @@ const { test, expect } = require('@playwright/test');
 
 const SEED_PASSWORD = process.env.SEED_PASSWORD || 'Site14-Demo-2026!';
 
-// A new company each run, so the run never collides with earlier data.
 const run = Date.now();
 const owner = {
   company: `E2E Contracting ${run}`,
@@ -54,7 +51,6 @@ test('critical journey', async ({ page }) => {
     await expect(page.getByText('site_manager')).toBeVisible();
   });
 
-  // Steps 5 onwards are added here as their features land.
 });
 
 test('a wrong password is refused on screen', async ({ page }) => {
@@ -66,7 +62,6 @@ test('a wrong password is refused on screen', async ({ page }) => {
   await expect(page).toHaveURL(/\/signin$/);
 });
 
-// ---- Not built yet. Each one becomes a step of the journey above. ----
 test.fixme('5. create a site', async () => {});
 test.fixme('6. draw a zone on the site map', async () => {});
 test.fixme('7. add an employee and record their consent', async () => {});

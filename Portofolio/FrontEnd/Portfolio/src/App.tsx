@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/shared/components/ProtectedRoute";
 import Landing from "@/features/landing/Landing";
 import Signin from "@/features/auth/Signin";
-import Signup from "@/features/auth/Signup";
 import ForgotPassword from "@/features/auth/ForgotPassword";
 import ResetPassword from "@/features/auth/ResetPassword";
 import AcceptInvite from "@/features/auth/AcceptInvite";
@@ -32,7 +31,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/signin" element={<Signin />} />
-      <Route path="/signup" element={<Signup />} />
+      <Route path="/signup" element={<Navigate to="/signin" replace />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/invite/:token" element={<AcceptInvite />} />

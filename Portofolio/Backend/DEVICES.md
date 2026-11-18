@@ -9,6 +9,7 @@ How a tracking device (watch, badge, phone) talks to SITE14, and how to run with
 | **Connect a device** (QR code or link) | Phones, tablets, laptops, watches with a browser | The admin opens Devices, **Connect a device**. A QR code, a link (`/pair/XXXXXXXX`) and an 8-character code are shown for 10 minutes. The device opens it, the server reads its real type, model, OS and browser from the request (User-Agent and Client Hints), and the device becomes a tracker at `/tracker`. The admin's screen updates as soon as it connects. |
 | **Marketplace** | Devices bought from SITE14 | The company admin orders from **Marketplace**. The devices are created in the company's inventory at once, typed and named from the product. The SITE14 team ships the order from the owner console (`/admin`), which issues each device's key to load before shipping. On first power-on they connect to the company with no setup. |
 | **Register by serial** | Hardware with its own firmware | Section 1 below. |
+| **SITE14 app** (iPhone, Apple Watch) | iPhones, and the Apple Watch paired to them | Same QR code or link as **Connect a device**. On an iPhone the `/pair` page sends the wearer to the app, which claims the code and shares in the background. The watch gets the key from the iPhone and sends as the same device. See [../Mobile/README.md](../Mobile/README.md). |
 
 A device that has never sent anything shows as **Not connected**. Only devices that have actually called the server show as online.
 
@@ -86,6 +87,29 @@ Content-Type: application/json
 | `409 DEVICE_UNASSIGNED`, `NO_CONSENT`, `NO_SITE` | Readings are not stored by design. Do not retry them. |
 | `422` | The batch is malformed. Fix the firmware; do not retry. |
 | `429`, `5xx`, no answer | Keep the buffer and retry later. Retrying is always safe. |
+
+### The wearer's site
+
+```
+GET /api/v1/ingest/site
+X-Device-Serial: PH-ABCD2345
+X-Device-Key: dk_...
+```
+
+```json
+{
+  "server_time": "2026-11-04T09:30:06.120Z",
+  "site": {
+    "id": "…", "name": "Al Malqa", "client": null,
+    "boundary": { "type": "Polygon", "coordinates": [[[46.63, 24.77], "…"]] },
+    "shift_start": "07:00", "shift_end": "17:00", "time_zone": "Asia/Riyadh",
+    "zones": [{ "id": "…", "name": "Roof", "is_outdoor": true, "boundary": { "type": "Polygon", "coordinates": "…" } }]
+  },
+  "ready": true, "reason": null
+}
+```
+
+`site` is `null` when the wearer has none or it is deactivated; `reason` then says why, as in the heartbeat. Only active zones are listed. The heartbeat's `site` carries the `id`, so a device asks again only when it changes.
 
 ### Zones, alerts and offline
 
