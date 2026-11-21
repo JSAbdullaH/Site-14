@@ -1,6 +1,22 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Menu, X } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  FileText,
+  History,
+  ListChecks,
+  LogOut,
+  Map as MapIcon,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Smartphone,
+  Store,
+  Users,
+  X,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "@/shared/lib/api";
 import { clearToken, getUser } from "@/shared/lib/auth";
@@ -8,22 +24,24 @@ import { useAlertFeed } from "@/shared/lib/useAlertFeed";
 import { Toaster } from "@/components/ui/sonner";
 import NotificationBell from "./NotificationBell";
 
-type NavItem = { to: string; label: string; soon?: boolean; badge?: number };
+type NavItem = { to: string; label: string; icon: LucideIcon; soon?: boolean; badge?: number };
 
 const MAIN: NavItem[] = [
-  { to: "/home", label: "Map" },
-  { to: "/alerts", label: "Alerts" },
-  { to: "/sites", label: "Sites & Zones" },
-  { to: "/tasks", label: "Tasks" },
-  { to: "/team", label: "Team" },
+  { to: "/home", label: "Map", icon: MapIcon },
+  { to: "/alerts", label: "Alerts", icon: Bell },
+  { to: "/sites", label: "Sites & Zones", icon: Building2 },
+  { to: "/tasks", label: "Tasks", icon: ListChecks },
+  { to: "/team", label: "Team", icon: Users },
 ];
 
 const RECORDS: NavItem[] = [
-  { to: "/devices", label: "Devices" },
-  { to: "/marketplace", label: "Marketplace" },
-  { to: "/history", label: "History" },
-  { to: "/reports", label: "Reports" },
+  { to: "/devices", label: "Devices", icon: Smartphone },
+  { to: "/marketplace", label: "Marketplace", icon: Store },
+  { to: "/history", label: "History", icon: History },
+  { to: "/reports", label: "Reports", icon: FileText },
 ];
+
+const SIDEBAR_KEY = "site14_sidebar";
 
 type Props = {
   title: string;
@@ -48,10 +66,28 @@ export default function AppShell({ title, subtitle, children }: Props) {
   const feed = useAlertFeed();
   const openAlerts = feed.summary?.open ?? 0;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) === "collapsed";
+    } catch {
+      return false;
+    }
+  });
+
+  const hideOnRail = collapsed ? "md:hidden" : "";
+  const centerOnRail = collapsed ? "md:justify-center md:px-0" : "";
 
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_KEY, collapsed ? "collapsed" : "open");
+    } catch {
+      return;
+    }
+  }, [collapsed]);
 
   async function logout() {
     await apiFetch("/auth/logout", { method: "POST", body: JSON.stringify({}) }).catch(() => undefined);
@@ -59,38 +95,40 @@ export default function AppShell({ title, subtitle, children }: Props) {
     navigate("/signin", { replace: true });
   }
 
-  function NavLink({ to, label, soon, badge }: NavItem) {
+  function NavLink({ to, label, icon: Icon, soon, badge }: NavItem) {
     if (soon) {
       return (
         <span
           aria-disabled="true"
-          className="flex h-10 cursor-default items-center justify-between rounded-md px-4 text-sm font-medium text-muted-foreground"
+          title={collapsed ? label : undefined}
+          className={`flex h-10 cursor-default items-center gap-3 rounded-md px-4 text-sm font-medium text-muted-foreground ${centerOnRail}`}
         >
-          {label}
-          <span className="text-[10px] font-semibold tracking-wide uppercase">Soon</span>
+          <Icon className="size-[18px] shrink-0" />
+          <span className={`flex-1 truncate ${hideOnRail}`}>{label}</span>
+          <span className={`text-[10px] font-semibold tracking-wide uppercase ${hideOnRail}`}>Soon</span>
         </span>
       );
     }
 
-    const active =
-      location.pathname === to || location.pathname.startsWith(`${to}/`);
+    const active = location.pathname === to || location.pathname.startsWith(`${to}/`);
 
     return (
       <Link
         to={to}
-        className={`flex h-10 items-center justify-between rounded-md px-4 text-sm font-medium transition-colors ${
-          active
-            ? "bg-primary text-primary-foreground"
-            : "text-sidebar-foreground hover:bg-sidebar-accent"
+        title={collapsed ? label : undefined}
+        aria-label={collapsed ? label : undefined}
+        className={`relative flex h-10 items-center gap-3 rounded-md px-4 text-sm font-medium transition-colors ${centerOnRail} ${
+          active ? "bg-primary text-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent"
         }`}
       >
-        {label}
+        <Icon className="size-[18px] shrink-0" />
+        <span className={`flex-1 truncate ${hideOnRail}`}>{label}</span>
         {badge ? (
           <span
             aria-label={`${badge} open`}
             className={`min-w-5 rounded-full px-1.5 text-center text-[11px] font-semibold tabular-nums ${
-              active ? "bg-primary-foreground text-primary" : "bg-danger text-white"
-            }`}
+              collapsed ? "md:absolute md:top-0.5 md:right-1 md:min-w-4 md:px-1 md:text-[10px]" : ""
+            } ${active ? "bg-primary-foreground text-primary" : "bg-danger text-white"}`}
           >
             {badge}
           </span>
@@ -110,15 +148,24 @@ export default function AppShell({ title, subtitle, children }: Props) {
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col overflow-y-auto border-r bg-sidebar px-4 py-6 transition-transform duration-200 md:sticky md:top-0 md:h-svh md:translate-x-0 ${
-          menuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r bg-sidebar px-4 py-6 transition-[transform,width] duration-200 md:sticky md:top-0 md:h-svh md:translate-x-0 ${
+          collapsed ? "md:w-[72px] md:px-3" : "md:w-64"
+        } ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <span className="mb-8 px-4 text-lg font-semibold tracking-tight">
-          SITE14
-        </span>
+        <div className={`mb-8 flex items-center justify-between gap-2 px-4 ${centerOnRail}`}>
+          <span className={`text-lg font-semibold tracking-tight ${hideOnRail}`}>SITE14</span>
+          <button
+            type="button"
+            onClick={() => setCollapsed((v) => !v)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="hidden size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground md:inline-flex"
+          >
+            {collapsed ? <PanelLeftOpen className="size-[18px]" /> : <PanelLeftClose className="size-[18px]" />}
+          </button>
+        </div>
 
-        <p className="mb-2 px-4 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
+        <p className={`mb-2 px-4 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground ${hideOnRail}`}>
           MAIN
         </p>
         <nav className="mb-7 flex flex-col gap-1">
@@ -127,7 +174,7 @@ export default function AppShell({ title, subtitle, children }: Props) {
           ))}
         </nav>
 
-        <p className="mb-2 px-4 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
+        <p className={`mb-2 px-4 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground ${hideOnRail}`}>
           RECORDS
         </p>
         <nav className="flex flex-col gap-1">
@@ -139,26 +186,27 @@ export default function AppShell({ title, subtitle, children }: Props) {
         <div className="mt-auto pt-6">
           <Link
             to="/account"
-            className="flex h-12 items-center gap-3 rounded-md px-4 transition-colors hover:bg-sidebar-accent"
+            title={collapsed ? (user?.full_name ?? "Account") : undefined}
+            className={`flex h-12 items-center gap-3 rounded-md px-4 transition-colors hover:bg-sidebar-accent ${centerOnRail}`}
           >
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
               {initials(user?.full_name)}
             </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-medium">
-                {user?.full_name ?? "Account"}
-              </span>
-              <span className="block text-[11px] text-muted-foreground">
-                Company settings
-              </span>
+            <span className={`min-w-0 ${hideOnRail}`}>
+              <span className="block truncate text-sm font-medium">{user?.full_name ?? "Account"}</span>
+              <span className="block text-[11px] text-muted-foreground">Company settings</span>
             </span>
           </Link>
 
           <button
+            type="button"
             onClick={logout}
-            className="mt-1 h-10 w-full rounded-md px-4 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-destructive"
+            title={collapsed ? "Sign out" : undefined}
+            aria-label={collapsed ? "Sign out" : undefined}
+            className={`mt-1 flex h-10 w-full items-center gap-3 rounded-md px-4 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-destructive ${centerOnRail}`}
           >
-            Sign out
+            <LogOut className="size-[18px] shrink-0" />
+            <span className={hideOnRail}>Sign out</span>
           </button>
         </div>
       </aside>
@@ -176,11 +224,7 @@ export default function AppShell({ title, subtitle, children }: Props) {
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-semibold">{title}</h1>
-            {subtitle && (
-              <p className="truncate text-[13px] text-muted-foreground">
-                {subtitle}
-              </p>
-            )}
+            {subtitle && <p className="truncate text-[13px] text-muted-foreground">{subtitle}</p>}
           </div>
           <NotificationBell events={feed.events} unread={feed.unread} capped={feed.capped} onOpen={feed.markRead} />
         </header>

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import MapTypeToggle from "@/shared/components/MapTypeToggle";
 import type { LatLng } from "@/features/map/types";
 import { MAP_STYLES, SATELLITE, fitPoints, useGoogleMaps } from "@/shared/lib/googleMaps";
+import PlaceSearch from "./PlaceSearch";
 
 const FALLBACK_CENTER: LatLng = { lat: 24.7136, lng: 46.6753 };
 
@@ -105,11 +106,18 @@ export default function BoundaryPicker({ corners, onChange, invalid }: Props) {
     ];
   }, [api, corners]);
 
+  function goTo(at: LatLng) {
+    if (!map) return;
+    map.panTo(at);
+    if ((map.getZoom() ?? 0) < 18) map.setZoom(18);
+  }
+
   return (
     <div className="grid gap-2">
       <div className="relative h-80 w-full overflow-hidden rounded-lg border border-input bg-muted aria-invalid:border-destructive" aria-invalid={invalid}>
         <div ref={containerRef} className="absolute inset-0" />
         <MapTypeToggle map={map} />
+        {map && <PlaceSearch map={map} onPick={goTo} />}
         {(error || !api) && (
           <p className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-muted-foreground">
             {error ?? "Loading map…"}
