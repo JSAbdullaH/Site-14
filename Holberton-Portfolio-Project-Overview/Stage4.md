@@ -6,12 +6,10 @@ Stage 4 is about turning the technical plan into a working product. In this stag
 
 The value of this stage is that it shows how the plan held up against real work. Stage 3 described how we intended to build and manage the system; this document records how we actually did it, what we changed along the way, and why. Where practice differed from the plan, we say so and explain the decision, because an honest record of deviations is more useful to the team than a document that only repeats the plan.
 
-This document builds on our [Project Charter](./Stage2.md) and our [Technical Documentation](./Stage3.md).
 
-> **Full Jira report:** [SITE14 Jira Project Report (PDF)](./stage4-evidence/jira/site14-jira-report.pdf) — every ticket by sprint with its description and status, the reason for each blocked or Won't Do ticket, all bugs, and all 83 QA test cases with their results.
+> **Note:** All evidence referred to here — Jira exports, screenshots and test results — is stored in [`stage4-evidence/`](./stage4-evidence/), so it can be read without access to our Jira site.
 
-> **Note:** All evidence referred to here — Jira exports, screenshots and test results — is stored in [`stage4-evidence/`](./stage4-evidence/), so it can be read without access to our Jira site. Our Jira site is private: if a Jira link asks you to sign in, the same information is in that folder.
-
+---
 ## Table of Contents
 - [0. Sprint Reviews](#0-sprint-reviews)
 - [1. Retrospectives](#1-retrospectives)
@@ -25,7 +23,7 @@ This document builds on our [Project Charter](./Stage2.md) and our [Technical Do
 
 ## 0. Sprint Reviews
 
-**Links:** [Jira board](https://laila000k.atlassian.net/jira/software/projects/SITE/boards/34) · [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf) · [All tickets](./stage4-evidence/jira/site14-jira-report.pdf)
+**Links:**  [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf) · [All tickets](./stage4-evidence/jira/site14-jira-report.pdf)
 
 We held a review at the end of every sprint, with all four members present, either in person or on Discord. Each review followed the same four steps:
 
@@ -51,18 +49,18 @@ The sprint dates and goals are in [Section 2.1](#21-sprint-timeline), and the co
 * **Delivered:** company registration, sign-in and sign-out, JWT access and refresh tokens, email verification, one-time-code sign-in, Site Manager invitations, password reset, tenant isolation and the landing page.
 * **Next:** sites, employees and the live map, so that a company could set up its operations.
 
-### Sprint 5 · 27 – 31 Oct
+### Sprint 4 · 27 – 31 Oct
 
 * **Delivered:** sites and running several sites at once, employee management and CSV import, the live map, worker markers coloured by status, drawing and saving work zones, zone entry and exit detection, and work sessions opened and closed from readings.
 * **Next:** devices and telemetry, tasks, the daily record and reports, which complete the journey from a worker's reading to a client's report.
 
-### Sprint 6 · 2 – 6 Nov, closed 21 Nov
+### Sprint 5 · 2 – 6 Nov, closed 21 Nov
 
 * **Delivered:** device registration and assignment, bulk registration from a serial list, telemetry ingest that is idempotent and rate-limited, the device simulator, tasks on the backend and frontend, the tamper-evident activity log, the daily record, corrections that append rather than overwrite, movement history and path replay, and PDF reports with a verifiable reference.
 * **Not building:** integration with a smartwatch. When we reached devices and IoT integration, no wearable met our requirements within the MVP, so the review decided to use the worker's phone as the tracking device instead ([Section 2.7](#27-adjustments-and-scope-changes)).
 * **Next:** a final sprint to run UAT on every feature, finish the carried enhancements and get the MVP ready to present.
 
-### Sprint 7 · 21 – 27 Nov · Final UAT, Enhancements & Presentation Ready
+### Sprint 6 · 21 – 27 Nov · Final UAT, Enhancements & Presentation Ready
 
 In progress. Its review on 27 November closes the MVP: every feature through final UAT, and the demo journey ready to present.
 
@@ -72,19 +70,17 @@ In progress. Its review on 27 November closes the MVP: every feature through fin
 
 At the end of each sprint we asked three questions: what went well, what challenges we faced, and what we will change in the next sprint.
 
-> **TODO (team):** confirm each retrospective below reflects what was discussed.
-
 ### Sprint 1 · 20 – 27 Sep
 
 * *Went well:* the repository and Jira project were ready before development started.
-* *Challenge:* the sprint closed after one day; the rest of the time went to Stage 3 documentation.
+* *Challenge:* learning Jira and getting used to working in it as a team.
 * *Change:* plan the next sprint around the foundation work so development starts on solid ground.
 
 ### Sprint 2 · 10 – 17 Oct
 
 * *Went well:* the schema, error format and theme were settled once, so later features followed one pattern.
-* *Challenge:* three tickets were marked Done without an artifact in the repository — Docker Compose, the CI pipeline and the API contract — which we only discovered in the Stage 4 review.
-* *Change:* a ticket moves to Done only with a link to the merged code or file that delivers it.
+* *Challenge:* we started to find that some things we had decided to build were not needed, such as Docker, and removed them. We also found that each of us read the same ticket differently, so the team did not share one understanding of what a ticket asked for.
+* *Change:* manage our time better, and hold a grooming session before every sprint so that everyone understands each ticket the same way before work starts.
 
 ### Sprint 3 · 18 – 25 Oct
 
@@ -92,26 +88,26 @@ At the end of each sprint we asked three questions: what went well, what challen
 * *Challenge:* 13 of 18 tickets carried over; most were built but not closed, so the board did not show real progress.
 * *Change:* update ticket status at the stand-up, not at the end of the sprint.
 
-### Sprint 5 · 27 – 31 Oct
+### Sprint 4 · 27 – 31 Oct
 
 * *Went well:* the map became usable end to end, from a device reading to a marker on the screen.
-* *Challenge:* merging feature branches directly into each other broke the employee list, dropped the multi-site pages and failed 12 tests; fixing it cost time we had planned for features.
-* *Change:* integrate through `develop` with a pull request and one review, and run the test suite before every merge.
+* *Challenge:* the frontend and the backend of the same feature were often built by different people, and because the features depend on each other, the two sides did not fit when they were merged. We needed better communication during development, not only at the end.
+* *Change:* merge early instead of at the end of the sprint, review together what each of us is working on, and improve our grooming so that dependencies between features are agreed before work starts.
 
-### Sprint 6 · 2 – 6 Nov, closed 21 Nov
+### Sprint 5 · 2 – 6 Nov, closed 21 Nov
 
 * *Went well:* the product now covers the full journey in our Charter, from a worker's reading to a verifiable report.
 * *Challenge:* the sprint ran two weeks past its end date; the weekly and monthly report layout was lost in a merge (`SITE-194`); and the hardware decision came late in the build.
-* *Change:* keep sprints to their end date and carry work forward explicitly; close Sprint 7 on 27 November whatever its state.
+* *Change:* keep sprints to their end date and carry work forward explicitly; close Sprint 6 on 27 November whatever its state.
 
 ### Overall
 
 | What worked | What we will change |
 |---|---|
-| One-week sprints kept the scope of each iteration small | Enter the sprint goal in Jira at planning |
-| Splitting stories by layer gave every ticket one owner | Move a ticket to Done only with proof of delivery |
-| Enforcing isolation, validation and append-only rules in code rather than by convention | Merge through pull requests with one review |
-| Recording each scope change as a decision with its reason | Keep tester and builder different people on every QA story |
+| One-week sprints kept the scope of each iteration small | Hold a grooming session before every sprint, so that everyone reads each ticket the same way |
+| A review at the end of every sprint with the whole team | Merge early and review together what each of us is working on |
+| Enforcing isolation, validation and append-only rules in code rather than by convention | Keep the frontend and backend owners of a feature talking throughout development |
+| Recording each scope change as a decision with its reason | Manage time better and keep each sprint to its end date |
 
 ---
 
@@ -139,11 +135,11 @@ Stage 3 planned six one-week iterations from 11 October to 21 November. In pract
 | — | 28 Sep – 9 Oct | Stage 3 technical documentation | — |
 | Sprint 2 | 10 – 17 Oct | Lay the technical foundation: schema, API conventions, theme, seed data, deployment | Technical Foundation |
 | Sprint 3 | 18 – 25 Oct | Let a company register, sign in and invite managers, with each company's data isolated | Company Account & Authentication, Landing Page |
-| Sprint 5 | 27 – 31 Oct | Run several sites, manage employees and see them on a live map with work zones | Multiple Sites, Employee & Device Management, Live Map & Geofencing |
-| Sprint 6 | 2 – 6 Nov, closed 21 Nov | Receive device readings, assign tasks, keep a tamper-evident record, and issue verifiable PDF reports | IoT Data Integration, Task & Workload Assignment, History & Records, Reports & Exports |
-| Sprint 7 | 21 – 27 Nov | Final UAT, enhancements and presentation readiness: run final UAT on every feature, finish the reports and alert rules carried from earlier sprints, complete the landing page, and make the full demo journey work end to end | QA, Reports & Exports, Automated Alerts, Landing Page |
+| Sprint 4 | 27 – 31 Oct | Run several sites, manage employees and see them on a live map with work zones | Multiple Sites, Employee & Device Management, Live Map & Geofencing |
+| Sprint 5 | 2 – 6 Nov, closed 21 Nov | Receive device readings, assign tasks, keep a tamper-evident record, and issue verifiable PDF reports | IoT Data Integration, Task & Workload Assignment, History & Records, Reports & Exports |
+| Sprint 6 | 21 – 27 Nov | Final UAT, enhancements and presentation readiness: run final UAT on every feature, finish the reports and alert rules carried from earlier sprints, complete the landing page, and make the full demo journey work end to end | QA, Reports & Exports, Automated Alerts, Landing Page |
 
-> Sprint numbering in Jira skips 4: Sprint 5 followed Sprint 3 directly. Sprint goals were agreed in planning but not entered in Jira's goal field until Sprint 7; this is addressed in the retrospective.
+> In Jira these sprints are named Site Sprint 5, 6 and 7; in this report we number them 4, 5 and 6 in the order they ran. Sprint goals were agreed in planning but not entered in Jira's goal field until Sprint 6; this is addressed in the retrospective.
 
 > **TODO (Laila):** confirm what the team did between 28 Sep and 9 Oct.
 
@@ -204,13 +200,13 @@ A ticket counts towards the sprint in which it reached `Done`. Tickets still ope
 | Sprint 1 | 1 | 1 | 0 | 0 | 100% |
 | Sprint 2 | 9 | 1 | 3 | 5 | 11% |
 | Sprint 3 | 18 | 5 | 0 | 13 | 28% |
-| Sprint 5 | 28 | 3 | 0 | 25 | 11% |
-| Sprint 6 | 58 | 47 | 0 | 11 | 81% |
-| Sprint 7 | 30 | in progress | — | — | — |
+| Sprint 4 | 28 | 3 | 0 | 25 | 11% |
+| Sprint 5 | 58 | 47 | 0 | 11 | 81% |
+| Sprint 6 | 30 | in progress | — | — | — |
 
 Source: [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf), exported from Jira on 21 Nov 2026.
 
-**Reading the numbers.** The low completion in Sprints 2 to 5 does not mean little was built: most of those tickets were built in their sprint but were not moved to `Done`, so they carried forward until the status review on 21 November. 31 tickets passed through more than one sprint, and 12 of them through three. The spike in Sprint 6 is that backlog being closed, not one week's work. We treat this as a tracking failure and address it in the [retrospective](#1-retrospectives).
+**Reading the numbers.** The low completion in Sprints 2 to 4 does not mean little was built: most of those tickets were built in their sprint but were not moved to `Done`, so they carried forward until the status review on 21 November. 31 tickets passed through more than one sprint, and 12 of them through three. The spike in Sprint 5 is that backlog being closed, not one week's work. We treat this as a tracking failure and address it in the [retrospective](#1-retrospectives).
 
 ### 2.7 Adjustments and Scope Changes
 
@@ -218,19 +214,19 @@ The plan changed during development. Each change below is recorded as a decision
 
 | Change | Reason | Effect in Jira |
 |---|---|---|
-| Repositioned from a safety platform to an operations tracking platform | The value we offer is a record of field operations; safety is a supporting benefit | Midday-ban and working-hour alerts `SITE-35`, `SITE-37` and their evaluator `SITE-92` moved to Sprint 7 |
+| Repositioned from a safety platform to an operations tracking platform | The value we offer is a record of field operations; safety is a supporting benefit | Midday-ban and working-hour alerts `SITE-35`, `SITE-37` and their evaluator `SITE-92` moved to Sprint 6 |
 | Removed health and heart-rate monitoring | Out of scope for operations tracking, as stated in the Project Charter | Leftovers in the code are tracked as `SITE-196` |
 | Replaced smartwatch hardware with the worker's phone | No wearable met our three requirements within the MVP time and budget: run our own software permanently, report live location to our server, and carry sensors we can extend later | Traccar bridge `SITE-89` closed as Won't Do; phone pairing `SITE-197` and the App Store app `SITE-198` added |
 | Removed in-device worker consent and communication | Not feasible in the MVP | Consent is recorded by the manager; workers without it show as *No consent*, not as absent |
 | Replaced data analytics with PDF reports | A referenced, hashed report gives the client evidence it can verify | Reports & Exports epic |
 | Did not build Docker Compose, the CI pipeline, the OpenAPI file or the threshold editor | Not needed for the product to work; deprioritized against feature delivery | `SITE-74`, `SITE-76`, `SITE-71`, `SITE-41` closed as Won't Do |
 
-**Status review on 21 November.** Before closing Sprint 6 we checked every ticket against the code:
+**Status review on 21 November.** Before closing Sprint 5 we checked every ticket against the code:
 
 * 6 tickets marked `To Do` were already built and moved to `In QA`, each with the file that proves it.
 * 3 tickets marked `Done` had no artifact in the repository (`SITE-71`, `SITE-74`, `SITE-76`); they were reopened and closed as `Won't Do` with the reason.
 * 5 tickets were created for work that had been built without one: phone pairing, the App Store app, the marketplace, the platform admin console and notifications.
-* 47 tickets in `UAT` were accepted and moved to `Done`, and Sprint 6 was closed.
+* 47 tickets in `UAT` were accepted and moved to `Done`, and Sprint 5 was closed.
 
 ---
 
@@ -272,7 +268,7 @@ Each developer worked on the tickets assigned to them in the sprint ([Section 2.
 | Faisal Alshahrani | 16 |
 | Saad Alatar | 14 |
 
-**Where practice differed from the plan.** Stage 3 planned protected branches, a pull request for every merge and one approving review. In practice, of 11 merges, one went through a pull request ([#6](https://github.com/JSAbdullaH/Portfolio-Project/pull/6)); the others were merged directly between feature branches. 39 of 102 commit messages follow the Conventional Commits types, and 16 carry a Jira key. The cost showed in Sprint 5: merging the employee and multi-site branches broke the employee list and dropped the multi-site pages, and 12 backend tests failed until the conflicts were resolved. The fixes are recorded in [`Bug-fix.md`](../Portofolio/Bug-fix.md). We return to this in the [retrospective](#1-retrospectives).
+**Where practice differed from the plan.** Stage 3 planned protected branches, a pull request for every merge and one approving review. In practice, of 11 merges, one went through a pull request ([#6](https://github.com/JSAbdullaH/Portfolio-Project/pull/6)); the others were merged directly between feature branches. 39 of 102 commit messages follow the Conventional Commits types, and 16 carry a Jira key. The cost showed in Sprint 4: merging the employee and multi-site branches broke the employee list and dropped the multi-site pages, and 12 backend tests failed until the conflicts were resolved. The fixes are recorded in [`Bug-fix.md`](../Portofolio/Bug-fix.md). We return to this in the [retrospective](#1-retrospectives).
 
 > **TODO (Abdullah):** add a link to the final pull request into `main` once it is opened.
 
@@ -293,7 +289,7 @@ Defects are logged as Jira `Bug` issues under the Bug Fixes epic, with steps to 
 | Source | Count | Status |
 |---|---|---|
 | Merge defects fixed after integrating the feature branches | 12 failing tests, plus the code defects behind them | All fixed — [`Bug-fix.md`](../Portofolio/Bug-fix.md) |
-| Bugs logged in Jira | 6 | 5 in development, 1 in QA — all in Sprint 7 |
+| Bugs logged in Jira | 6 | 5 in development, 1 in QA — all in Sprint 6 |
 
 | Key | Bug | Priority |
 |---|---|---|
@@ -321,7 +317,7 @@ Defects are logged as Jira `Bug` issues under the Bug Fixes epic, with steps to 
 
 288 tests across 15 Jest files, plus the Playwright journey. The suite refuses to run against any database whose name does not contain `test`, because its setup rebuilds the target database; this protects the shared team database.
 
-**Results.** After the Sprint 5 merge fixes, the backend suite passed in full at the time (155 of 155).
+**Results.** After the Sprint 4 merge fixes, the backend suite passed in full at the time (155 of 155).
 
 > **TODO (team):** run `npm test` against a local test database and add the output as `stage4-evidence/screenshots/jest-results.png`.
 
@@ -346,7 +342,7 @@ The QA epic `SITE-100` holds one QA story per feature and one test case per acce
 
 Full list: [QA test cases](./stage4-evidence/jira/site14-jira-report.pdf).
 
-**Status on 21 November:** 7 test cases passed, 3 blocked, 73 to run in Sprint 7. The Reports run (`SITE-104`) found four of the six open bugs in [Section 4](#4-bug-tracking), which is the purpose of the plan.
+**Status on 21 November:** 7 test cases passed, 3 blocked, 73 to run in Sprint 6. The Reports run (`SITE-104`) found four of the six open bugs in [Section 4](#4-bug-tracking), which is the purpose of the plan.
 
 ### 5.3 Integration Checks
 
