@@ -23,9 +23,9 @@ The value of this stage is that it shows how the plan held up against real work.
 
 ## 0. Sprint Planning
 
-**Links:** [Jira board](https://laila000k.atlassian.net/jira/software/projects/SITE/boards/34) · [Backlog](https://laila000k.atlassian.net/jira/software/projects/SITE/boards/34/backlog) · [All tickets](./stage4-evidence/jira/site14-jira-report.pdf) · [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf)
+**Links:** [All tickets](./stage4-evidence/jira/site14-jira-report.pdf) · [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf)
 
-We ran the MVP in **one-week sprints** on a Jira Scrum board (project `SITE`). Each sprint opened with planning on its first day and closed with a review on its last. The user stories written in Stage 3 were split by layer into frontend `[FE]`, backend `[BE]` and database `[DB]` tickets, so that each ticket had a single owner and could be estimated on its own.
+We ran the MVP in **one-week sprints** on a Jira Scrum board. Each sprint opened with planning on its first day and closed with a review on its last. The user stories written in Stage 3 were split by layer into frontend `[FE]`, backend `[BE]` and database `[DB]` tickets, so that each ticket had a single owner and could be estimated on its own.
 
 Our process for each sprint:
 
@@ -51,7 +51,6 @@ Stage 3 planned six one-week iterations from 11 October to 21 November. In pract
 
 > In Jira these sprints are named Site Sprint 5, 6 and 7; in this report we number them 4, 5 and 6 in the order they ran. Sprint goals were agreed in planning but not entered in Jira's goal field until Sprint 6; this is addressed in the retrospective.
 
-> **TODO (Laila):** confirm what the team did between 28 Sep and 9 Oct.
 
 ### 0.2 Prioritization (MoSCoW)
 
@@ -91,15 +90,13 @@ Tasks depended only on Sites and Employees, so they ran in parallel with steps 5
 
 Each area had a lead; the other members worked alongside as full-stack developers.
 
-> **TODO (Laila):** confirm the SCM and QA owners.
 
 ### 0.5 Stand-ups and Tracking
 
-> **TODO (Laila):** describe how and how often the team met for stand-ups, and where (for example, a daily call on Discord).
 
 Every ticket moved through the Jira workflow defined in Stage 3: `To Do` → `In Dev` → `Code Review` → `In QA` → `UAT` → `Done`, plus `Blocked`. During the Stage 4 review we added a `Won't Do` status, so that a ticket we decided not to build is closed with its reason rather than left open or marked Done.
 
-![Jira board](./stage4-evidence/screenshots/board.png)
+
 
 ### 0.6 Velocity and Completion
 
@@ -114,7 +111,7 @@ A ticket counts towards the sprint in which it reached `Done`. Tickets still ope
 | Sprint 5 | 58 | 47 | 0 | 11 | 81% |
 | Sprint 6 | 30 | in progress | — | — | — |
 
-Source: [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf), exported from Jira on 21 Nov 2026.
+Source: [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf), exported from Jira.
 
 **Reading the numbers.** The low completion in Sprints 2 to 4 does not mean little was built: most of those tickets were built in their sprint but were not moved to `Done`, so they carried forward until the status review on 21 November. 31 tickets passed through more than one sprint, and 12 of them through three. The spike in Sprint 5 is that backlog being closed, not one week's work. We treat this as a tracking failure and address it in the [retrospective](#2-retrospectives).
 
@@ -151,7 +148,6 @@ We held a review at the end of every sprint, with all four members present, eith
 3. **Decide what to build next and who owns it**, in dependency order.
 4. **Decide what we will not build**, and record why.
 
-The sprint dates and goals are in [Section 0.1](#01-sprint-timeline), and the completion figures in [Section 0.6](#06-velocity-and-completion).
 
 ### Sprint 1 · 20 – 27 Sep
 
@@ -268,9 +264,9 @@ Each developer worked on the tickets assigned to them in the sprint ([Section 0.
 | Faisal Alshahrani | 16 |
 | Saad Alatar | 14 |
 
-**Where practice differed from the plan.** Stage 3 planned protected branches, a pull request for every merge and one approving review. In practice, of 11 merges, one went through a pull request ([#6](https://github.com/JSAbdullaH/Portfolio-Project/pull/6)); the others were merged directly between feature branches. 39 of 102 commit messages follow the Conventional Commits types, and 16 carry a Jira key. The cost showed in Sprint 4: merging the employee and multi-site branches broke the employee list and dropped the multi-site pages, and 12 backend tests failed until the conflicts were resolved. The fixes are recorded in [`Bug-fix.md`](../Portofolio/Bug-fix.md). We return to this in the [retrospective](#2-retrospectives).
+**Where practice differed from the plan.** Stage 3 planned protected branches, a pull request for every merge and one approving review. In practice, of 11 merges, one went through a pull request ([#6](https://github.com/JSAbdullaH/Portfolio-Project/pull/6)); the others were merged directly between feature branches. 39 of 102 commit messages follow the Conventional Commits types, and 16 carry a Jira key. The cost showed in Sprint 4: merging the employee and multi-site branches broke the employee list and dropped the multi-site pages, and 12 backend tests failed until the conflicts were resolved. The fixes are recorded in [`Bug-fix.md`].
 
-> **TODO (Abdullah):** add a link to the final pull request into `main` once it is opened.
+
 
 ### 3.4 QA During Development
 
@@ -282,7 +278,7 @@ Each developer worked on the tickets assigned to them in the sprint ([Section 0.
 
 ## 4. Bug Tracking
 
-**Links:** [Bug Fixes epic SITE-97](https://laila000k.atlassian.net/browse/SITE-97) · [All bugs in Jira](https://laila000k.atlassian.net/issues/?jql=project%20%3D%20SITE%20AND%20issuetype%20%3D%20Bug%20ORDER%20BY%20priority%20DESC) · [Merge fixes](../Portofolio/Bug-fix.md) · [All tickets](./stage4-evidence/jira/site14-jira-report.pdf)
+**Links:** [Merge fixes](../Portofolio/Bug-fix.md) · [All tickets](./stage4-evidence/jira/site14-jira-report.pdf)
 
 Defects are logged as Jira `Bug` issues under the Bug Fixes epic, with steps to reproduce, the expected and actual result, the environment, and the test case that found them. Priorities follow the scale in [Stage 3, Section 5.2.4](./Stage3.md#524-defect-management).
 
@@ -304,7 +300,7 @@ Defects are logged as Jira `Bug` issues under the Bug Fixes epic, with steps to 
 
 ## 5. Testing Evidence and Results
 
-**Links:** [QA epic SITE-100](https://laila000k.atlassian.net/browse/SITE-100) · [Test cases](./stage4-evidence/jira/site14-jira-report.pdf) · [Automated tests](https://github.com/JSAbdullaH/Portfolio-Project/tree/main/Portofolio/Backend/tests)
+**Links:** [Test cases](./stage4-evidence/jira/site14-jira-report.pdf) · [Automated tests](https://github.com/JSAbdullaH/Portfolio-Project/tree/main/Portofolio/Backend/tests)
 
 ### 5.1 Automated Tests
 
@@ -319,9 +315,7 @@ Defects are logged as Jira `Bug` issues under the Bug Fixes epic, with steps to 
 
 **Results.** After the Sprint 4 merge fixes, the backend suite passed in full at the time (155 of 155).
 
-> **TODO (team):** run `npm test` against a local test database and add the output as `stage4-evidence/screenshots/jest-results.png`.
 
-![Jest results](./stage4-evidence/screenshots/jest-results.png)
 
 ### 5.2 Manual QA Plan
 
@@ -352,7 +346,6 @@ Full list: [QA test cases](./stage4-evidence/jira/site14-jira-report.pdf).
 
 ### 5.4 Test Case Evidence
 
-> **TODO (Laila):** run five or six test cases on the deployed site, save a screenshot of each in `stage4-evidence/screenshots/`, and list them here.
 
 | Test case | Result | Evidence |
 |---|---|---|
@@ -373,7 +366,7 @@ Full list: [QA test cases](./stage4-evidence/jira/site14-jira-report.pdf).
 | Database | Cloud PostgreSQL, shared by the team; secrets are kept in environment variables and never committed |
 | Worker tracking app | Submitted to the Apple App Store and awaiting review (`SITE-198`) |
 
-> **TODO (Abdullah):** add the live URLs and confirm which branch Railway deploys from.
+
 
 ---
 
