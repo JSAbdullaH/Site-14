@@ -49,6 +49,7 @@ const as = (token) => ({
   create: (body) => request(app).post(api('/tasks')).set(bearer(token)).send(body),
   list: (query = '') => request(app).get(api(`/tasks${query}`)).set(bearer(token)),
   update: (id, body) => request(app).patch(api(`/tasks/${id}`)).set(bearer(token)).send(body),
+  remove: (id) => request(app).delete(api(`/tasks/${id}`)).set(bearer(token)),
 });
 
 let admin;
@@ -161,6 +162,44 @@ describe('PATCH /tasks/:id (SITE-43)', () => {
     const { id } = (await as(other.token).create({ title: 'Theirs', employee_id: rivalWorker }).expect(201)).body;
     await A.update(id, { status: 'done' }).expect(404);
     await A.update('not-a-uuid', { status: 'done' }).expect(404);
+  });
+});
+
+describe('DELETE /tasks/:id', () => {
+  test('deletes a task that is not done yet', async () => {
+    const todo = (await A.create({ title: 'Check scaffolding', employee_id: ahmed }).expect(201)).body;
+    const started = (await A.create({ title: 'Clear the gate', employee_id: ahmed }).expect(201)).body;
+    await A.update(started.id, { status: 'in_progress' }).expect(200);
+
+    await A.remove(todo.id).expect(204);
+    await A.remove(started.id).expect(204);
+    expect((await A.list(`?employee_id=${ahmed}`).expect(200)).body.total).toBe(0);
+  });
+
+  test("keeps a completed task: it is on the worker's record", async () => {
+    const { id } = (await A.create({ title: 'Pour slab', employee_id: ahmed }).expect(201)).body;
+    await A.update(id, { status: 'done' }).expect(200);
+    const res = await A.remove(id).expect(409);
+    expect(res.body.error.code).toBe('TASK_DONE');
+    expect((await A.list(`?employee_id=${ahmed}`).expect(200)).body.total).toBe(1);
+  });
+
+  test('a site manager can delete tasks', async () => {
+    const manager = await managerOf(admin.token, 'omar@albina.test');
+    const { id } = (await A.create({ title: 'Sweep', employee_id: ahmed }).expect(201)).body;
+    await as(manager).remove(id).expect(204);
+  });
+
+  test("returns 404 for another company's task, a bad id and a second delete", async () => {
+    const other = await adminOf('Rival', 'boss@rival.test');
+    const rivalWorker = await workerOf(other.companyId, await siteOf(other.companyId, 'Rival Site'), 'Rival Worker');
+    const theirs = (await as(other.token).create({ title: 'Theirs', employee_id: rivalWorker }).expect(201)).body;
+    await A.remove(theirs.id).expect(404);
+    await A.remove('not-a-uuid').expect(404);
+
+    const mine = (await A.create({ title: 'Once', employee_id: ahmed }).expect(201)).body;
+    await A.remove(mine.id).expect(204);
+    await A.remove(mine.id).expect(404);
   });
 });
 

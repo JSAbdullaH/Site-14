@@ -185,10 +185,31 @@ async function update(auth, id, input) {
   }
 }
 
+// Removing an employee keeps their records: hours, alerts and tasks still belong to them.
+// Their device is freed for someone else, and a shift still open is closed at the last
+// position the device sent, so it does not keep counting hours.
 async function deactivate(auth, id) {
-  const e = await auth.db.employee.findUnique({ where: { id }, select: { id: true } });
+  const e = await auth.db.employee.findUnique({ where: { id }, select: { id: true, status: true } });
   if (!e) throw notFound();
+  if (e.status !== 'active') return;
   await auth.db.$transaction(async (tx) => {
+    const open = await tx.workSession.findFirst({
+      where: { employeeId: id, endedAt: null },
+      select: { id: true, startedAt: true },
+    });
+    if (open) {
+      const last = await tx.telemetryLog.findFirst({
+        where: { sessionId: open.id },
+        orderBy: { recordedAt: 'desc' },
+        select: { recordedAt: true },
+      });
+      const endedAt = last ? last.recordedAt : open.startedAt;
+      await tx.workSession.update({ where: { id: open.id }, data: { endedAt } });
+      await tx.alert.updateMany({
+        where: { sessionId: open.id, alertType: 'zone_exit', resolvedAt: null },
+        data: { resolvedAt: endedAt },
+      });
+    }
     await tx.device.updateMany({ where: { employeeId: id }, data: { employeeId: null } });
     await tx.employee.update({ where: { id }, data: { status: 'inactive' } });
   });

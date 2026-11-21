@@ -12,4 +12,9 @@ async function update(req, res) {
   res.json(await taskService.update(req.auth, req.params.id, req.body));
 }
 
-module.exports = { create, list, update };
+async function remove(req, res) {
+  await taskService.remove(req.auth, req.params.id);
+  res.status(204).end();
+}
+
+module.exports = { create, list, update, remove };

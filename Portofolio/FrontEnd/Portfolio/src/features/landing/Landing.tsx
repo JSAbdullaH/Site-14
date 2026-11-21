@@ -10,7 +10,7 @@ export default function Landing() {
             Sign in
           </Link>
           <Link
-            to="/signup"
+            to="/signin"
             className="h-10 px-5 rounded-ctrl bg-signal text-white text-sm font-bold inline-flex items-center hover:bg-signal-dark transition-colors"
           >
             Sign up
@@ -30,7 +30,7 @@ export default function Landing() {
         </p>
 
         <Link
-          to="/signup"
+          to="/signin"
           className="mt-12 h-12 px-6 rounded-ctrl bg-signal text-white font-bold inline-flex items-center w-fit hover:bg-signal-dark transition-colors"
         >
           Create your company account

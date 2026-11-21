@@ -35,10 +35,22 @@ function Stat<T>({ label, item, show }: { label: string; item: AttendanceValue<T
 }
 
 const time = (v: string | null) => v ?? "—";
+
+// "Block A · 9 h 10 min of 8 h": only the parts the alert carries, joined without dangling commas.
+function alertDetail(a: DailyRecord["alerts"][number]) {
+  return [
+    a.zone?.name,
+    a.observed_minutes != null ? `${formatMinutes(a.observed_minutes)} of ${formatMinutes(a.limit_minutes ?? 0)}` : null,
+    a.observed_bpm != null ? `${a.observed_bpm} bpm (limit ${a.limit_bpm})` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 const hours = (v: number) => formatMinutes(v);
 
 export default function DailyRecordView({ record, onCorrect }: Props) {
-  const zoneTotal = record.minutes_by_zone.reduce((sum, z) => sum + z.minutes, 0);
+  // Never zero, so a day with only empty zone entries cannot divide by zero.
+  const zoneTotal = record.minutes_by_zone.reduce((sum, z) => sum + z.minutes, 0) || 1;
   const done = record.tasks.filter((t) => t.status === "done").length;
 
   return (
@@ -114,11 +126,7 @@ export default function DailyRecordView({ record, onCorrect }: Props) {
                 <li key={a.id} className="flex items-start justify-between gap-4 py-2 first:pt-0 last:pb-0">
                   <div className="text-sm">
                     <p className="font-medium">{ALERT_LABELS[a.type] ?? a.type}</p>
-                    <p className="text-muted-foreground">
-                      {a.zone ? `${a.zone.name}, ` : ""}
-                      {a.observed_minutes != null && `${formatMinutes(a.observed_minutes)} of ${formatMinutes(a.limit_minutes ?? 0)}`}
-                      {a.observed_bpm != null && `${a.observed_bpm} bpm (limit ${a.limit_bpm})`}
-                    </p>
+                    {alertDetail(a) && <p className="text-muted-foreground">{alertDetail(a)}</p>}
                   </div>
                   <div className="text-right">
                     <p className="text-sm tabular-nums">{clock(a.triggered_at)}</p>

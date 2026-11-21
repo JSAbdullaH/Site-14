@@ -12,6 +12,7 @@ const sessionLimiter = limiter(300);
 
 const router = Router();
 
+router.post('/check-email', authLimiter, validateBody(s.emailSchema), authController.checkEmail);
 router.post('/register', authLimiter, validateBody(s.registerSchema), authController.register);
 router.post('/verify-email', authLimiter, validateBody(s.verifyEmailSchema), authController.verifyEmail);
 router.post('/verify-email/resend', authLimiter, validateBody(s.emailSchema), authController.resendVerification);

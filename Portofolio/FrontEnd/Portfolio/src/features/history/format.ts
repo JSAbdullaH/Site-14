@@ -2,6 +2,13 @@
   return new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
 }
 
+/** The calendar day `days` after (or before) an ISO date. */
+export function shiftDay(date: string, days: number) {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export function formatMinutes(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

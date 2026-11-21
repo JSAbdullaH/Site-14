@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { LatLng, LngLat, Polygon } from "@/features/map/types";
 import BoundaryPicker from "./components/BoundaryPicker";
 import SiteEmployees from "./components/SiteEmployees";
+import DeactivateSiteDialog from "./components/DeactivateSiteDialog";
 import { createSite, deactivateSite, getSite, setActiveSiteId, updateSite } from "./api";
 import type { Site } from "./types";
 
@@ -134,6 +135,8 @@ export default function SiteEditPage() {
     setFields(next);
     setFormError(other || (Object.keys(next).length ? "Check the highlighted fields." : (err as Error).message));
   }
+
+  const [closing, setClosing] = useState(false);
 
   async function setActive(active: boolean) {
     if (!site) return;
@@ -264,12 +267,28 @@ export default function SiteEditPage() {
                 {busy ? "Saving..." : editing ? "Save changes" : "Create site"}
               </Button>
               {editing && site && (
-                <Button type="button" variant="outline" disabled={busy} onClick={() => setActive(!site.is_active)}>
+                <Button
+                  type="button"
+                  variant={site.is_active ? "destructive" : "outline"}
+                  disabled={busy}
+                  onClick={() => (site.is_active ? setClosing(true) : setActive(true))}
+                >
                   {site.is_active ? "Deactivate site" : "Reactivate site"}
                 </Button>
               )}
             </div>
           </form>
+
+          {editing && site && (
+            <DeactivateSiteDialog
+              site={closing ? site : null}
+              onClose={() => setClosing(false)}
+              onDeactivated={() => {
+                setSite({ ...site, is_active: false });
+                setNotice(`${site.name} is deactivated. Its records are kept.`);
+              }}
+            />
+          )}
 
           {editing && site ? (
             <SiteEmployees siteId={site.id} siteActive={site.is_active} onChange={refreshSite} />

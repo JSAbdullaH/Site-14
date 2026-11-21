@@ -11,6 +11,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/shared/lib/api";
+import { DEVICE_TYPES, DEVICE_TYPE_LABEL } from "@/shared/lib/deviceTypes";
+import type { DeviceType } from "@/shared/lib/deviceTypes";
 import { registerDevices } from "../api";
 import { parseSerials } from "../types";
 import type { DeviceWithKey } from "../types";
@@ -23,9 +25,9 @@ type Props = {
   onRegistered: (devices: DeviceWithKey[]) => void;
 };
 
-// One device or a whole box of them: paste the serials, one per line.
 export default function RegisterDevicesDialog({ open, onOpenChange, onRegistered }: Props) {
   const [text, setText] = useState("");
+  const [deviceType, setDeviceType] = useState<DeviceType>("tracker");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -36,6 +38,7 @@ export default function RegisterDevicesDialog({ open, onOpenChange, onRegistered
   function close() {
     setText("");
     setError("");
+    setDeviceType("tracker");
     onOpenChange(false);
   }
 
@@ -45,7 +48,7 @@ export default function RegisterDevicesDialog({ open, onOpenChange, onRegistered
     setBusy(true);
     setError("");
     try {
-      const res = await registerDevices(serials);
+      const res = await registerDevices(serials, deviceType);
       setText("");
       onOpenChange(false);
       onRegistered(res.data);
@@ -66,8 +69,9 @@ export default function RegisterDevicesDialog({ open, onOpenChange, onRegistered
         <DialogHeader>
           <DialogTitle>Register devices</DialogTitle>
           <DialogDescription>
-            Paste the serial numbers printed on the devices, one per line. A
-            column copied from a spreadsheet works too. Up to {MAX_BATCH} at once.
+            For hardware that has its own firmware: paste the serial numbers
+            printed on the devices, one per line. Each device shows as not
+            connected until it sends its first signal. Up to {MAX_BATCH} at once.
           </DialogDescription>
         </DialogHeader>
 
@@ -77,6 +81,22 @@ export default function RegisterDevicesDialog({ open, onOpenChange, onRegistered
               {error}
             </p>
           )}
+
+          <div className="mb-4 grid gap-2">
+            <Label htmlFor="device_type">Device type</Label>
+            <select
+              id="device_type"
+              value={deviceType}
+              onChange={(e) => setDeviceType(e.target.value as DeviceType)}
+              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              {DEVICE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {DEVICE_TYPE_LABEL[t]}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="mb-3 grid gap-2">
             <Label htmlFor="device_serials">Serial numbers</Label>

@@ -129,6 +129,18 @@ async function logout({
 }
 
 
+// Tells the sign-in page which form to show next. This reveals whether an email has an
+// account, so the route is rate limited like the other auth endpoints.
+async function checkEmail({
+    email
+}) {
+    const user = await userModel.findByEmail(email);
+    return {
+        exists: Boolean(user),
+        invitation_pending: Boolean(user && userModel.isPendingInvitation(user)),
+    };
+}
+
 async function register(input) {
     const passwordHash = await hashPassword(input.password);
     let created;
@@ -177,14 +189,26 @@ async function register(input) {
         };
     }
 
-    await sendQuietly(() => sendVerificationCode(created.user));
-    return {
+    const result = {
         user: userModel.toPublic(created.user),
         company: {
             name: input.company_name
         },
         verification_required: config.REQUIRE_EMAIL_VERIFICATION,
-        ...verificationTimings(),
+    };
+
+    // Without verification the new admin is signed in straight away.
+    if (!config.REQUIRE_EMAIL_VERIFICATION) {
+        return {
+            ...result,
+            ...(await issueSession(created.user))
+        };
+    }
+
+    await sendQuietly(() => sendVerificationCode(created.user));
+    return {
+        ...result,
+        ...verificationTimings()
     };
 }
 
@@ -199,8 +223,17 @@ async function verifyEmail({
     await userModel.update(prisma, user.id, {
         isEmailVerified: true
     });
-    return {
+    const verified = {
+        ...user,
+        isEmailVerified: true
+    };
+    // The code proves the person owns this inbox, so they are signed in without a second code.
+    if (!canSignIn(verified)) return {
         verified: true
+    };
+    return {
+        verified: true,
+        ...(await issueSession(verified))
     };
 }
 
@@ -324,6 +357,7 @@ async function resetPassword({
 }
 
 module.exports = {
+    checkEmail,
     register,
     verifyEmail,
     resendVerification,

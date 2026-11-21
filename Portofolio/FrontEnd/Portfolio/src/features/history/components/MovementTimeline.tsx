@@ -9,9 +9,9 @@ function describe(e: HistoryEvent) {
     case "arrived":
       return `Arrived at ${e.site}`;
     case "entered_zone":
-      return `Entered ${e.zone?.name}`;
+      return `Entered ${e.zone?.name ?? "a zone"}`;
     case "left_zone":
-      return `Left ${e.zone?.name}`;
+      return `Left ${e.zone?.name ?? "the zone"}`;
     case "offline":
       return `Device stopped reporting${e.minutes ? ` for ${formatMinutes(e.minutes)}` : ""}`;
     case "back_online":

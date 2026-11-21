@@ -11,5 +11,6 @@ router.use(authenticate, requireRole('site_manager'));
 router.post('/', validateBody(s.createTaskSchema), taskController.create);
 router.get('/', validateQuery(s.listTasksQuery), taskController.list);
 router.patch('/:id', validateParams(s.idParams), validateBody(s.updateTaskSchema), taskController.update);
+router.delete('/:id', validateParams(s.idParams), taskController.remove);
 
 module.exports = router;

@@ -25,7 +25,6 @@ export default function AssignDeviceDialog({ device, onClose, onAssigned }: Prop
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // The page mounts a fresh dialog for each device (key), so state starts empty here.
   useEffect(() => {
     if (!device) return;
     listActiveEmployees()
@@ -36,7 +35,6 @@ export default function AssignDeviceDialog({ device, onClose, onAssigned }: Prop
       });
   }, [device]);
 
-  // A worker wears one device: those who already have another are not offered.
   const free = (employees ?? []).filter((e) => !e.device || e.device.id === device?.id);
   const chosen = free.find((e) => e.id === employeeId);
 
@@ -88,7 +86,7 @@ export default function AssignDeviceDialog({ device, onClose, onAssigned }: Prop
                   ? "Loading..."
                   : free.length
                     ? "Choose an employee"
-                    : "Every active employee already wears a device"}
+                    : "Every active employee already carries a device"}
               </option>
               {free.map((e) => (
                 <option key={e.id} value={e.id}>

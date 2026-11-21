@@ -1,7 +1,7 @@
 import { useState } from "react";
-import StatusBadge from "@/shared/components/StatusBadge";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { updateTaskStatus } from "../api";
-import { STATUS_LABEL, STATUS_TONE } from "../types";
+import { STATUS_LABEL } from "../types";
 import type { Task, TaskStatus } from "../types";
 
 type Props = {
@@ -11,6 +11,12 @@ type Props = {
 };
 
 const ORDER: TaskStatus[] = ["todo", "in_progress", "done"];
+
+const TONE: Record<TaskStatus, string> = {
+  todo: "bg-secondary text-foreground/80",
+  in_progress: "bg-info-bg text-info",
+  done: "bg-ok-bg text-ok",
+};
 
 export default function TaskStatusSelect({ task, onChanged, onError }: Props) {
   const [busy, setBusy] = useState(false);
@@ -27,15 +33,17 @@ export default function TaskStatusSelect({ task, onChanged, onError }: Props) {
     }
   }
 
+  // One control: the pill shows the status and opens the choice of the next one.
   return (
-    <div className="flex items-center gap-2">
-      <StatusBadge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</StatusBadge>
+    <label className={`relative inline-flex h-7 items-center gap-1 rounded-full pr-2 pl-2.5 text-xs font-semibold ${TONE[task.status]} ${busy ? "opacity-60" : ""}`}>
+      <span className="sr-only">Status of {task.title}</span>
+      {STATUS_LABEL[task.status]}
+      {busy ? <Loader2 className="size-3 animate-spin" /> : <ChevronDown className="size-3 opacity-70" />}
       <select
-        aria-label={`Change status of ${task.title}`}
         value={task.status}
         disabled={busy}
         onChange={(e) => change(e.target.value as TaskStatus)}
-        className="h-8 rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+        className="absolute inset-0 cursor-pointer appearance-none opacity-0 disabled:cursor-default"
       >
         {ORDER.map((s) => (
           <option key={s} value={s}>
@@ -43,6 +51,6 @@ export default function TaskStatusSelect({ task, onChanged, onError }: Props) {
           </option>
         ))}
       </select>
-    </div>
+    </label>
   );
 }

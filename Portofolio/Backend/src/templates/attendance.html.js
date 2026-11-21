@@ -14,7 +14,7 @@ const STATUS = {
   no_consent: '<span class="tag tag-unknown">NO CONSENT</span>',
 };
 
-function dailyRows(records) {
+function rows(records) {
   return records
     .map(
       (r) => `
@@ -24,23 +24,6 @@ function dailyRows(records) {
         <td class="mono">${r.state === 'present' ? hhmm(r.first_seen) : '&mdash;'}</td>
         <td class="mono">${r.state === 'present' ? hhmm(r.last_seen) : '&mdash;'}</td>
         <td class="mono num">${r.state === 'no_consent' ? '&mdash;' : hours(r.total_minutes)}</td>
-        <td>${STATUS[r.state]}${r.has_gap ? '<span class="tag tag-gap">GAP</span>' : ''}</td>
-      </tr>`,
-    )
-    .join('');
-}
-
-function periodRows(records) {
-  return records
-    .map(
-      (r) => `
-      <tr>
-        <td>${esc(r.full_name)}</td>
-        <td class="mono">${esc(r.employee_number) || '&mdash;'}</td>
-        <td class="mono num">${r.days_present ?? '&mdash;'}</td>
-        <td class="mono num">${r.days_absent ?? '&mdash;'}</td>
-        <td class="mono num">${r.state === 'no_consent' ? '&mdash;' : hours(r.total_minutes)}</td>
-        <td class="mono num">${r.avg_minutes === null ? '&mdash;' : hours(r.avg_minutes)}</td>
         <td>${STATUS[r.state]}${r.has_gap ? '<span class="tag tag-gap">GAP</span>' : ''}</td>
       </tr>`,
     )
@@ -64,16 +47,7 @@ function alertRows(alerts) {
 }
 
 function render(data) {
-  const { site, period, issuer, reference, records, alerts, totals, provisional, aggregate } = data;
-
-  const head = aggregate
-    ? `<th>Employee</th><th>No.</th><th class="num">Days</th><th class="num">Absent</th>
-       <th class="num">Hours</th><th class="num">Avg/day</th><th>Status</th>`
-    : `<th>Employee</th><th>No.</th><th>In</th><th>Out</th>
-       <th class="num">Hours</th><th>Status</th>`;
-
-  const body = aggregate ? periodRows(records) : dailyRows(records);
-  const trail = aggregate ? '<td></td><td></td>' : '<td></td>';
+  const { site, period, issuer, reference, records, alerts, totals, provisional } = data;
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>${esc(reference)}</title>
@@ -109,18 +83,20 @@ function render(data) {
   <table class="meta">
     <tr><td class="k">Site</td><td><strong>${esc(site.name)}</strong></td>
         <td class="k">Client</td><td>${esc(site.client) || '&mdash;'}</td></tr>
-    <tr><td class="k">Period</td><td>${esc(period.label)}${aggregate ? ` &middot; ${period.days} days` : ''}</td>
+    <tr><td class="k">Period</td><td>${esc(period.label)}</td>
         <td class="k">Shift</td><td class="mono">${esc(site.shift)}</td></tr>
     <tr><td class="k">Issued</td><td>${esc(issuer.at)}</td>
         <td class="k">By</td><td>${esc(issuer.name)}</td></tr>
   </table>
 
   <table class="t">
-    <thead><tr>${head}</tr></thead>
-    <tbody>${body}</tbody>
+    <thead><tr>
+      <th>Employee</th><th>No.</th><th>In</th><th>Out</th><th class="num">Hours</th><th>Status</th>
+    </tr></thead>
+    <tbody>${rows(records)}</tbody>
     <tfoot><tr class="totals">
       <td colspan="4">${totals.roster} on roster &middot; ${totals.present} present &middot; ${totals.absent} absent &middot; ${totals.no_consent} not tracked</td>
-      <td class="num">${hours(totals.minutes)}</td>${trail}
+      <td class="num">${hours(totals.minutes)}</td><td></td>
     </tr></tfoot>
   </table>
 

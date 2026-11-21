@@ -3,7 +3,7 @@ const app = require('../src/app');
 const { prisma } = require('../src/config/db');
 const { signAccessToken } = require('../src/utils/jwt');
 const { sha256 } = require('../src/utils/tokens');
-const { pool, truncateAll, makeCompany } = require('./setup');
+const { pool, truncateAll, makeCompany, square } = require('./setup');
 
 const api = (path) => `/api/v1${path}`;
 const bearer = (c) => ({
@@ -294,3 +294,40 @@ describe('device clock drift', () => {
     expect(res.body).toMatchObject({ accepted: 1, rejected: [{ index: 0, reason: 'too_old' }] });
   });
 });
+
+describe('the site, for the app', () => {
+  const site = (c, key = keyOf(c)) =>
+    request(app).get(api('/ingest/site')).set('X-Device-Serial', `GPS-${c.tag}`).set('X-Device-Key', key);
+
+  test("a device gets its wearer's site with the boundary, shift and active zones", async () => {
+    await pool.query("INSERT INTO geofences (site_id, name, boundary, is_active) VALUES ($1, 'Old yard', $2, false)", [a.siteId, square(46.6, 24.7, 0.0002)]);
+    const res = await site(a).expect(200);
+    expect(res.body).toMatchObject({
+      ready: true,
+      reason: null,
+      site: {
+        id: a.siteId,
+        name: 'Site A',
+        shift_start: '07:00',
+        shift_end: '17:00',
+        time_zone: 'Asia/Riyadh',
+        boundary: { type: 'Polygon' },
+        zones: [{ id: a.geofenceId, name: 'Roof A', is_outdoor: true, boundary: { type: 'Polygon' } }],
+      },
+    });
+
+    const beat = await request(app).post(api('/ingest/heartbeat')).set('X-Device-Serial', 'GPS-A').set('X-Device-Key', keyOf(a)).send({}).expect(200);
+    expect(beat.body.site).toEqual({ id: a.siteId, name: 'Site A' });
+  });
+
+  test('no site when the wearer has none or it is deactivated, and only for its own key', async () => {
+    await pool.query('UPDATE sites SET is_active = false WHERE id = $1', [a.siteId]);
+    expect((await site(a).expect(200)).body).toMatchObject({ site: null, ready: false, reason: 'NO_SITE' });
+
+    await pool.query('UPDATE devices SET employee_id = NULL WHERE id = $1', [b.deviceId]);
+    expect((await site(b).expect(200)).body).toMatchObject({ site: null, reason: 'DEVICE_UNASSIGNED' });
+
+    await site(a, keyOf(b)).expect(401);
+  });
+});
+

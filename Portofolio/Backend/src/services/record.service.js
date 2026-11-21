@@ -73,8 +73,21 @@ function attendanceOf(sessions) {
   return {
     first_seen: clockInRiyadh(sessions[0].startedAt),
     last_seen: clockInRiyadh(lastSeen),
-    worked_minutes: sessions.reduce((sum, s) => sum + minutesBetween(s.startedAt, s.endedAt || now), 0),
+    worked_minutes: workedMinutes(sessions, now),
   };
+}
+
+// Sessions come sorted by start. Time two of them share (a device swap mid-shift) counts once.
+function workedMinutes(sessions, now) {
+  let total = 0;
+  let until = null;
+  for (const s of sessions) {
+    const end = s.endedAt || now;
+    const from = until && s.startedAt < until ? until : s.startedAt;
+    if (end > from) total += minutesBetween(from, end);
+    if (!until || end > until) until = end;
+  }
+  return total;
 }
 
 async function correctionsOf(db, employeeId, date) {

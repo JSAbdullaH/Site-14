@@ -17,7 +17,6 @@ type Props = {
   onClose: () => void;
 };
 
-// Keys are shown once. The server keeps only a hash, so a lost key means a new one.
 export default function DeviceKeysDialog({ devices, onClose }: Props) {
   const [copied, setCopied] = useState(false);
   const open = devices.length > 0;

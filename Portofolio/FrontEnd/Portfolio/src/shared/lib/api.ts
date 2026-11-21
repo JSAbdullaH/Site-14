@@ -1,6 +1,7 @@
-﻿import { clearToken, getToken, saveToken, saveUser } from "./auth";
+import { API_BASE } from "@/shared/lib/config";
+import { clearToken, getToken, saveToken, saveUser } from "./auth";
 
-const BASE = "/api/v1";
+const BASE = API_BASE;
 
 // Every failed response has the shape { error: { code, message, fields? } }.
 export class ApiError extends Error {
@@ -21,7 +22,10 @@ export class ApiError extends Error {
   }
 }
 
-const NO_REFRESH = ["/auth/login", "/auth/refresh", "/auth/register"];
+const NO_REFRESH = ["/auth/login", "/auth/refresh", "/auth/register", "/auth/check-email", "/auth/verify-email"];
+
+const PUBLIC_AUTH_PAGES = ["/signin", "/signup", "/forgot-password", "/reset-password", "/invite"];
+const onPublicAuthPage = () => PUBLIC_AUTH_PAGES.some((p) => window.location.pathname.startsWith(p));
 
 let refreshing: Promise<string | null> | null = null;
 
@@ -81,7 +85,7 @@ export async function apiFetch<T>(
       res = await send(path, options, fresh);
     } else {
       clearToken();
-      if (!window.location.pathname.startsWith("/signin")) {
+      if (!onPublicAuthPage()) {
         window.location.href = "/signin";
       }
       throw new ApiError(401, "Your session has ended. Sign in again.", "UNAUTHENTICATED");
@@ -114,7 +118,7 @@ export async function apiRaw(
     const fresh = await refreshOnce();
     if (!fresh) {
       clearToken();
-      if (!window.location.pathname.startsWith("/signin")) {
+      if (!onPublicAuthPage()) {
         window.location.href = "/signin";
       }
       throw new ApiError(401, "Your session has ended. Sign in again.", "UNAUTHENTICATED");

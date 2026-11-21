@@ -20,6 +20,7 @@ require('dotenv').config({ quiet: true });
 const crypto = require('node:crypto');
 const { prisma } = require('../src/config/db');
 const { hashPassword } = require('../src/utils/password');
+const { PRODUCTS } = require('./catalog');
 
 const MINUTE = 60_000;
 const RIYADH_OFFSET = 3 * 60 * MINUTE; // UTC+3, no daylight saving
@@ -455,6 +456,10 @@ async function seed() {
   const passwordHash = await hashPassword(process.env.SEED_PASSWORD || 'Site14-Demo-2026!');
   const albina = await seedAlbina(passwordHash);
   await seedNadeef(passwordHash);
+  await prisma.product.createMany({ data: PRODUCTS });
+  await prisma.platformAdmin.create({
+    data: { fullName: 'SITE14 Owner', email: 'owner@site14.test', passwordHash },
+  });
   return albina;
 }
 
@@ -466,6 +471,7 @@ if (require.main === module) {
         `${r.readings} readings, ${r.alerts} alerts, in ${((Date.now() - started) / 1000).toFixed(1)}s.`);
       console.log('Sign in with admin@albina.test or manager@albina.test (password: SEED_PASSWORD).');
       console.log('Second company: admin@nadeef.test');
+      console.log('Website owner dashboard (/admin): owner@site14.test');
     })
     .catch((err) => {
       console.error(err.message);

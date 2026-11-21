@@ -150,7 +150,7 @@ describe('GET /locations/live', () => {
       [employeeId, sessionId, geofenceId, lat, lng, battery],
     );
 
-  test('returns one row per worker with off_site, on_site and in_zone status', async () => {
+  test('returns every worker assigned to the site, with or without a position', async () => {
     const sessionId = await openSession(a);
     await setState(a.employeeId, { sessionId, geofenceId: a.geofenceId });
     const onSite = await addWorker(a, 'Ali On Site');
@@ -168,7 +168,8 @@ describe('GET /locations/live', () => {
     expect(res.body.site_id).toBe(a.siteId);
     expect(res.body.site).toEqual({ id: a.siteId, name: 'Site A', boundary: square(46.6, 24.7) });
     const byName = Object.fromEntries(res.body.data.map((r) => [r.full_name, r]));
-    expect(Object.keys(byName).sort()).toEqual(['Ali On Site', 'Badr Off Site', 'Worker A']);
+    expect(Object.keys(byName).sort()).toEqual(['Ali On Site', 'Badr Off Site', 'No Reading Yet', 'Worker A']);
+    expect(byName['No Reading Yet']).toMatchObject({ status: 'no_device', has_position: false, latitude: null, longitude: null });
     expect(byName['Worker A']).toMatchObject({
       location_status: 'in_zone',
       zone: { id: a.geofenceId, name: 'Roof A', is_outdoor: true },

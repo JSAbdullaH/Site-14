@@ -1,6 +1,8 @@
 ﻿import { useEffect, useState } from "react";
+import { ChevronDown, MapPinned } from "lucide-react";
 import AppShell from "@/shared/components/AppShell";
 import LiveMap from "./components/LiveMap";
+import { GLASS } from "./components/format";
 import { getActiveSiteId, setActiveSiteId } from "@/features/sites/api";
 import { listSites } from "./api";
 import type { SiteOption } from "./types";
@@ -38,25 +40,31 @@ export default function MapPage() {
         ? "No site yet. Create a site first, or set VITE_DEMO_SITE_ID in .env.local."
         : null);
 
+  const switcher =
+    sites && sites.length > 1 ? (
+      <label className={`relative inline-flex h-9 items-center gap-2 rounded-full pr-8 pl-3 text-[13px] font-semibold ${GLASS}`}>
+        <MapPinned className="size-4 text-primary" />
+        <span className="sr-only">Site</span>
+        <select
+          value={siteId ?? ""}
+          onChange={(e) => choose(e.target.value)}
+          className="absolute inset-0 cursor-pointer appearance-none opacity-0"
+          aria-label="Site"
+        >
+          {sites.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <span className="max-w-[7.5rem] truncate sm:max-w-[12rem]">{site?.name ?? "Choose a site"}</span>
+        <ChevronDown className="pointer-events-none absolute right-2.5 size-4 text-muted-foreground" />
+      </label>
+    ) : null;
+
   return (
     <AppShell title="Live map" subtitle={site ? site.name : undefined}>
-      <div className="flex h-full flex-col gap-4">
-        {sites && sites.length > 1 && (
-          <select
-            value={siteId ?? ""}
-            onChange={(e) => choose(e.target.value)}
-            className="h-9 self-start rounded-md border border-input bg-transparent px-3 text-sm font-medium outline-none focus-visible:border-ring"
-          >
-            {sites.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        )}
-
-        <LiveMap key={siteId ?? "none"} siteId={siteId} notice={notice} />
-      </div>
+      <LiveMap key={siteId ?? "none"} siteId={siteId} notice={notice} siteSwitcher={switcher} />
     </AppShell>
   );
 }

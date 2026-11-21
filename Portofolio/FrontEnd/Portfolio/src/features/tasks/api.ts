@@ -16,3 +16,6 @@ export const createTask = (body: CreateTaskInput) =>
 
 export const updateTaskStatus = (id: string, status: TaskStatus) =>
   apiFetch<Task>(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+
+// Only tasks that are not done yet can be deleted; done ones stay on the worker's record.
+export const deleteTask = (id: string) => apiFetch<void>(`/tasks/${id}`, { method: "DELETE" });
