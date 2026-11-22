@@ -30,6 +30,12 @@ export const createEmployee = (body: CreateEmployeeInput) =>
 export const updateEmployee = (id: string, body: UpdateEmployeeInput) =>
   apiFetch<Employee>(`/employees/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 
+export const assignEmployeesToSite = (ids: string[], siteId: string | null) =>
+  apiFetch<{ moved: number }>("/employees/site", {
+    method: "PATCH",
+    body: JSON.stringify({ employee_ids: ids, site_id: siteId }),
+  });
+
 // --- the employee's device. Called here rather than from the devices feature,
 // so the two features stay independent.
 
@@ -50,6 +56,12 @@ export const assignDevice = (deviceId: string, employeeId: string | null) =>
 
 export const deactivateEmployee = (id: string) =>
   apiFetch<void>(`/employees/${id}`, { method: "DELETE" });
+
+export const deactivateEmployees = (ids: string[]) =>
+  apiFetch<{ removed: number }>("/employees/deactivate", {
+    method: "POST",
+    body: JSON.stringify({ employee_ids: ids }),
+  });
 import { apiBlob } from "@/shared/lib/api";
 import type { ImportPreviewResponse, ImportCommitResponse } from "./types";
 

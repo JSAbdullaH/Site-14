@@ -30,7 +30,9 @@ router.get('/:id', readers, validateParams(s.idParams), employeeController.get);
 router.get('/:id/daily-record', readers, validateParams(s.idParams), validateQuery(s.dayQuery), recordController.dailyRecord);
 router.get('/:id/history', readers, validateParams(s.idParams), validateQuery(s.dayQuery), recordController.history);
 router.post('/:id/daily-record/corrections', readers, validateParams(s.idParams), validateBody(s.correctionSchema), recordController.correct);
+router.post('/deactivate', requireAdmin, validateBody(s.deactivateEmployeesSchema), employeeController.deactivateMany);
 router.post('/', requireAdmin, validateBody(s.createEmployeeSchema), employeeController.create);
+router.patch('/site', requireAdmin, validateBody(s.assignSiteSchema), employeeController.assignSite);
 router.patch('/:id', requireAdmin, validateParams(s.idParams), validateBody(s.updateEmployeeSchema), employeeController.update);
 router.delete('/:id', requireAdmin, validateParams(s.idParams), employeeController.deactivate);
 

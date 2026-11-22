@@ -75,6 +75,18 @@ const updateEmployeeSchema = z
   .strict()
   .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
 
+const employeeIds = z
+  .array(z.string().uuid('Invalid employee'))
+  .min(1, 'Pick at least one employee')
+  .max(100, 'At most 100 employees at a time')
+  .refine((ids) => new Set(ids).size === ids.length, 'Duplicate employee');
+
+const assignSiteSchema = z
+  .object({ employee_ids: employeeIds, site_id: z.string().uuid('Invalid site').nullable() })
+  .strict();
+
+const deactivateEmployeesSchema = z.object({ employee_ids: employeeIds }).strict();
+
 // site_id=none lists the workers not assigned to any site.
 const listEmployeesQuery = z.object({
   search: z.string().trim().min(1).max(120).optional(),
@@ -506,6 +518,8 @@ module.exports = {
   acceptInvitationSchema,
   createEmployeeSchema,
   updateEmployeeSchema,
+  assignSiteSchema,
+  deactivateEmployeesSchema,
   listEmployeesQuery,
   importColumnMap,
   dayQuery,

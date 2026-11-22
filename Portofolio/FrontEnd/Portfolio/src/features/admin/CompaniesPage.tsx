@@ -44,11 +44,11 @@ export default function CompaniesPage() {
               <TableRow>
                 <TableHead>Company</TableHead>
                 <TableHead>Owner</TableHead>
-                <TableHead className="text-right">Team</TableHead>
-                <TableHead className="text-right">Sites</TableHead>
-                <TableHead className="text-right">Devices</TableHead>
-                <TableHead className="text-right">Orders</TableHead>
-                <TableHead className="text-right">Spent</TableHead>
+                <TableHead>Team</TableHead>
+                <TableHead>Sites</TableHead>
+                <TableHead>Devices</TableHead>
+                <TableHead>Orders</TableHead>
+                <TableHead>Spent</TableHead>
                 <TableHead>Joined</TableHead>
               </TableRow>
             </TableHeader>
@@ -69,19 +69,19 @@ export default function CompaniesPage() {
                       "—"
                     )}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell className="tabular-nums">
                     {c.users} users
                     <span className="block text-xs text-muted-foreground">{c.employees} employees</span>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{c.sites}</TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell className="tabular-nums">{c.sites}</TableCell>
+                  <TableCell className="tabular-nums">
                     <Link to={`/admin/devices?company=${c.id}`} className="hover:underline">
                       {c.devices}
                     </Link>
                     <span className="block text-xs text-ok">{c.devices_online} online</span>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{c.orders}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatSar(c.spent_halalas)}</TableCell>
+                  <TableCell className="tabular-nums">{c.orders}</TableCell>
+                  <TableCell className="tabular-nums">{formatSar(c.spent_halalas)}</TableCell>
                   <TableCell className="text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</TableCell>
                 </TableRow>
               ))}

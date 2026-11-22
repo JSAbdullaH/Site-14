@@ -64,8 +64,8 @@ export default function ProductsPage() {
               <TableRow>
                 <TableHead>Product</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Stock</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Stock</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-40" />
               </TableRow>
@@ -85,8 +85,8 @@ export default function ProductsPage() {
                       {DEVICE_TYPE_LABEL[p.device_type]}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{formatSar(p.price_halalas)}</TableCell>
-                  <TableCell className={`text-right tabular-nums ${p.stock === 0 ? "text-danger" : p.stock <= 5 ? "text-warn" : ""}`}>{p.stock}</TableCell>
+                  <TableCell className="tabular-nums">{formatSar(p.price_halalas)}</TableCell>
+                  <TableCell className={`tabular-nums ${p.stock === 0 ? "text-danger" : p.stock <= 5 ? "text-warn" : ""}`}>{p.stock}</TableCell>
                   <TableCell>
                     <StatusBadge tone={p.is_active ? "ok" : "neutral"}>{p.is_active ? "Listed" : "Hidden"}</StatusBadge>
                   </TableCell>

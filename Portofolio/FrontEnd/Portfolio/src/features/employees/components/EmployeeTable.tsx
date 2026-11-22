@@ -25,16 +25,39 @@ type Props = {
   onEdit?: (employee: Employee) => void;
   onDevice?: (employee: Employee) => void;
   onRemove?: (employee: Employee) => void;
+  selected?: Set<string>;
+  onToggle?: (id: string) => void;
+  onToggleAll?: () => void;
 };
 
-export default function EmployeeTable({ employees, canEdit = false, onEdit, onDevice, onRemove }: Props) {
+export default function EmployeeTable({
+  employees,
+  canEdit = false,
+  onEdit,
+  onDevice,
+  onRemove,
+  selected,
+  onToggle,
+  onToggleAll,
+}: Props) {
   const navigate = useNavigate();
   return (
     <div className="rounded-lg border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
+            {selected && (
+              <TableHead className="w-10">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-signal"
+                  checked={employees.length > 0 && employees.every((e) => selected.has(e.id))}
+                  onChange={onToggleAll}
+                  aria-label="Select all"
+                />
+              </TableHead>
+            )}
+            <TableHead className="text-left">Name</TableHead>
             <TableHead>Job</TableHead>
             <TableHead>Site</TableHead>
             <TableHead>Device</TableHead>
@@ -48,7 +71,20 @@ export default function EmployeeTable({ employees, canEdit = false, onEdit, onDe
             const active = e.status === "active";
             return (
             <TableRow key={e.id} className={active ? undefined : "text-muted-foreground"}>
-              <TableCell className="font-medium">
+              {selected && (
+                <TableCell>
+                  {active && (
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-signal"
+                      checked={selected.has(e.id)}
+                      onChange={() => onToggle?.(e.id)}
+                      aria-label={`Select ${e.full_name}`}
+                    />
+                  )}
+                </TableCell>
+              )}
+              <TableCell className="text-left font-medium">
                 {/* name -> History page */}
                 <Link to={`/history?employee=${e.id}`} className="hover:text-signal hover:underline">
                   {e.full_name}

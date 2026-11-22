@@ -39,6 +39,8 @@ const as = (token) => ({
   create: (body) => request(app).post(api('/employees')).set(bearer(token)).send(body),
   update: (id, body) => request(app).patch(api(`/employees/${id}`)).set(bearer(token)).send(body),
   remove: (id) => request(app).delete(api(`/employees/${id}`)).set(bearer(token)),
+  removeMany: (ids) => request(app).post(api('/employees/deactivate')).set(bearer(token)).send({ employee_ids: ids }),
+  assign: (body) => request(app).patch(api('/employees/site')).set(bearer(token)).send(body),
 });
 
 const ahmed = { full_name: 'Ahmed Saleh', employee_number: 'E-001', job_category: 'Construction' };
@@ -272,6 +274,86 @@ describe('roles', () => {
     await M.create({ ...ahmed, employee_number: 'E-009' }).expect(403);
     await M.update(e.id, { full_name: 'Changed' }).expect(403);
     await M.remove(e.id).expect(403);
+  });
+});
+
+describe('PATCH /employees/site', () => {
+  const khalid = { full_name: 'Khalid Omar', employee_number: 'E-002', job_category: 'security' };
+
+  test('moves several employees to a site in one call', async () => {
+    const siteId = await siteOf(admin.companyId);
+    const { body: a } = await A.create(ahmed).expect(201);
+    const { body: b } = await A.create(khalid).expect(201);
+    const res = await A.assign({ employee_ids: [a.id, b.id], site_id: siteId }).expect(200);
+    expect(res.body).toEqual({ moved: 2 });
+    expect((await A.get(a.id)).body.site.id).toBe(siteId);
+    expect((await A.get(b.id)).body.site.id).toBe(siteId);
+  });
+
+  test('a null site unassigns them all', async () => {
+    const siteId = await siteOf(admin.companyId);
+    const { body: a } = await A.create({ ...ahmed, site_id: siteId }).expect(201);
+    const { body: b } = await A.create({ ...khalid, site_id: siteId }).expect(201);
+    await A.assign({ employee_ids: [a.id, b.id], site_id: null }).expect(200);
+    expect((await A.get(a.id)).body.site).toBeNull();
+    expect((await A.get(b.id)).body.site).toBeNull();
+  });
+
+  test('an employee from another company fails the whole call', async () => {
+    const siteId = await siteOf(admin.companyId);
+    const { body: mine } = await A.create(ahmed).expect(201);
+    const other = await adminOf('Nadeef', 'admin@nadeef.test');
+    const { body: theirs } = await as(other.token).create({ full_name: 'Imran Ali', job_category: 'cleaning' }).expect(201);
+    await A.assign({ employee_ids: [mine.id, theirs.id], site_id: siteId }).expect(404);
+    expect((await A.get(mine.id)).body.site).toBeNull();
+  });
+
+  test('a removed employee fails the whole call', async () => {
+    const siteId = await siteOf(admin.companyId);
+    const { body: a } = await A.create(ahmed).expect(201);
+    const { body: b } = await A.create(khalid).expect(201);
+    await A.remove(b.id).expect(204);
+    await A.assign({ employee_ids: [a.id, b.id], site_id: siteId }).expect(409);
+    expect((await A.get(a.id)).body.site).toBeNull();
+  });
+
+  test('an empty or duplicated list is refused', async () => {
+    const { body: a } = await A.create(ahmed).expect(201);
+    await A.assign({ employee_ids: [], site_id: null }).expect(422);
+    await A.assign({ employee_ids: [a.id, a.id], site_id: null }).expect(422);
+  });
+});
+
+describe('POST /employees/deactivate', () => {
+  const khalid = { full_name: 'Khalid Omar', employee_number: 'E-002', job_category: 'security' };
+
+  test('removes several employees in one call and frees their devices', async () => {
+    const { body: a } = await A.create({ ...ahmed, consent: true }).expect(201);
+    const { body: b } = await A.create(khalid).expect(201);
+    await pool.query(
+      "INSERT INTO devices (company_id, employee_id, serial_number, api_key_hash) VALUES ($1, $2, 'GPS-1', 'x')",
+      [admin.companyId, a.id],
+    );
+    const res = await A.removeMany([a.id, b.id]).expect(200);
+    expect(res.body).toEqual({ removed: 2 });
+    expect((await A.get(a.id)).body.status).toBe('inactive');
+    expect((await A.get(b.id)).body.status).toBe('inactive');
+    const { rows } = await pool.query("SELECT employee_id FROM devices WHERE serial_number = 'GPS-1'");
+    expect(rows).toEqual([{ employee_id: null }]);
+  });
+
+  test('an employee from another company fails the whole call', async () => {
+    const { body: mine } = await A.create(ahmed).expect(201);
+    const other = await adminOf('Nadeef', 'admin@nadeef.test');
+    const { body: theirs } = await as(other.token).create({ full_name: 'Imran Ali', job_category: 'cleaning' }).expect(201);
+    await A.removeMany([mine.id, theirs.id]).expect(404);
+    expect((await A.get(mine.id)).body.status).toBe('active');
+  });
+
+  test('a site manager cannot remove employees', async () => {
+    const { body: a } = await A.create(ahmed).expect(201);
+    const managerToken = await managerOf(admin.token, 'mona@albina.test');
+    await as(managerToken).removeMany([a.id]).expect(403);
   });
 });
 

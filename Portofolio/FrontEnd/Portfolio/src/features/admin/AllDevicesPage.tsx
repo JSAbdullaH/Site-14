@@ -77,7 +77,7 @@ export default function AllDevicesPage() {
                 <TableHead>Company</TableHead>
                 <TableHead>Carried by</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Battery</TableHead>
+                <TableHead>Battery</TableHead>
                 <TableHead>Last seen</TableHead>
               </TableRow>
             </TableHeader>
@@ -105,7 +105,7 @@ export default function AllDevicesPage() {
                     <TableCell>
                       <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{d.battery_percent !== null ? `${d.battery_percent}%` : "—"}</TableCell>
+                    <TableCell className="tabular-nums">{d.battery_percent !== null ? `${d.battery_percent}%` : "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{d.last_seen_at ? timeAgo(d.last_seen_at) : "—"}</TableCell>
                   </TableRow>
                 );

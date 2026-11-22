@@ -185,6 +185,32 @@ async function update(auth, id, input) {
   }
 }
 
+async function assignSite(auth, ids, siteId) {
+  await checkSite(auth.db, siteId);
+
+  const found = await auth.db.employee.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, fullName: true, status: true },
+  });
+  if (found.length !== ids.length) throw notFound();
+
+  if (siteId) {
+    const inactive = found.filter((e) => e.status !== 'active');
+    if (inactive.length) {
+      throw new AppError(
+        409,
+        'EMPLOYEE_INACTIVE',
+        `These employees are deactivated and cannot be assigned: ${inactive.map((e) => e.fullName).join(', ')}`,
+      );
+    }
+  }
+
+  const { count } = await auth.db.$transaction((tx) =>
+    tx.employee.updateMany({ where: { id: { in: ids } }, data: { siteId } }),
+  );
+  return { moved: count };
+}
+
 // Removing an employee keeps their records: hours, alerts and tasks still belong to them.
 // Their device is freed for someone else, and a shift still open is closed at the last
 // position the device sent, so it does not keep counting hours.
@@ -192,27 +218,45 @@ async function deactivate(auth, id) {
   const e = await auth.db.employee.findUnique({ where: { id }, select: { id: true, status: true } });
   if (!e) throw notFound();
   if (e.status !== 'active') return;
-  await auth.db.$transaction(async (tx) => {
-    const open = await tx.workSession.findFirst({
-      where: { employeeId: id, endedAt: null },
-      select: { id: true, startedAt: true },
-    });
-    if (open) {
-      const last = await tx.telemetryLog.findFirst({
-        where: { sessionId: open.id },
-        orderBy: { recordedAt: 'desc' },
-        select: { recordedAt: true },
-      });
-      const endedAt = last ? last.recordedAt : open.startedAt;
-      await tx.workSession.update({ where: { id: open.id }, data: { endedAt } });
-      await tx.alert.updateMany({
-        where: { sessionId: open.id, alertType: 'zone_exit', resolvedAt: null },
-        data: { resolvedAt: endedAt },
-      });
-    }
-    await tx.device.updateMany({ where: { employeeId: id }, data: { employeeId: null } });
-    await tx.employee.update({ where: { id }, data: { status: 'inactive' } });
-  });
+  await auth.db.$transaction((tx) => closeAndDeactivate(tx, id));
 }
 
-module.exports = { list, get, create, update, deactivate, ensureCategory };
+async function deactivateMany(auth, ids) {
+  const found = await auth.db.employee.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, status: true },
+  });
+  if (found.length !== ids.length) throw notFound();
+  const active = found.filter((e) => e.status === 'active').map((e) => e.id);
+  await auth.db.$transaction(
+    async (tx) => {
+      for (const id of active) await closeAndDeactivate(tx, id);
+    },
+    { timeout: 30000 },
+  );
+  return { removed: active.length };
+}
+
+async function closeAndDeactivate(tx, id) {
+  const open = await tx.workSession.findFirst({
+    where: { employeeId: id, endedAt: null },
+    select: { id: true, startedAt: true },
+  });
+  if (open) {
+    const last = await tx.telemetryLog.findFirst({
+      where: { sessionId: open.id },
+      orderBy: { recordedAt: 'desc' },
+      select: { recordedAt: true },
+    });
+    const endedAt = last ? last.recordedAt : open.startedAt;
+    await tx.workSession.update({ where: { id: open.id }, data: { endedAt } });
+    await tx.alert.updateMany({
+      where: { sessionId: open.id, alertType: 'zone_exit', resolvedAt: null },
+      data: { resolvedAt: endedAt },
+    });
+  }
+  await tx.device.updateMany({ where: { employeeId: id }, data: { employeeId: null } });
+  await tx.employee.update({ where: { id }, data: { status: 'inactive' } });
+}
+
+module.exports = { list, get, create, update, assignSite, deactivate, deactivateMany, ensureCategory };

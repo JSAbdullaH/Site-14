@@ -29,7 +29,7 @@ type NavItem = { to: string; label: string; icon: LucideIcon; soon?: boolean; ba
 const MAIN: NavItem[] = [
   { to: "/home", label: "Map", icon: MapIcon },
   { to: "/alerts", label: "Alerts", icon: Bell },
-  { to: "/sites", label: "Sites & Zones", icon: Building2 },
+  { to: "/sites", label: "Sites", icon: Building2 },
   { to: "/tasks", label: "Tasks", icon: ListChecks },
   { to: "/team", label: "Team", icon: Users },
 ];
@@ -58,6 +58,14 @@ function initials(name?: string) {
     .join("")
     .toUpperCase();
 }
+
+const ROLE_LABEL: Record<string, string> = {
+  company_admin: "Company admin",
+  site_manager: "Site manager",
+  platform_admin: "Platform admin",
+};
+
+const roleLabel = (role?: string) => (role ? (ROLE_LABEL[role] ?? role.replace(/_/g, " ")) : "Account");
 
 export default function AppShell({ title, subtitle, children }: Props) {
   const location = useLocation();
@@ -194,7 +202,7 @@ export default function AppShell({ title, subtitle, children }: Props) {
             </span>
             <span className={`min-w-0 ${hideOnRail}`}>
               <span className="block truncate text-sm font-medium">{user?.full_name ?? "Account"}</span>
-              <span className="block text-[11px] text-muted-foreground">Company settings</span>
+              <span className="block text-[11px] text-muted-foreground">{roleLabel(user?.role)}</span>
             </span>
           </Link>
 

@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import EmptyState from "@/shared/components/EmptyState";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
@@ -12,7 +12,9 @@ import EditEmployeeDialog from "./EditEmployeeDialog";
 import EmployeeDeviceDialog from "./EmployeeDeviceDialog";
 import { Upload } from "lucide-react";
 import { isAdmin } from "@/shared/lib/auth";
-import { deactivateEmployee, listEmployees } from "../api";
+import { assignEmployeesToSite, deactivateEmployee, deactivateEmployees, listEmployees } from "../api";
+import { listSites } from "@/features/sites/api";
+import type { SiteSummary } from "@/features/sites/types";
 import type { Employee, EmployeeStatus } from "../types";
 
 export default function EmployeesTab() {
@@ -26,6 +28,11 @@ export default function EmployeesTab() {
   const [deviceFor, setDeviceFor] = useState<Employee | null>(null);
   const [removing, setRemoving] = useState<Employee | null>(null);
   const [status, setStatus] = useState<EmployeeStatus>("active");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sites, setSites] = useState<SiteSummary[]>([]);
+  const [target, setTarget] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [removingMany, setRemovingMany] = useState(false);
   const admin = isAdmin();
 
   const load = useCallback(async () => {
@@ -61,6 +68,54 @@ export default function EmployeesTab() {
         (e.employee_number ?? "").toLowerCase().includes(q),
     );
   }, [employees, query]);
+
+  useEffect(() => {
+    if (admin) listSites(true).then((r) => setSites(r.data)).catch(() => {});
+  }, [admin]);
+
+  useEffect(() => {
+    setSelected(new Set());
+  }, [status, query]);
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    const ids = filtered.filter((e) => e.status === "active").map((e) => e.id);
+    setSelected((prev) => (ids.every((id) => prev.has(id)) ? new Set() : new Set(ids)));
+  }
+
+  async function removeSelected() {
+    const { removed } = await deactivateEmployees([...selected]);
+    toast.success(`${removed} employee${removed === 1 ? " was" : "s were"} removed`, {
+      description: "Their hours, alerts and tasks stay in History and reports.",
+    });
+    setSelected(new Set());
+    await load();
+  }
+
+  async function assignSelected() {
+    setAssigning(true);
+    try {
+      const siteId = target === "none" ? null : target;
+      const { moved } = await assignEmployeesToSite([...selected], siteId);
+      const name = sites.find((s) => s.id === target)?.name;
+      toast.success(siteId ? `${moved} assigned to ${name}` : `${moved} unassigned`);
+      setSelected(new Set());
+      setTarget("");
+      await load();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setAssigning(false);
+    }
+  }
 
   return (
     <>
@@ -111,6 +166,38 @@ export default function EmployeesTab() {
         )}
       </div>
 
+      {admin && selected.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border bg-card px-4 py-3">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <select
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            className="h-9 rounded-md border bg-background px-3 text-sm"
+            aria-label="Site to assign"
+          >
+            <option value="" disabled>
+              Choose a site
+            </option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+            <option value="none">Unassign from any site</option>
+          </select>
+          <Button size="sm" onClick={assignSelected} disabled={!target || assigning}>
+            {assigning ? "Assigning…" : "Assign"}
+          </Button>
+          <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setSelected(new Set())}>
+            Clear
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => setRemovingMany(true)} disabled={assigning}>
+            <UserMinus />
+            Remove
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-3">
           <Skeleton className="h-12 w-full" />
@@ -139,6 +226,9 @@ export default function EmployeesTab() {
           onEdit={setEditing}
           onDevice={setDeviceFor}
           onRemove={admin ? setRemoving : undefined}
+          selected={admin && status === "active" ? selected : undefined}
+          onToggle={toggle}
+          onToggleAll={toggleAll}
         />
       )}
 
@@ -156,6 +246,20 @@ export default function EmployeesTab() {
         ]}
         confirmLabel="Remove employee"
         onConfirm={() => removing && remove(removing)}
+      />
+
+      <ConfirmDialog
+        open={removingMany}
+        onOpenChange={setRemovingMany}
+        title={`Remove ${selected.size} employee${selected.size === 1 ? "" : "s"}?`}
+        description="They leave the active team and stop being tracked."
+        details={[
+          "Any devices they hold are freed, ready to give to someone else.",
+          "A shift still open is closed at the last position their device sent.",
+          "Hours, alerts and tasks they already have stay in History and on reports.",
+        ]}
+        confirmLabel={`Remove ${selected.size}`}
+        onConfirm={removeSelected}
       />
 
       {editing && (

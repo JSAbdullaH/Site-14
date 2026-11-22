@@ -66,7 +66,7 @@ export default function SitesPage() {
 
   return (
     <AppShell
-      title="Sites & Zones"
+      title="Sites"
       subtitle={
         loading
           ? "Where your crews work"
@@ -114,8 +114,8 @@ export default function SitesPage() {
               <TableRow>
                 <TableHead>Site</TableHead>
                 <TableHead>Shift</TableHead>
-                <TableHead className="text-right">Assigned</TableHead>
-                <TableHead className="text-right">On site now</TableHead>
+                <TableHead>Assigned</TableHead>
+                <TableHead>On site now</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead />
               </TableRow>
@@ -137,10 +137,10 @@ export default function SitesPage() {
                     )}
                   </TableCell>
                   <TableCell className="tabular-nums">{shiftLabel(site)}</TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell className="tabular-nums">
                     {site.employee_count}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell className="tabular-nums">
                     {site.on_site_count}
                   </TableCell>
                   <TableCell>
