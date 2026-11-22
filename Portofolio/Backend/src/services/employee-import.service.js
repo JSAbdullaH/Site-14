@@ -48,6 +48,7 @@ async function check(db, rows) {
   const seen = new Set();
   const knownPeople = new Set(people.map((p) => personKey(p.fullName, p.jobCategory)));
   const seenPeople = new Set();
+  const unchecked = [];
 
   const valid = [];
   const invalid = [];
@@ -73,26 +74,20 @@ async function check(db, rows) {
     }
     if (!r.employee_number) {
       const key = personKey(r.full_name, r.job_category);
-      if (knownPeople.has(key) || seenPeople.has(key)) {
-        duplicates.push({
-          row: r.row,
-          employee_number: null,
-          reason: knownPeople.has(key)
-            ? 'An employee with this name and job category already exists; add a worker number if this is a different person'
-            : 'Same name and job category repeated in the file without a worker number',
-        });
-        continue;
-      }
+      let warning = null;
+      if (knownPeople.has(key)) warning = 'An employee with this name and job category is already on file';
+      else if (seenPeople.has(key)) warning = 'The same name and job category appear earlier in this file';
+      unchecked.push({ row: r.row, full_name: r.full_name, warning });
       seenPeople.add(key);
     }
     if (r.employee_number) seen.add(r.employee_number);
     valid.push({ ...r, job_category: r.job_category.toLowerCase(), site_id: site ? site.id : null });
   }
-  return { valid, invalid, duplicates };
+  return { valid, invalid, duplicates, unchecked };
 }
 
 async function preview(auth, file, columnMap) {
-  const { valid, invalid, duplicates } = await check(auth.db, readFile(file, columnMap));
+  const { valid, invalid, duplicates, unchecked } = await check(auth.db, readFile(file, columnMap));
   return {
     total_rows: valid.length + invalid.length + duplicates.length,
     valid_rows: valid.map(({ row, full_name, employee_number, job_category, site_name }) => ({
@@ -104,6 +99,7 @@ async function preview(auth, file, columnMap) {
     })),
     invalid_rows: invalid,
     duplicates,
+    unchecked_rows: unchecked,
   };
 }
 

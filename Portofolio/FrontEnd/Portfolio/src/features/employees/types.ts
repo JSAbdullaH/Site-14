@@ -56,11 +56,18 @@ export type ImportDuplicateRow = {
   reason: string;
 };
 
+export type ImportUncheckedRow = {
+  row: number;
+  full_name: string;
+  warning: string | null;
+};
+
 export type ImportPreviewResponse = {
   total_rows: number;
   valid_rows: ImportValidRow[];
   invalid_rows: ImportInvalidRow[];
   duplicates: ImportDuplicateRow[];
+  unchecked_rows: ImportUncheckedRow[];
 };
 
 export type ImportCommitResponse = {

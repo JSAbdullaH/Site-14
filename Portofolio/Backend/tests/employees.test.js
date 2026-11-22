@@ -448,35 +448,37 @@ describe('CSV import', () => {
     expect(rows[0].daily_limit_minutes).toBe(720);
   });
 
-  test('a row without a worker number is not imported twice (SITE-98)', async () => {
-    const csv = `${HEADER}\nYasser Hamad,,construction,\nSami Nour,,security,\n`;
-    const first = await upload('/employees/import', csv).expect(201);
-    expect(first.body.created).toBe(2);
-
-    const again = await upload('/employees/import', csv).expect(201);
-    expect(again.body.created).toBe(0);
-    expect(again.body.skipped).toEqual([
-      { row: 2, employee_number: null, reason: 'An employee with this name and job category already exists; add a worker number if this is a different person' },
-      { row: 3, employee_number: null, reason: 'An employee with this name and job category already exists; add a worker number if this is a different person' },
+  test('the preview counts the rows that have no worker number (SITE-98)', async () => {
+    const csv = `${HEADER}\nYasser Hamad,,construction,\nSami Nour,E-500,security,\nOmar Ali,,cleaning,\n`;
+    const { body } = await upload('/employees/import/preview', csv).expect(200);
+    expect(body.unchecked_rows).toEqual([
+      { row: 2, full_name: 'Yasser Hamad', warning: null },
+      { row: 4, full_name: 'Omar Ali', warning: null },
     ]);
-    expect(await count()).toBe(2);
+    expect(body.valid_rows).toHaveLength(3);
   });
 
-  test('the same person twice in one file without a worker number is imported once (SITE-98)', async () => {
-    const csv = `${HEADER}\nYasser Hamad,,construction,\n  yasser   HAMAD ,,Construction,\nYasser Hamad,,security,\n`;
-    const preview = await upload('/employees/import/preview', csv).expect(200);
-    expect(preview.body.valid_rows.map((r) => r.row)).toEqual([2, 4]);
-    expect(preview.body.duplicates).toEqual([
-      { row: 3, employee_number: null, reason: 'Same name and job category repeated in the file without a worker number' },
+  test('importing the same file again is not silent: each unchecked row says who it may repeat (SITE-98)', async () => {
+    const csv = `${HEADER}\nYasser Hamad,,construction,\n  yasser   HAMAD ,,Construction,\n`;
+    const first = await upload('/employees/import/preview', csv).expect(200);
+    expect(first.body.unchecked_rows).toEqual([
+      { row: 2, full_name: 'Yasser Hamad', warning: null },
+      { row: 3, full_name: 'yasser   HAMAD', warning: 'The same name and job category appear earlier in this file' },
     ]);
-    expect((await upload('/employees/import', csv).expect(201)).body.created).toBe(2);
-  });
-
-  test('a different person with the same name can still be imported with a worker number (SITE-98)', async () => {
     await upload('/employees/import', `${HEADER}\nYasser Hamad,,construction,\n`).expect(201);
-    const done = await upload('/employees/import', `${HEADER}\nYasser Hamad,E-777,construction,\n`).expect(201);
-    expect(done.body.created).toBe(1);
-    expect(await count()).toBe(2);
+
+    const again = await upload('/employees/import/preview', `${HEADER}\nYasser Hamad,,construction,\n`).expect(200);
+    expect(again.body.unchecked_rows).toEqual([
+      { row: 2, full_name: 'Yasser Hamad', warning: 'An employee with this name and job category is already on file' },
+    ]);
+  });
+
+  test('a file where every row has a worker number behaves as before (SITE-98)', async () => {
+    const csv = `${HEADER}\nYasser Hamad,E-1,construction,\nSami Nour,E-2,security,\n`;
+    const { body } = await upload('/employees/import/preview', csv).expect(200);
+    expect(body.unchecked_rows).toEqual([]);
+    expect(body.duplicates).toEqual([]);
+    expect((await upload('/employees/import', csv).expect(201)).body.created).toBe(2);
   });
 
   test('an empty, malformed or headerless file is a clear error and nothing is created', async () => {

@@ -233,6 +233,26 @@ export default function ImportCsvDialog({ open, onOpenChange, onImported }: Prop
                     rows={preview.duplicates.map((d) => `Row ${d.row}: ${d.reason}`)}
                   />
                 )}
+
+                {preview.unchecked_rows.length > 0 && (
+                  <div role="note" className="rounded-md border border-warn/20 bg-warn-bg px-4 py-3 text-sm text-warn">
+                    <p className="font-medium">
+                      {preview.unchecked_rows.length} row{preview.unchecked_rows.length === 1 ? " has" : "s have"} no
+                      worker number and cannot be checked for duplicates.
+                    </p>
+                    {preview.unchecked_rows.some((u) => u.warning) && (
+                      <ul className="mt-2 space-y-1">
+                        {preview.unchecked_rows
+                          .filter((u) => u.warning)
+                          .map((u) => (
+                            <li key={u.row}>
+                              Row {u.row}, {u.full_name}: {u.warning}
+                            </li>
+                          ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
