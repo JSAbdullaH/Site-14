@@ -6,7 +6,11 @@ const hhmm = (d) =>
     ? new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Riyadh' })
     : '&mdash;';
 
+const clock = (v) => (typeof v === 'string' ? esc(v) : hhmm(v));
+
 const hours = (minutes) => (minutes / 60).toFixed(2);
+
+const CORRECTED = '<span class="tag tag-fixed">CORRECTED</span>';
 
 const STATUS = {
   present: '',
@@ -14,20 +18,66 @@ const STATUS = {
   no_consent: '<span class="tag tag-unknown">NO CONSENT</span>',
 };
 
-function rows(records) {
+const tags = (r) =>
+  `${STATUS[r.state]}${r.has_gap ? '<span class="tag tag-gap">GAP</span>' : ''}${r.corrected ? CORRECTED : ''}`;
+
+function dayRows(records) {
   return records
     .map(
       (r) => `
       <tr>
         <td>${esc(r.full_name)}</td>
         <td class="mono">${esc(r.employee_number) || '&mdash;'}</td>
-        <td class="mono">${r.state === 'present' ? hhmm(r.first_seen) : '&mdash;'}</td>
-        <td class="mono">${r.state === 'present' ? hhmm(r.last_seen) : '&mdash;'}</td>
+        <td class="mono">${r.state === 'present' ? clock(r.first_seen) : '&mdash;'}</td>
+        <td class="mono">${r.state === 'present' ? clock(r.last_seen) : '&mdash;'}</td>
         <td class="mono num">${r.state === 'no_consent' ? '&mdash;' : hours(r.total_minutes)}</td>
-        <td>${STATUS[r.state]}${r.has_gap ? '<span class="tag tag-gap">GAP</span>' : ''}</td>
+        <td>${tags(r)}</td>
       </tr>`,
     )
     .join('');
+}
+
+function periodRows(records) {
+  return records
+    .map(
+      (r) => `
+      <tr>
+        <td>${esc(r.full_name)}</td>
+        <td class="mono">${esc(r.employee_number) || '&mdash;'}</td>
+        <td class="mono num">${r.state === 'no_consent' ? '&mdash;' : r.days_present}</td>
+        <td class="mono num">${r.state === 'no_consent' ? '&mdash;' : r.days_absent}</td>
+        <td class="mono num">${r.state === 'no_consent' ? '&mdash;' : hours(r.total_minutes)}</td>
+        <td class="mono num">${r.state === 'present' ? hours(r.avg_minutes) : '&mdash;'}</td>
+        <td>${tags(r)}</td>
+      </tr>`,
+    )
+    .join('');
+}
+
+function register(layout, records, totals) {
+  const summary = `${totals.roster} on roster &middot; ${totals.present} present &middot; ${totals.absent} absent &middot; ${totals.no_consent} not tracked${totals.corrected ? ` &middot; ${totals.corrected} corrected` : ''}`;
+  if (layout === 'period') {
+    return `<table class="t">
+    <thead><tr>
+      <th>Employee</th><th>No.</th><th class="num">Days</th><th class="num">Absent</th><th class="num">Hours</th><th class="num">Avg/day</th><th>Status</th>
+    </tr></thead>
+    <tbody>${periodRows(records)}</tbody>
+    <tfoot><tr class="totals">
+      <td colspan="4">${summary}</td>
+      <td class="num">${hours(totals.minutes)}</td><td></td><td></td>
+    </tr></tfoot>
+  </table>`;
+  }
+  return `<table class="t">
+    <thead><tr>
+      <th>Employee</th><th>No.</th><th>In</th><th>Out</th><th class="num">Hours</th><th>Status</th>
+    </tr></thead>
+    <tbody>${dayRows(records)}</tbody>
+    <tfoot><tr class="totals">
+      <td colspan="4">${summary}</td>
+      <td class="num">${hours(totals.minutes)}</td><td></td>
+    </tr></tfoot>
+  </table>`;
 }
 
 function alertRows(alerts) {
@@ -47,7 +97,7 @@ function alertRows(alerts) {
 }
 
 function render(data) {
-  const { site, period, issuer, reference, records, alerts, totals, provisional } = data;
+  const { site, period, issuer, reference, records, alerts, totals, provisional, layout } = data;
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>${esc(reference)}</title>
@@ -68,6 +118,7 @@ function render(data) {
   .tag-absent { background: #FBE6E4; color: #B42318; }
   .tag-unknown { background: #FBF0D9; color: #9A6B00; }
   .tag-gap { background: #E0F0F5; color: #15607A; }
+  .tag-fixed { background: #EDE7F6; color: #5B3B8C; }
   .totals td { background: #F7F7F6; padding: 7px 6px; font-weight: 600; }
   .none { color: #6B6B6B; font-style: italic; margin: 0 0 16px; }
   h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #6B6B6B; margin: 18px 0 6px; }
@@ -89,16 +140,7 @@ function render(data) {
         <td class="k">By</td><td>${esc(issuer.name)}</td></tr>
   </table>
 
-  <table class="t">
-    <thead><tr>
-      <th>Employee</th><th>No.</th><th>In</th><th>Out</th><th class="num">Hours</th><th>Status</th>
-    </tr></thead>
-    <tbody>${rows(records)}</tbody>
-    <tfoot><tr class="totals">
-      <td colspan="4">${totals.roster} on roster &middot; ${totals.present} present &middot; ${totals.absent} absent &middot; ${totals.no_consent} not tracked</td>
-      <td class="num">${hours(totals.minutes)}</td><td></td>
-    </tr></tfoot>
-  </table>
+  ${register(layout, records, totals)}
 
   <h2>Alerts</h2>
   ${alertRows(alerts)}
@@ -107,6 +149,9 @@ function render(data) {
     ABSENT means the worker is on the roster and no device reading was recorded.
     NO CONSENT means no tracking consent is on file, so no session could be opened and presence is unknown; it is not a record of absence.
     GAP means readings stopped during the shift; the missing time is not counted as worked.
+    CORRECTED means a manager amended this row's recorded figures with a stated reason; the hours shown are the corrected ones, and the original values stay in the daily record.
+    A shift whose device stopped reporting is counted up to its last reading.
+    ${layout === 'period' ? 'Absent days are working days in the period, Fridays excluded and future days excluded, with no recorded session.' : ''}
   </p>
 </body></html>`;
 }

@@ -5,6 +5,8 @@ const AppError = require('../utils/AppError');
 const reportModel = require('../models/report.model');
 const template = require('../templates/attendance.html');
 const { findChrome } = require('../utils/chrome');
+const { sessionEnd, dayAttendance, applyCorrections } = require('../utils/attendance');
+const { clockInRiyadh } = require('../utils/day');
 
 const TZ = '+03:00';
 const GAP_MINUTES = 10;
@@ -28,10 +30,20 @@ function reference() {
   return `SITE14-R-${stamp}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 }
 
+function workingDays(from, to, now) {
+  const last = riyadhDay(now) < to ? riyadhDay(now) : to;
+  let count = 0;
+  for (let d = new Date(`${from}T12:00:00${TZ}`); riyadhDay(d) <= last; d = new Date(d.getTime() + 86400_000)) {
+    if (new Date(`${riyadhDay(d)}T12:00:00${TZ}`).getUTCDay() !== 5) count += 1;
+  }
+  return count;
+}
+
 async function buildDailyRecords(auth, siteId, from, to) {
   const start = dayStart(from);
   const end = dayEnd(to);
   const now = new Date();
+  const today = riyadhDay(now);
 
   const site = await auth.db.site.findFirst({
     where: { id: siteId },
@@ -39,17 +51,14 @@ async function buildDailyRecords(auth, siteId, from, to) {
   });
   if (!site) throw new AppError(404, 'NOT_FOUND', 'Site not found');
 
-  const [sessions, doneTasks] = await Promise.all([
+  const [sessions, doneTasks, corrections] = await Promise.all([
     auth.db.workSession.findMany({
-      where: {
-        siteId,
-        startedAt: { lt: end },
-        OR: [{ endedAt: null }, { endedAt: { gt: start } }],
-      },
+      where: { siteId, startedAt: { gte: start, lt: end } },
       select: {
         employeeId: true,
         startedAt: true,
         endedAt: true,
+        telemetryLogs: { orderBy: { recordedAt: 'desc' }, take: 1, select: { recordedAt: true } },
         alerts: {
           where: { triggeredAt: { gte: start, lt: end } },
           select: { alertType: true, triggeredAt: true, geofence: { select: { name: true } } },
@@ -62,6 +71,11 @@ async function buildDailyRecords(auth, siteId, from, to) {
       where: { siteId, status: 'done', scheduledFor: { gte: new Date(from), lte: new Date(to) } },
       _count: { _all: true },
     }),
+    auth.db.recordCorrection.findMany({
+      where: { siteId, workDate: { gte: new Date(`${from}T00:00:00Z`), lte: new Date(`${to}T00:00:00Z`) } },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: { employeeId: true, workDate: true, field: true, correctedValue: true },
+    }),
   ]);
 
   // The register lists today's crew, plus anyone who worked here during the period and has
@@ -73,15 +87,22 @@ async function buildDailyRecords(auth, siteId, from, to) {
     orderBy: { fullName: 'asc' },
   });
 
-  const byEmployee = new Map(employees.map((e) => [e.id, []]));
-  for (const s of sessions) byEmployee.get(s.employeeId)?.push(s);
+  const days = new Map();
+  for (const s of sessions) {
+    const key = `${s.employeeId}|${riyadhDay(s.startedAt)}`;
+    const session = { ...s, lastReadingAt: s.telemetryLogs[0]?.recordedAt ?? null };
+    if (!days.has(key)) days.set(key, []);
+    days.get(key).push(session);
+  }
+  const correctionsOf = (employeeId, day) =>
+    corrections.filter((c) => c.employeeId === employeeId && c.workDate.toISOString().slice(0, 10) === day);
 
   const tasksBy = new Map(doneTasks.map((t) => [t.employeeId, t._count._all]));
+  const workdays = workingDays(from, to, now);
   const alerts = [];
   let provisional = dayEnd(to) > now;
 
   const records = employees.map((e) => {
-    const own = byEmployee.get(e.id) ?? [];
     const base = {
       employee_id: e.id,
       full_name: e.fullName,
@@ -90,14 +111,16 @@ async function buildDailyRecords(auth, siteId, from, to) {
       tasks_done: tasksBy.get(e.id) ?? 0,
     };
 
-    for (const s of own) {
-      for (const a of s.alerts) {
-        alerts.push({
-          full_name: e.fullName,
-          alert_type: a.alertType,
-          triggered_at: a.triggeredAt,
-          zone: a.geofence?.name ?? null,
-        });
+    const own = [...days.entries()]
+      .filter(([key]) => key.startsWith(`${e.id}|`))
+      .map(([key, list]) => ({ day: key.split('|')[1], sessions: list }))
+      .sort((a, b) => (a.day < b.day ? -1 : 1));
+
+    for (const { sessions: list } of own) {
+      for (const s of list) {
+        for (const a of s.alerts) {
+          alerts.push({ full_name: e.fullName, alert_type: a.alertType, triggered_at: a.triggeredAt, zone: a.geofence?.name ?? null });
+        }
       }
     }
 
@@ -105,37 +128,64 @@ async function buildDailyRecords(auth, siteId, from, to) {
     // who never consented could not have been tracked, which is not the same as absent.
     if (own.length === 0) {
       const state = e.consentGivenAt ? 'absent' : 'no_consent';
-      return { ...base, state, first_seen: null, last_seen: null, total_minutes: 0, has_gap: false };
+      return {
+        ...base,
+        state,
+        first_seen: null,
+        last_seen: null,
+        total_minutes: 0,
+        has_gap: false,
+        corrected: false,
+        days_present: 0,
+        days_absent: state === 'absent' ? workdays : null,
+        avg_minutes: 0,
+      };
     }
 
     let minutes = 0;
     let hasGap = false;
-    let previousEnd = null;
+    let corrected = false;
     let firstSeen = null;
-    let stillOn = false;
+    let lastSeen = null;
 
-    for (const s of own) {
-      const rawEnd = s.endedAt ?? now;
-      const b = rawEnd > end ? end : rawEnd;
-      let a = s.startedAt < start ? start : s.startedAt;
-      // Overlapping sessions (a device swap mid-shift) count their shared time once.
-      if (previousEnd && a < previousEnd) a = previousEnd;
+    for (const { day, sessions: list } of own) {
+      const attendance = dayAttendance(list);
+      const fixes = correctionsOf(e.id, day);
+      const values = applyCorrections(
+        {
+          first_seen: clockInRiyadh(attendance.first_seen),
+          last_seen: clockInRiyadh(attendance.last_seen),
+          worked_minutes: attendance.worked_minutes,
+        },
+        fixes,
+      );
+      minutes += values.worked_minutes.value;
+      if (fixes.length) corrected = true;
+      const stillOn = attendance.open && day === today;
+      if (stillOn) provisional = true;
+      if (firstSeen === null) firstSeen = values.first_seen.value;
+      lastSeen = stillOn ? null : values.last_seen.value;
 
-      if (s.endedAt === null) {
-        provisional = true;
-        stillOn = true;
+      let previousEnd = null;
+      for (const s of list) {
+        if (previousEnd && minutesBetween(previousEnd, s.startedAt) > GAP_MINUTES) hasGap = true;
+        const endAt = sessionEnd(s);
+        if (!previousEnd || endAt > previousEnd) previousEnd = endAt;
       }
-      if (firstSeen === null) firstSeen = s.startedAt < start ? start : s.startedAt;
-
-      if (b > a) minutes += minutesBetween(a, b);
-      // A break inside one working day is a gap; the night between two days is not.
-      if (previousEnd && riyadhDay(previousEnd) === riyadhDay(a) && minutesBetween(previousEnd, a) > GAP_MINUTES) hasGap = true;
-      if (!previousEnd || b > previousEnd) previousEnd = b;
     }
-    // Still on site: there is no "last seen" yet.
-    const lastSeen = stillOn ? null : previousEnd;
 
-    return { ...base, state: 'present', first_seen: firstSeen, last_seen: lastSeen, total_minutes: minutes, has_gap: hasGap };
+    return {
+      ...base,
+      state: 'present',
+      first_seen: firstSeen,
+      last_seen: lastSeen,
+      total_minutes: minutes,
+      has_gap: hasGap,
+      corrected,
+      days_present: own.length,
+      days_absent: Math.max(0, workdays - own.length),
+      avg_minutes: Math.round(minutes / own.length),
+    };
   });
 
   alerts.sort((x, y) => x.triggered_at - y.triggered_at);
@@ -145,10 +195,11 @@ async function buildDailyRecords(auth, siteId, from, to) {
     present: records.filter((r) => r.state === 'present').length,
     absent: records.filter((r) => r.state === 'absent').length,
     no_consent: records.filter((r) => r.state === 'no_consent').length,
+    corrected: records.filter((r) => r.corrected).length,
     minutes: records.reduce((sum, r) => sum + r.total_minutes, 0),
   };
 
-  return { site, records, alerts, totals, provisional };
+  return { site, records, alerts, totals, provisional, workdays };
 }
 
 let browser = null;
@@ -199,7 +250,8 @@ async function generate(auth, { site_id: siteId, report_type: reportType, from, 
       client: data.site.client,
       shift: `${hhmmOf(data.site.shiftStart)} to ${hhmmOf(data.site.shiftEnd)}`,
     },
-    period: { label: from === to ? longDate(from) : `${longDate(from)} to ${longDate(to)}` },
+    layout: from === to ? 'day' : 'period',
+    period: { label: from === to ? longDate(from) : `${longDate(from)} to ${longDate(to)} (${data.workdays} working days)` },
     issuer: {
       name: user?.fullName ?? 'Unknown',
       at: `${new Date().toISOString().replace('T', ' ').slice(0, 16)} UTC`,

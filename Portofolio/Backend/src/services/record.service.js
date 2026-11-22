@@ -1,7 +1,6 @@
 const AppError = require('../utils/AppError');
-const { todayInRiyadh, dayRange, clockInRiyadh, minutesBetween, walk, minutesByZone } = require('../utils/day');
-
-const CORRECTABLE = ['first_seen', 'last_seen', 'worked_minutes'];
+const { todayInRiyadh, dayRange, clockInRiyadh, walk, minutesByZone } = require('../utils/day');
+const { CORRECTABLE, sessionEnd, dayAttendance, applyCorrections } = require('../utils/attendance');
 
 const notFound = () => new AppError(404, 'NOT_FOUND', 'Employee not found');
 const invalid = (field, message) => new AppError(422, 'VALIDATION_ERROR', 'One or more fields are invalid', { [field]: message });
@@ -58,36 +57,22 @@ async function loadDay(db, employeeId, date) {
     })
     : [];
   const now = new Date();
-  return sessions.map((s) => ({
-    ...s,
-    walk: walk(s.telemetryLogs, geofences.filter((g) => g.siteId === s.site.id), s.endedAt || now),
-  }));
+  const today = date === todayInRiyadh();
+  return sessions.map((s) => {
+    const last = s.telemetryLogs[s.telemetryLogs.length - 1];
+    const session = { ...s, lastReadingAt: last ? last.recordedAt : null };
+    const endAt = s.endedAt || (today ? now : sessionEnd(session));
+    return { ...session, walk: walk(s.telemetryLogs, geofences.filter((g) => g.siteId === s.site.id), endAt) };
+  });
 }
 
 function attendanceOf(sessions) {
-  if (!sessions.length) return { first_seen: null, last_seen: null, worked_minutes: 0 };
-  const now = new Date();
-  const open = sessions.some((s) => !s.endedAt);
-  const lastReading = sessions.flatMap((s) => s.telemetryLogs).map((r) => r.recordedAt).sort((a, b) => b - a)[0];
-  const lastSeen = open ? lastReading || sessions[sessions.length - 1].startedAt : new Date(Math.max(...sessions.map((s) => s.endedAt)));
+  const day = dayAttendance(sessions);
   return {
-    first_seen: clockInRiyadh(sessions[0].startedAt),
-    last_seen: clockInRiyadh(lastSeen),
-    worked_minutes: workedMinutes(sessions, now),
+    first_seen: clockInRiyadh(day.first_seen),
+    last_seen: clockInRiyadh(day.last_seen),
+    worked_minutes: day.worked_minutes,
   };
-}
-
-// Sessions come sorted by start. Time two of them share (a device swap mid-shift) counts once.
-function workedMinutes(sessions, now) {
-  let total = 0;
-  let until = null;
-  for (const s of sessions) {
-    const end = s.endedAt || now;
-    const from = until && s.startedAt < until ? until : s.startedAt;
-    if (end > from) total += minutesBetween(from, end);
-    if (!until || end > until) until = end;
-  }
-  return total;
 }
 
 async function correctionsOf(db, employeeId, date) {
@@ -107,19 +92,7 @@ async function correctionsOf(db, employeeId, date) {
   });
 }
 
-function withCorrections(original, corrections) {
-  const result = {};
-  for (const field of CORRECTABLE) {
-    const latest = corrections.filter((c) => c.field === field).pop();
-    const value = latest ? latest.correctedValue : original[field];
-    result[field] = {
-      original: original[field],
-      value: field === 'worked_minutes' && latest ? Number(value) : value,
-      corrected: Boolean(latest),
-    };
-  }
-  return result;
-}
+const withCorrections = applyCorrections;
 
 const correctionToPublic = (c) => ({
   id: c.id,
