@@ -114,6 +114,8 @@ function render(data) {
   .t td { border-bottom: 1px solid #F0EEEB; padding: 5px 6px; }
   .mono { font-variant-numeric: tabular-nums; }
   .num { text-align: right; }
+  .t th.num { text-align: right; }
+  .t tfoot { display: table-row-group; }
   .tag { display: inline-block; font-size: 8.5px; font-weight: 600; letter-spacing: .04em; padding: 1px 5px; border-radius: 3px; margin-right: 4px; }
   .tag-absent { background: #FBE6E4; color: #B42318; }
   .tag-unknown { background: #FBF0D9; color: #9A6B00; }
