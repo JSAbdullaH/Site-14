@@ -33,15 +33,21 @@ function readFile(file, columnMap) {
   });
 }
 
+const personKey = (fullName, jobCategory) =>
+  `${fullName.trim().replace(/\s+/g, ' ').toLowerCase()}|${jobCategory.trim().toLowerCase()}`;
+
 async function check(db, rows) {
   const numbers = rows.map((r) => r.employee_number).filter(Boolean);
-  const [sites, existing] = await Promise.all([
+  const [sites, existing, people] = await Promise.all([
     db.site.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
     db.employee.findMany({ where: { employeeNumber: { in: numbers } }, select: { employeeNumber: true } }),
+    db.employee.findMany({ where: { status: 'active' }, select: { fullName: true, jobCategory: true } }),
   ]);
   const siteByName = new Map(sites.map((s) => [s.name.toLowerCase(), s]));
   const taken = new Set(existing.map((e) => e.employeeNumber));
   const seen = new Set();
+  const knownPeople = new Set(people.map((p) => personKey(p.fullName, p.jobCategory)));
+  const seenPeople = new Set();
 
   const valid = [];
   const invalid = [];
@@ -64,6 +70,20 @@ async function check(db, rows) {
         reason: taken.has(r.employee_number) ? 'Worker number already exists' : 'Worker number repeated in the file',
       });
       continue;
+    }
+    if (!r.employee_number) {
+      const key = personKey(r.full_name, r.job_category);
+      if (knownPeople.has(key) || seenPeople.has(key)) {
+        duplicates.push({
+          row: r.row,
+          employee_number: null,
+          reason: knownPeople.has(key)
+            ? 'An employee with this name and job category already exists; add a worker number if this is a different person'
+            : 'Same name and job category repeated in the file without a worker number',
+        });
+        continue;
+      }
+      seenPeople.add(key);
     }
     if (r.employee_number) seen.add(r.employee_number);
     valid.push({ ...r, job_category: r.job_category.toLowerCase(), site_id: site ? site.id : null });

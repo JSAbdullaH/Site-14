@@ -448,6 +448,37 @@ describe('CSV import', () => {
     expect(rows[0].daily_limit_minutes).toBe(720);
   });
 
+  test('a row without a worker number is not imported twice (SITE-98)', async () => {
+    const csv = `${HEADER}\nYasser Hamad,,construction,\nSami Nour,,security,\n`;
+    const first = await upload('/employees/import', csv).expect(201);
+    expect(first.body.created).toBe(2);
+
+    const again = await upload('/employees/import', csv).expect(201);
+    expect(again.body.created).toBe(0);
+    expect(again.body.skipped).toEqual([
+      { row: 2, employee_number: null, reason: 'An employee with this name and job category already exists; add a worker number if this is a different person' },
+      { row: 3, employee_number: null, reason: 'An employee with this name and job category already exists; add a worker number if this is a different person' },
+    ]);
+    expect(await count()).toBe(2);
+  });
+
+  test('the same person twice in one file without a worker number is imported once (SITE-98)', async () => {
+    const csv = `${HEADER}\nYasser Hamad,,construction,\n  yasser   HAMAD ,,Construction,\nYasser Hamad,,security,\n`;
+    const preview = await upload('/employees/import/preview', csv).expect(200);
+    expect(preview.body.valid_rows.map((r) => r.row)).toEqual([2, 4]);
+    expect(preview.body.duplicates).toEqual([
+      { row: 3, employee_number: null, reason: 'Same name and job category repeated in the file without a worker number' },
+    ]);
+    expect((await upload('/employees/import', csv).expect(201)).body.created).toBe(2);
+  });
+
+  test('a different person with the same name can still be imported with a worker number (SITE-98)', async () => {
+    await upload('/employees/import', `${HEADER}\nYasser Hamad,,construction,\n`).expect(201);
+    const done = await upload('/employees/import', `${HEADER}\nYasser Hamad,E-777,construction,\n`).expect(201);
+    expect(done.body.created).toBe(1);
+    expect(await count()).toBe(2);
+  });
+
   test('an empty, malformed or headerless file is a clear error and nothing is created', async () => {
     expect((await upload('/employees/import', '').expect(422)).body.error.code).toBe('INVALID_FILE');
     expect((await upload('/employees/import', null).expect(422)).body.error.message).toBe('Choose a CSV file to upload');
