@@ -42,7 +42,7 @@ function sendAlreadyRegistered(to, { fullName }) {
     subject: 'Someone tried to register with your email',
     text:
       `Hello ${fullName},\n\nSomeone tried to register a new company with this email address, ` +
-      `which already has a SITE14 account. To sign in, go to ${config.APP_URL}/login. ` +
+      `which already has a SITE14 account. To sign in, go to ${config.APP_URL}/signin. ` +
       `If you forgot your password, reset it at ${config.APP_URL}/forgot-password.`,
   });
 }

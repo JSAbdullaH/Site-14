@@ -1,6 +1,8 @@
 const AppError = require('../utils/AppError');
 const { verifyAccessToken } = require('../utils/jwt');
 const userModel = require('../models/user.model');
+const { forCompany } = require('../config/db');
+const ingestService = require('../services/ingest.service');
 
 const unauthenticated = (message = 'Authentication required') => new AppError(401, 'UNAUTHENTICATED',
 message);
@@ -14,7 +16,7 @@ async function authenticate(req, _res, next) {
     if (!user || !user.isActive || user.companyId !== claims.companyId) {
         throw unauthenticated('Invalid or expired token');
     }
-    req.auth = { userId: user.id, companyId: user.companyId, role: user.role };
+    req.auth = { userId: user.id, companyId: user.companyId, role: user.role, db: forCompany(user.companyId) };
     next();
 }
 
@@ -27,9 +29,10 @@ const requireRole = (...allowed) => (req, _res, next) => {
 
 const requireAdmin = requireRole('company_admin');
 
-function scoped(req, where = {}) {
-    if (!req.auth) throw unauthenticated();
-    return { ...where, companyId: req.auth.companyId };
+// Devices do not sign in. Each sends its serial and the key it was given at registration.
+async function authenticateDevice(req, _res, next) {
+    req.device = await ingestService.authenticate(req.get('X-Device-Serial'), req.get('X-Device-Key'));
+    next();
 }
 
-module.exports = { authenticate, requireRole, requireAdmin, scoped };
+module.exports = { authenticate, requireRole, requireAdmin, authenticateDevice };

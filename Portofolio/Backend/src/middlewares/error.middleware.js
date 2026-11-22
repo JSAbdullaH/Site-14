@@ -1,5 +1,6 @@
 const { ZodError } = require('zod');
 const AppError = require('../utils/AppError');
+const { Prisma } = require('../config/db');
 
 function notFound(_req, res) {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
@@ -21,6 +22,10 @@ function errorHandler(err, _req, res, _next) {
     return res.status(422).json({
       error: { code: 'VALIDATION_ERROR', message: 'One or more fields are invalid', fields },
     });
+  }
+
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Not found' } });
   }
 
   if (err && err.type === 'entity.parse.failed') {

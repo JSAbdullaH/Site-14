@@ -1,16 +1,39 @@
 const { Router } = require('express');
-const { authenticate, requireAdmin, requireRole } = require('../middlewares/auth.middleware');
+const multer = require('multer');
+const AppError = require('../utils/AppError');
+const { authenticate, requireRole, requireAdmin } = require('../middlewares/auth.middleware');
 const { validateBody, validateQuery, validateParams } = require('../middlewares/validate.middleware');
 const s = require('../utils/schemas');
 const employeeController = require('../controllers/employee.controller');
+const recordController = require('../controllers/record.controller');
 
 const router = Router();
 
 router.use(authenticate);
 
-// The rest of the employee profile (create, edit, deactivate, import) belongs to
-// the Employee & Device epic. PATCH takes only site_id until then.
-router.get('/', requireRole('site_manager'), validateQuery(s.listEmployeesQuery), employeeController.list);
-router.patch('/:id', requireAdmin, validateParams(s.idParams), validateBody(s.assignEmployeeSchema), employeeController.assignSite);
+const readers = requireRole('site_manager');
+
+const csvUpload = (req, res, next) => {
+  multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024, files: 1 } }).single('file')(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === 'LIMIT_FILE_SIZE') return next(new AppError(413, 'INVALID_FILE', 'The file is larger than 1 MB'));
+    return next(new AppError(422, 'INVALID_FILE', 'Send the CSV in a form field named "file"'));
+  });
+};
+
+router.get('/import/template', requireAdmin, employeeController.importTemplate);
+router.post('/import/preview', requireAdmin, csvUpload, validateBody(s.importColumnMap), employeeController.importPreview);
+router.post('/import', requireAdmin, csvUpload, validateBody(s.importColumnMap), employeeController.importCommit);
+
+router.get('/', readers, validateQuery(s.listEmployeesQuery), employeeController.list);
+router.get('/:id', readers, validateParams(s.idParams), employeeController.get);
+router.get('/:id/daily-record', readers, validateParams(s.idParams), validateQuery(s.dayQuery), recordController.dailyRecord);
+router.get('/:id/history', readers, validateParams(s.idParams), validateQuery(s.dayQuery), recordController.history);
+router.post('/:id/daily-record/corrections', readers, validateParams(s.idParams), validateBody(s.correctionSchema), recordController.correct);
+router.post('/deactivate', requireAdmin, validateBody(s.deactivateEmployeesSchema), employeeController.deactivateMany);
+router.post('/', requireAdmin, validateBody(s.createEmployeeSchema), employeeController.create);
+router.patch('/site', requireAdmin, validateBody(s.assignSiteSchema), employeeController.assignSite);
+router.patch('/:id', requireAdmin, validateParams(s.idParams), validateBody(s.updateEmployeeSchema), employeeController.update);
+router.delete('/:id', requireAdmin, validateParams(s.idParams), employeeController.deactivate);
 
 module.exports = router;

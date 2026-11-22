@@ -4,8 +4,8 @@ const authService = require('../services/auth.service');
 const REFRESH_COOKIE = 'site14_refresh';
 const cookieOptions = () => ({
   httpOnly: true,
-  secure: config.NODE_ENV === 'production',
-  sameSite: 'strict',
+  secure: config.NODE_ENV === 'production' || config.COOKIE_SAMESITE === 'none',
+  sameSite: config.COOKIE_SAMESITE,
   path: '/api/v1/auth',
 });
 
@@ -22,12 +22,22 @@ function sendSession(res, session) {
   res.json(session);
 }
 
+// Answers with the body, and sets the refresh cookie when the body carries a session.
+function sendMaybeSession(res, body) {
+  if (body.refresh_token) setRefreshCookie(res, body.refresh_token);
+  res.json(body);
+}
+
+async function checkEmail(req, res) {
+  res.json(await authService.checkEmail(req.body));
+}
+
 async function register(req, res) {
-  res.status(201).json(await authService.register(req.body));
+  sendMaybeSession(res.status(201), await authService.register(req.body));
 }
 
 async function verifyEmail(req, res) {
-  res.json(await authService.verifyEmail(req.body));
+  sendMaybeSession(res, await authService.verifyEmail(req.body));
 }
 
 async function resendVerification(req, res) {
@@ -68,6 +78,7 @@ async function resetPassword(req, res) {
 }
 
 module.exports = {
+  checkEmail,
   register,
   verifyEmail,
   resendVerification,

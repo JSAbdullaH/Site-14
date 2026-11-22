@@ -80,4 +80,4 @@ function toPublic(site) {
   return out;
 }
 
-module.exports = { create, findInCompany, listByCompany, update, toPublic };
+module.exports = { create, findInCompany, listByCompany, update, toPublic, fromTime };
