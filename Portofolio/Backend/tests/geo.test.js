@@ -1,4 +1,14 @@
-const { pointInPolygon, polygonWithin, findZone } = require('../src/utils/geo');
+const {
+  pointInPolygon,
+  polygonWithin,
+  findZone,
+  settleZone,
+  settledInside,
+  boundaryDistance,
+  distanceMetres,
+  implausibleJump,
+  EXIT_MARGIN_CAP_M,
+} = require('../src/utils/geo');
 const { square } = require('./setup');
 
 const zone = square(46.6, 24.7, 0.001);
@@ -85,5 +95,91 @@ describe('findZone', () => {
     const b = { id: 'b', boundary: square(46.6005, 24.7, 0.0002) };
     expect(findZone(46.6005, 24.7, [a, b])).toBe(b);
     expect(findZone(46.6009, 24.7009, [a, b])).toBeNull();
+  });
+});
+
+// Metres east of the zone's east edge (lng 46.601) at latitude 24.7. Negative is inside.
+const M_PER_DEG_LNG = 111320 * Math.cos((24.7 * Math.PI) / 180);
+const east = (metres) => 46.601 + metres / M_PER_DEG_LNG;
+
+describe('boundaryDistance and distanceMetres', () => {
+  test('is signed metres from the edge: negative inside, positive outside', () => {
+    expect(boundaryDistance(east(20), 24.7, zone)).toBeCloseTo(20, 0);
+    expect(boundaryDistance(east(-20), 24.7, zone)).toBeCloseTo(-20, 0);
+  });
+
+  test('a point in a hole is outside', () => {
+    const holed = { type: 'Polygon', coordinates: [zone.coordinates[0], square(46.6, 24.7, 0.0002).coordinates[0]] };
+    expect(boundaryDistance(46.6, 24.7, holed)).toBeGreaterThan(0);
+  });
+
+  test('a missing boundary is infinitely far', () => {
+    expect(boundaryDistance(46.6, 24.7, null)).toBe(Infinity);
+  });
+
+  test('measures great-circle metres', () => {
+    expect(distanceMetres({ latitude: 24.7, longitude: 46.6 }, { latitude: 24.701, longitude: 46.6 })).toBeCloseTo(111.2, 0);
+  });
+});
+
+describe('settledInside', () => {
+  test('without an accuracy it is the plain geometric test', () => {
+    expect(settledInside(east(1), 24.7, zone, { wasInside: true })).toBe(false);
+    expect(settledInside(east(-1), 24.7, zone, { wasInside: false })).toBe(true);
+  });
+
+  test('a worker inside stays inside while a reading is out by less than its accuracy', () => {
+    expect(settledInside(east(8), 24.7, zone, { accuracy: 10, wasInside: true })).toBe(true);
+    expect(settledInside(east(12), 24.7, zone, { accuracy: 10, wasInside: true })).toBe(false);
+  });
+
+  test('a worker outside enters only once a reading is in by its accuracy', () => {
+    expect(settledInside(east(-3), 24.7, zone, { accuracy: 5, wasInside: false })).toBe(false);
+    expect(settledInside(east(-7), 24.7, zone, { accuracy: 5, wasInside: false })).toBe(true);
+  });
+
+  test('a rough fix holds the state by at most the cap', () => {
+    expect(settledInside(east(EXIT_MARGIN_CAP_M + 2), 24.7, zone, { accuracy: 140, wasInside: true })).toBe(false);
+  });
+});
+
+describe('settleZone', () => {
+  const a = { id: 'a', boundary: square(46.6, 24.7, 0.0002) };
+  const b = { id: 'b', boundary: square(46.6004, 24.7, 0.0002) };
+  const lng = (m) => 46.6002 + m / M_PER_DEG_LNG; // metres east of the shared edge
+
+  test('jitter across a shared edge keeps the current zone', () => {
+    expect(settleZone(lng(4), 24.7, [a, b], a, 8)).toBe(a);
+    expect(settleZone(lng(-4), 24.7, [a, b], b, 8)).toBe(b);
+  });
+
+  test('moves to the next zone once clearly in it', () => {
+    expect(settleZone(lng(10), 24.7, [a, b], a, 8)).toBe(b);
+  });
+
+  test('without an accuracy it matches findZone', () => {
+    expect(settleZone(lng(1), 24.7, [a, b], a)).toBe(findZone(lng(1), 24.7, [a, b]));
+  });
+});
+
+describe('implausibleJump', () => {
+  const at = (s) => new Date(Date.UTC(2026, 10, 4, 9, 0, s));
+  const prev = { latitude: 24.7, longitude: 46.6, recorded_at: at(0), accuracy_m: 5 };
+
+  test('a walk or a drive across the site is plausible', () => {
+    expect(implausibleJump(prev, { latitude: 24.7001, longitude: 46.6, recorded_at: at(5), accuracy_m: 5 })).toBe(false);
+    expect(implausibleJump(prev, { latitude: 24.702, longitude: 46.6, recorded_at: at(10), accuracy_m: 5 })).toBe(false);
+  });
+
+  test('a kilometre in five seconds is a glitch', () => {
+    expect(implausibleJump(prev, { latitude: 24.709, longitude: 46.6, recorded_at: at(5), accuracy_m: 5 })).toBe(true);
+  });
+
+  test('after a long gap any move is believed', () => {
+    expect(implausibleJump(prev, { latitude: 24.8, longitude: 46.6, recorded_at: at(300) })).toBe(false);
+  });
+
+  test('without a previous reading nothing is a jump', () => {
+    expect(implausibleJump(null, prev)).toBe(false);
   });
 });

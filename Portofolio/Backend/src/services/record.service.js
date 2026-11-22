@@ -31,7 +31,7 @@ async function loadDay(db, employeeId, date) {
       site: { select: { id: true, name: true } },
       telemetryLogs: {
         orderBy: { recordedAt: 'asc' },
-        select: { latitude: true, longitude: true, recordedAt: true, batteryPercent: true },
+        select: { latitude: true, longitude: true, accuracyM: true, recordedAt: true, batteryPercent: true },
       },
       alerts: {
         orderBy: { triggeredAt: 'asc' },

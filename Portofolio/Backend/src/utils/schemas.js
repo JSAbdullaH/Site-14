@@ -280,6 +280,8 @@ const readingSchema = z.object({
   recorded_at: deviceTime,
   latitude: z.number().finite().min(-90, 'Latitude must be between -90 and 90').max(90, 'Latitude must be between -90 and 90'),
   longitude: z.number().finite().min(-180, 'Longitude must be between -180 and 180').max(180, 'Longitude must be between -180 and 180'),
+  // Horizontal accuracy in metres (radius of 68% confidence), as iOS and browsers report it.
+  accuracy_m: z.number().finite().min(0, 'Accuracy cannot be negative').max(100000).nullable().optional(),
   battery_percent: z.number().int().min(0).max(100).nullable().optional(),
   heart_rate_bpm: z.number().int().min(20).max(250).nullable().optional(),
 });
