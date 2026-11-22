@@ -62,6 +62,9 @@ export default function DailyRecordView({ record, onCorrect }: Props) {
           <StatusBadge tone="warn">Absent</StatusBadge>
         )}
         {record.is_provisional && <StatusBadge tone="info">Provisional, day still in progress</StatusBadge>}
+        {record.stopped_reporting && (
+          <StatusBadge tone="neutral">Device stopped reporting, counted to its last reading</StatusBadge>
+        )}
         {record.has_corrections && <StatusBadge tone="neutral">Corrected</StatusBadge>}
         {record.sites.map((s) => (
           <span key={s.id} className="text-sm text-muted-foreground">

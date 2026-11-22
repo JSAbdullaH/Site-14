@@ -46,6 +46,7 @@ export type DailyRecord = {
   date: string;
   status: "present" | "absent";
   is_provisional: boolean;
+  stopped_reporting: boolean;
   has_corrections: boolean;
   sites: { id: string; name: string }[];
   session_count: number;

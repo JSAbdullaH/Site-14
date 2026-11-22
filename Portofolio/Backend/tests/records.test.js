@@ -157,6 +157,14 @@ describe('daily record', () => {
     expect(body.attendance.last_seen.value).not.toBeNull();
   });
 
+  test('a past day whose device stopped reporting is final, counted to its last reading', async () => {
+    const id = await shift(at('07:00'), at('09:00'), () => ROOF);
+    await pool.query('UPDATE work_sessions SET ended_at = NULL WHERE id = $1', [id]);
+    const { body } = await record().expect(200);
+    expect(body).toMatchObject({ status: 'present', is_provisional: false, stopped_reporting: true });
+    expect(body.attendance.worked_minutes.value).toBe(110);
+  });
+
   test('a corrected day shows the original value and every correction', async () => {
     await shift(at('07:00'), at('15:00'), normalDay);
     const insert = (field, from, to, reason) => pool.query(
