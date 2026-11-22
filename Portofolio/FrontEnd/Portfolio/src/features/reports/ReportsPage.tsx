@@ -234,8 +234,12 @@ export default function ReportsPage() {
 }
 
 function IssuedRow({ report }: { report: GeneratedReport & { site: string; from: string; to: string } }) {
-  const url = useMemo(() => URL.createObjectURL(report.blob), [report.blob]);
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    const next = URL.createObjectURL(report.blob);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [report.blob]);
 
   return (
     <li className="flex flex-wrap items-center gap-3 px-5 py-4">
