@@ -220,8 +220,20 @@ async function getBrowser() {
   return browser;
 }
 
+async function openPage() {
+  try {
+    return await (await getBrowser()).newPage();
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    const stale = browser;
+    browser = null;
+    if (stale) await stale.close().catch(() => {});
+    return (await getBrowser()).newPage();
+  }
+}
+
 async function toPdf(html, ref) {
-  const page = await (await getBrowser()).newPage();
+  const page = await openPage();
   try {
     await page.setContent(html, { waitUntil: 'load' });
     return await page.pdf({
@@ -314,4 +326,4 @@ process.on('beforeExit', async () => {
   if (browser) await browser.close().catch(() => {});
 });
 
-module.exports = { generate, verify, buildDailyRecords, getBrowser };
+module.exports = { generate, verify, buildDailyRecords, getBrowser, openPage };

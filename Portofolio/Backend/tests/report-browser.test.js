@@ -6,11 +6,15 @@ jest.mock('puppeteer-core', () => ({
     const b = new EventEmitter();
     b.connected = true;
     b.close = async () => {};
+    b.newPage = async () => {
+      if (b.broken) throw new Error('Connection closed.');
+      return { browser: b };
+    };
     return b;
   }),
 }));
 
-const { getBrowser } = require('../src/services/report.service');
+const { getBrowser, openPage } = require('../src/services/report.service');
 
 describe('PDF browser (SITE-195)', () => {
   test('a connected browser is reused', async () => {
@@ -33,5 +37,13 @@ describe('PDF browser (SITE-195)', () => {
     first.emit('disconnected');
     const second = await getBrowser();
     expect(second).not.toBe(first);
+  });
+
+  test('a browser that still says connected but has lost its connection is replaced, and the page opens', async () => {
+    const first = await getBrowser();
+    first.broken = true;
+    const page = await openPage();
+    expect(page.browser).not.toBe(first);
+    expect(await getBrowser()).toBe(page.browser);
   });
 });
