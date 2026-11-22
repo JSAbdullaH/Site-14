@@ -205,13 +205,17 @@ async function buildDailyRecords(auth, siteId, from, to) {
 let browser = null;
 
 async function getBrowser() {
-  if (!browser) {
+  if (!browser || !browser.connected) {
     const executablePath = findChrome();
     if (!executablePath) {
       throw new AppError(503, 'PDF_UNAVAILABLE', 'PDF export needs Chrome or Chromium on the server. Install it or set CHROME_PATH.');
     }
     const puppeteer = require('puppeteer-core');
-    browser = await puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    const launched = await puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    launched.on('disconnected', () => {
+      if (browser === launched) browser = null;
+    });
+    browser = launched;
   }
   return browser;
 }
@@ -310,4 +314,4 @@ process.on('beforeExit', async () => {
   if (browser) await browser.close().catch(() => {});
 });
 
-module.exports = { generate, verify, buildDailyRecords };
+module.exports = { generate, verify, buildDailyRecords, getBrowser };
