@@ -6,7 +6,11 @@ const userController = require('../controllers/user.controller');
 
 const router = Router();
 
-// Every route here is for a Company Admin of the caller's own company.
+// Any signed-in user, for their own account.
+router.get('/me', authenticate, userController.me);
+router.patch('/me', authenticate, validateBody(s.updateMeSchema), userController.updateMe);
+
+// Every route below is for a Company Admin of the caller's own company.
 router.use(authenticate, requireAdmin);
 
 router.post('/', validateBody(s.inviteUserSchema), userController.invite);

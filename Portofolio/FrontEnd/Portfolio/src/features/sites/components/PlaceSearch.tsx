@@ -6,12 +6,14 @@ import { newPlaceSession, placeLocation, placesAvailable, suggestPlaces, type La
 type Props = {
   map: google.maps.Map;
   onPick: (at: LatLngLiteral) => void;
+  /** Where the box sits on the map; top right by default. */
+  className?: string;
 };
 
 const MIN_CHARS = 3;
 const DELAY_MS = 300;
 
-export default function PlaceSearch({ map, onPick }: Props) {
+export default function PlaceSearch({ map, onPick, className = "top-2 right-2 w-72 max-w-[calc(100%-1rem)]" }: Props) {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<PlaceHit[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,7 +70,7 @@ export default function PlaceSearch({ map, onPick }: Props) {
   if (!placesAvailable()) return null;
 
   return (
-    <div className="absolute top-2 right-2 z-10 w-72 max-w-[calc(100%-1rem)]">
+    <div className={`absolute z-10 ${className}`}>
       <div className="flex h-9 items-center gap-2 rounded-full border bg-background/95 pr-1.5 pl-3 shadow-md">
         <Search className="size-4 shrink-0 text-muted-foreground" />
         <input

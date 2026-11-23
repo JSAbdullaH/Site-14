@@ -15,6 +15,25 @@ const newPassword = z
 
 const linkToken = z.string().trim().min(20, 'Invalid token').max(200, 'Invalid token');
 
+// Strict: the role and the sign-in email cannot be changed here, and asking to is an error.
+const updateMeSchema = z
+  .object({ full_name: z.string().trim().min(2, 'Name needs at least 2 characters').max(120, 'Name is at most 120 characters') })
+  .strict();
+
+const updateCompanySchema = z
+  .object({
+    name: z.string().trim().min(2, 'Company name needs at least 2 characters').max(150, 'Company name is at most 150 characters').optional(),
+    commercial_registration: z
+      .string()
+      .trim()
+      .max(50, 'Commercial register is at most 50 characters')
+      .nullable()
+      .optional()
+      .transform((v) => (v === '' ? null : v)),
+  })
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
+
 const registerSchema = z.object({
   company_name: z.string().trim().min(2).max(150),
   commercial_registration: z.string().trim().max(50).optional(),
@@ -509,6 +528,8 @@ module.exports = {
   updateTaskSchema,
   listTasksQuery,
   registerSchema,
+  updateMeSchema,
+  updateCompanySchema,
   loginSchema,
   loginVerifySchema,
   verifyEmailSchema,

@@ -14,17 +14,16 @@ async function create(tx, { name, commercialRegistration }) {
   });
 }
 
+const FIELDS = { id: true, name: true, commercialRegistration: true, createdAt: true };
+
 // Keeps the snake_case JSON shape the API returned before Prisma.
-async function findById(id) {
-  const company = await prisma.company.findUnique({
-    where: { id },
-    select: { id: true, name: true },
-  });
-  if (!company) return null;
+function toPublic(company) {
   const year = new Date().getFullYear();
   return {
     id: company.id,
     name: company.name,
+    commercial_registration: company.commercialRegistration,
+    created_at: company.createdAt.toISOString(),
     midday_ban_from_date: `${year}-${MIDDAY_BAN.fromMonthDay}`,
     midday_ban_to_date: `${year}-${MIDDAY_BAN.toMonthDay}`,
     midday_ban_start_time: MIDDAY_BAN.startTime,
@@ -32,4 +31,22 @@ async function findById(id) {
   };
 }
 
-module.exports = { create, findById, MIDDAY_BAN };
+async function findById(id) {
+  const company = await prisma.company.findUnique({ where: { id }, select: FIELDS });
+  return company ? toPublic(company) : null;
+}
+
+// `db` is the company-scoped client, so a company can only change itself.
+async function update(db, id, { name, commercial_registration: commercialRegistration }) {
+  const company = await db.company.update({
+    where: { id },
+    data: {
+      ...(name !== undefined && { name }),
+      ...(commercialRegistration !== undefined && { commercialRegistration }),
+    },
+    select: FIELDS,
+  });
+  return toPublic(company);
+}
+
+module.exports = { create, findById, update, MIDDAY_BAN };

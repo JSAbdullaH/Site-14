@@ -357,14 +357,30 @@ Full list: [QA test cases](./stage4-evidence/jira/site14-jira-report.pdf).
 
 ## 6. Production Environment
 
-**Links:** TODO: live site URL · TODO: API URL
+**Links:** Dashboard: TODO: dashboard URL · API: [site-14-back-end-testing-xaxhq7.cranl.net](https://site-14-back-end-testing-xaxhq7.cranl.net/health)
 
-| Part | Where it runs |
+Both the API and the dashboard are hosted on **Cranl**, which builds each service with Railpack directly from `package.json`, so no Dockerfile is needed.
+
+| Part | Where it runs | How it is built and configured |
+|---|---|---|
+| Backend API | Cranl | Railpack build from `package.json`. [`railpack.json`](../Portofolio/Backend/railpack.json) installs Chromium and fonts so PDF reports work on the server. [`railway.json`](../Portofolio/Backend/railway.json) sets the health check on `/health` and restarts the service on failure. |
+| Frontend dashboard | Cranl | Static Vite build. [`.env.production`](../Portofolio/FrontEnd/Portfolio/.env.production) points `VITE_API_URL` at the API above. |
+| Database | Cloud PostgreSQL, shared by the team | Prisma migrations run against it. `db:seed` refuses to run on a remote database unless `ALLOW_REMOTE_RESET=true`. |
+| Worker tracking app | iPhone app with an Apple Watch companion, bundle `sa.site14.tracker`, version 1.0 (build 1) | Uploaded to TestFlight with [`testflight.sh`](../Portofolio/Mobile/scripts/testflight.sh). The API address is set at build time. Submitted to the Apple App Store and awaiting review (`SITE-198`). |
+
+**Production configuration.** Secrets live only in Cranl's environment variables and are never committed; [`.env.example`](../Portofolio/Backend/.env.example) lists every key. The ones production depends on:
+
+| Variable | Purpose |
 |---|---|
-| Backend API | Railway, built from `package.json` with a health check on `/health` and a restart on failure ([`railway.json`](../Portofolio/Backend/railway.json)) |
-| Frontend dashboard | TODO: where the frontend is hosted |
-| Database | Cloud PostgreSQL, shared by the team; secrets are kept in environment variables and never committed |
-| Worker tracking app | Submitted to the Apple App Store and awaiting review (`SITE-198`) |
+| `NODE_ENV` | Set to `production` |
+| `DATABASE_URL` | Connection to the cloud PostgreSQL database |
+| `JWT_ACCESS_SECRET`, `PLATFORM_JWT_SECRET` | Separate signing keys for tenant users and platform admins, each at least 32 characters |
+| `APP_URL` | Dashboard address, used in email links and automatically allowed by CORS |
+| `CORS_ORIGINS` | Any other origins allowed to call the API with credentials |
+| `TRUST_PROXY`, `COOKIE_SAMESITE` | Correct client IPs and refresh-cookie behaviour behind Cranl's proxy |
+| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Outgoing mail for invitations, sign-in codes and password resets |
+
+**Health check.** On 22 November 2026, `GET /health` on the production API returned `200 {"status":"ok"}`.
 
 
 
