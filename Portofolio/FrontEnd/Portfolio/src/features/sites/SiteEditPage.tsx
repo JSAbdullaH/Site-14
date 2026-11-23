@@ -259,7 +259,11 @@ export default function SiteEditPage() {
   return (
     <AppShell
       title={editing ? site?.name ?? "Site" : "New site"}
-      subtitle={editing ? site?.client ?? undefined : "A project with its own perimeter and shift"}
+      subtitle={
+        editing
+          ? [site?.display_id, site?.client].filter(Boolean).join(" · ") || undefined
+          : "A project with its own perimeter and shift"
+      }
     >
       {back}
 

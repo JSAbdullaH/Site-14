@@ -244,6 +244,7 @@ export default function TasksPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>ID</TableHead>
                 <TableHead>Task</TableHead>
                 <TableHead>Employee</TableHead>
                 <TableHead>Day</TableHead>
@@ -258,6 +259,9 @@ export default function TasksPage() {
             <TableBody>
               {tasks.map((task) => (
                 <TableRow key={task.id}>
+                  <TableCell className="font-mono text-xs whitespace-nowrap text-muted-foreground">
+                    {task.display_id}
+                  </TableCell>
                   <TableCell className="font-medium">{task.title}</TableCell>
                   <TableCell>
                     <button

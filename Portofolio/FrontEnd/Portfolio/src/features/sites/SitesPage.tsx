@@ -112,6 +112,7 @@ export default function SitesPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>ID</TableHead>
                 <TableHead>Site</TableHead>
                 <TableHead>Shift</TableHead>
                 <TableHead>Assigned</TableHead>
@@ -128,6 +129,9 @@ export default function SitesPage() {
                   className={`${admin ? "cursor-pointer" : ""} ${site.is_active ? "" : "text-muted-foreground"}`}
                   onClick={admin ? () => navigate(`/sites/${site.id}`) : undefined}
                 >
+                  <TableCell className="font-mono text-xs whitespace-nowrap text-muted-foreground">
+                    {site.display_id}
+                  </TableCell>
                   <TableCell>
                     <span className="font-medium">{site.name}</span>
                     {site.client && (

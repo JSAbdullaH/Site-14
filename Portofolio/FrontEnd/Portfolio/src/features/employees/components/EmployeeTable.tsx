@@ -57,6 +57,7 @@ export default function EmployeeTable({
                 />
               </TableHead>
             )}
+            <TableHead className="text-left">ID</TableHead>
             <TableHead className="text-left">Name</TableHead>
             <TableHead>Job</TableHead>
             <TableHead>Site</TableHead>
@@ -84,6 +85,10 @@ export default function EmployeeTable({
                   )}
                 </TableCell>
               )}
+              <TableCell className="text-left font-mono text-xs whitespace-nowrap text-muted-foreground">
+                {e.display_id}
+              </TableCell>
+
               <TableCell className="text-left font-medium">
                 {/* name -> History page */}
                 <Link to={`/history?employee=${e.id}`} className="hover:text-signal hover:underline">

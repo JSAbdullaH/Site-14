@@ -1,10 +1,13 @@
 const AppError = require('../utils/AppError');
+const displayId = require('../utils/displayId');
 
 const notFound = () => new AppError(404, 'NOT_FOUND', 'Task not found');
 const invalid = (field, message) => new AppError(422, 'VALIDATION_ERROR', 'One or more fields are invalid', { [field]: message });
 
 const FIELDS = {
   id: true,
+  displayNumber: true,
+  company: { select: { key: true } },
   title: true,
   status: true,
   scheduledFor: true,
@@ -20,6 +23,7 @@ const day = (d) => d.toISOString().slice(0, 10);
 function toPublic(t) {
   return {
     id: t.id,
+    display_id: displayId.format(t.company.key, 'task', t.displayNumber),
     title: t.title,
     status: t.status,
     scheduled_for: day(t.scheduledFor),
@@ -61,11 +65,18 @@ async function create(auth, input) {
 }
 
 async function list(auth, q) {
+  const number = displayId.numberIn(q.search, 'task');
   const where = {
     ...(q.employee_id && { employeeId: q.employee_id }),
     ...(q.site_id && { siteId: q.site_id }),
     ...(q.status && { status: q.status }),
     ...(q.scheduled_for && { scheduledFor: new Date(`${q.scheduled_for}T00:00:00Z`) }),
+    ...(q.search && {
+      OR: [
+        { title: { contains: q.search, mode: 'insensitive' } },
+        ...(number ? [{ displayNumber: number }] : []),
+      ],
+    }),
   };
   const [rows, total] = await Promise.all([
     auth.db.task.findMany({

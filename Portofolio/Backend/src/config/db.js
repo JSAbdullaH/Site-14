@@ -32,6 +32,7 @@ const OWNER = {
   Order: (c) => ({ companyId: c }),
   OrderItem: (c) => ({ order: { companyId: c } }),
   PresenceEvent: (c) => ({ companyId: c }),
+  IdCounter: (c) => ({ companyId: c }),
 };
 
 const GLOBAL = new Set(['Product', 'PlatformAdmin']);

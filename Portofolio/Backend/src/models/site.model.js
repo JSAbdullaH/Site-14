@@ -1,7 +1,10 @@
 const { prisma } = require('../config/db');
+const displayId = require('../utils/displayId');
 
 const SITE_FIELDS = {
   id: true,
+  displayNumber: true,
+  company: { select: { key: true } },
   companyId: true,
   name: true,
   client: true,
@@ -64,6 +67,7 @@ async function update(db, id, input) {
 function toPublic(site) {
   const out = {
     id: site.id,
+    display_id: displayId.format(site.company.key, 'site', site.displayNumber),
     name: site.name,
     client: site.client,
     shift_start: fromTime(site.shiftStart),

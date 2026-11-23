@@ -2,6 +2,8 @@ import type { Polygon } from "@/features/map/types";
 
 export type SiteSummary = {
   id: string;
+  // The ID this system gives, like AI-S-100003. Fixed for good.
+  display_id: string;
   name: string;
   client: string | null;
   shift_start: string;

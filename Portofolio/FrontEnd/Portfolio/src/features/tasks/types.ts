@@ -2,6 +2,8 @@ export type TaskStatus = "todo" | "in_progress" | "done";
 
 export type Task = {
   id: string;
+  // The ID this system gives, like AI-T-100305. Fixed for good.
+  display_id: string;
   title: string;
   status: TaskStatus;
   scheduled_for: string;

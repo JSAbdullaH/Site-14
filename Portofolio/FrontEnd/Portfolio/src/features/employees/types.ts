@@ -2,6 +2,8 @@
 
 export type Employee = {
   id: string;
+  // The ID this system gives, like AI-E-100012. Fixed for good.
+  display_id: string;
   full_name: string;
   employee_number?: string | null;
   job_category: string;
@@ -46,13 +48,18 @@ export type ImportValidRow = {
   employee_number: string | null;
   job_category: string;
   site_name: string | null;
+  // The ID the row will get if imported now. It moves on by one if someone adds an
+  // employee in between, so the screen calls it expected.
+  expected_worker_id: string;
 };
 
 export type ImportInvalidRow = { row: number; reason: string };
 
 export type ImportDuplicateRow = {
   row: number;
-  employee_number: string;
+  employee_number: string | null;
+  // Set when the row was skipped because its worker ID is already on file.
+  worker_id?: string;
   reason: string;
 };
 
@@ -70,8 +77,18 @@ export type ImportPreviewResponse = {
   unchecked_rows: ImportUncheckedRow[];
 };
 
+export type ImportedEmployee = {
+  row: number;
+  worker_id: string;
+  full_name: string;
+  employee_number: string | null;
+  job_category: string;
+  site_name: string | null;
+};
+
 export type ImportCommitResponse = {
   created: number;
+  employees: ImportedEmployee[];
   skipped: ImportDuplicateRow[];
   errors: ImportInvalidRow[];
 };

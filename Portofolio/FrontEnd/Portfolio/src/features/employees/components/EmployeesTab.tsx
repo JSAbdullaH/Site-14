@@ -63,6 +63,7 @@ export default function EmployeesTab() {
     if (!q) return employees;
     return employees.filter(
       (e) =>
+        e.display_id.toLowerCase().includes(q) ||
         e.full_name.toLowerCase().includes(q) ||
         e.job_category.toLowerCase().includes(q) ||
         (e.employee_number ?? "").toLowerCase().includes(q),
@@ -129,7 +130,7 @@ export default function EmployeesTab() {
         <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-input px-3 text-sm focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 sm:max-w-sm">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <input
-            placeholder="Search by name, job or number"
+            placeholder="Search by name, job, number or ID"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"

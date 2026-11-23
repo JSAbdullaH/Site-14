@@ -407,7 +407,8 @@ describe('CSV import', () => {
     expect(await count()).toBe(0);
 
     const done = await upload('/employees/import', csv).expect(201);
-    expect(done.body).toEqual({ created: 86, skipped: [], errors: [] });
+    expect(done.body).toMatchObject({ created: 86, skipped: [], errors: [] });
+    expect(done.body.employees).toHaveLength(86);
     expect((await A.list('?limit=100').expect(200)).body.total).toBe(86);
   });
 
@@ -499,6 +500,46 @@ describe('CSV import', () => {
     expect(preview.body.valid_rows.map((r) => r.row)).toEqual([2]);
     expect(preview.body.duplicates).toEqual([]);
     expect(preview.body.invalid_rows).toEqual([{ row: 3, reason: 'no site named "King Fahd Mall"' }]);
+  });
+
+  test('the preview shows the ID each new row will get, and the import returns the IDs it gave', async () => {
+    const key = (await pool.query('SELECT key FROM companies WHERE id = $1', [admin.companyId])).rows[0].key;
+    await A.create(ahmed).expect(201);
+    const csv = `${HEADER}\nYasser Hamad,,construction,\nBad Row,,,\nSami Nour,E-500,security,\n`;
+    const preview = await upload('/employees/import/preview', csv).expect(200);
+    expect(preview.body.valid_rows.map((r) => [r.full_name, r.expected_worker_id])).toEqual([
+      ['Yasser Hamad', `${key}-E-100002`],
+      ['Sami Nour', `${key}-E-100003`],
+    ]);
+
+    const done = await upload('/employees/import', csv).expect(201);
+    expect(done.body.employees).toEqual([
+      { row: 2, worker_id: `${key}-E-100002`, full_name: 'Yasser Hamad', employee_number: null, job_category: 'construction', site_name: null },
+      { row: 4, worker_id: `${key}-E-100003`, full_name: 'Sami Nour', employee_number: 'E-500', job_category: 'security', site_name: null },
+    ]);
+    const listed = (await A.list('?search=100003').expect(200)).body.data;
+    expect(listed.map((e) => e.full_name)).toEqual(['Sami Nour']);
+  });
+
+  test('a file sent again with its worker IDs skips the workers already on file', async () => {
+    const key = (await pool.query('SELECT key FROM companies WHERE id = $1', [admin.companyId])).rows[0].key;
+    const done = await upload('/employees/import', `${HEADER}\nYasser Hamad,,construction,\nSami Nour,,security,\n`).expect(201);
+    const [yasser, sami] = done.body.employees.map((e) => e.worker_id);
+
+    const again = `full_name,employee_number,job_category,site_name,worker_id\nYasser Hamad,,construction,,${yasser}\nSami Nour,,security,,${sami.toLowerCase()}\nNew Person,,cleaning,,\n`;
+    const preview = await upload('/employees/import/preview', again).expect(200);
+    expect(preview.body.duplicates).toEqual([
+      { row: 2, employee_number: null, worker_id: yasser, reason: 'Already on file with this worker ID' },
+      { row: 3, employee_number: null, worker_id: sami, reason: 'Already on file with this worker ID' },
+    ]);
+    expect(preview.body.valid_rows.map((r) => r.full_name)).toEqual(['New Person']);
+    expect((await upload('/employees/import', again).expect(201)).body.created).toBe(1);
+    expect(await count()).toBe(3);
+
+    const unknown = `full_name,job_category,worker_id\nA B,construction,${key}-E-999999\nC D,construction,ZZ-E-100001\nE F,construction,hello\n`;
+    const bad = await upload('/employees/import/preview', unknown).expect(200);
+    expect(bad.body.invalid_rows.map((r) => r.row)).toEqual([2, 3, 4]);
+    expect(bad.body.invalid_rows[0].reason).toMatch(/is not one of your workers/);
   });
 
   test('only an admin can import or download the template', async () => {

@@ -14,13 +14,14 @@ async function create(tx, { name, commercialRegistration }) {
   });
 }
 
-const FIELDS = { id: true, name: true, commercialRegistration: true, createdAt: true };
+const FIELDS = { id: true, key: true, name: true, commercialRegistration: true, createdAt: true };
 
 // Keeps the snake_case JSON shape the API returned before Prisma.
 function toPublic(company) {
   const year = new Date().getFullYear();
   return {
     id: company.id,
+    key: company.key,
     name: company.name,
     commercial_registration: company.commercialRegistration,
     created_at: company.createdAt.toISOString(),

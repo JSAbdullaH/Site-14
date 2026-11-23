@@ -1,12 +1,15 @@
 
 const { prisma, Prisma } = require('../config/db');
 const AppError = require('../utils/AppError');
+const displayId = require('../utils/displayId');
 
 const notFound = () => new AppError(404, 'NOT_FOUND', 'Employee not found');
 const invalid = (field, message) => new AppError(422, 'VALIDATION_ERROR', 'One or more fields are invalid', { [field]: message });
 
 const LIST_FIELDS = {
   id: true,
+  displayNumber: true,
+  company: { select: { key: true } },
   fullName: true,
   employeeNumber: true,
   jobCategory: true,
@@ -35,6 +38,7 @@ const PROFILE_FIELDS = {
 function toPublic(e) {
   return {
     id: e.id,
+    display_id: displayId.format(e.company.key, 'employee', e.displayNumber),
     full_name: e.fullName,
     employee_number: e.employeeNumber,
     job_category: e.jobCategory,
@@ -49,6 +53,7 @@ function toPublic(e) {
 }
 
 async function list(auth, q) {
+  const number = displayId.numberIn(q.search, 'employee');
   const where = {
     ...(q.status === 'all' ? {} : { status: q.status }),
     ...(q.site_id && { siteId: q.site_id === 'none' ? null : q.site_id }),
@@ -58,6 +63,7 @@ async function list(auth, q) {
       OR: [
         { fullName: { contains: q.search, mode: 'insensitive' } },
         { employeeNumber: { contains: q.search, mode: 'insensitive' } },
+        ...(number ? [{ displayNumber: number }] : []),
       ],
     }),
   };
