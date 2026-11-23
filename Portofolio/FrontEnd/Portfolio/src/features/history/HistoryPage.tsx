@@ -107,8 +107,7 @@ export default function HistoryPage() {
             <optgroup label="Active">
               {active.map((e) => (
                 <option key={e.id} value={e.id}>
-                  {e.full_name}
-                  {e.employee_number ? ` (${e.employee_number})` : ""}
+                  {e.full_name} ({e.display_id})
                 </option>
               ))}
             </optgroup>
@@ -116,8 +115,7 @@ export default function HistoryPage() {
               <optgroup label="Removed">
                 {removed.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.full_name}
-                    {e.employee_number ? ` (${e.employee_number})` : ""}
+                    {e.full_name} ({e.display_id})
                   </option>
                 ))}
               </optgroup>
@@ -201,7 +199,7 @@ export default function HistoryPage() {
                 {chosen && chosen.status !== "active" && <StatusBadge tone="neutral">Removed</StatusBadge>}
               </h2>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {record.employee.job_category}
+                <span className="font-mono text-xs">{record.employee.display_id}</span> · {record.employee.job_category}
                 {record.employee.employee_number ? ` · #${record.employee.employee_number}` : ""} · {longDate(record.date)}
               </p>
             </div>

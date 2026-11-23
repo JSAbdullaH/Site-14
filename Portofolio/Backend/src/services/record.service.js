@@ -1,6 +1,7 @@
 const AppError = require('../utils/AppError');
 const { todayInRiyadh, dayRange, clockInRiyadh, walk, minutesByZone } = require('../utils/day');
 const { CORRECTABLE, sessionEnd, dayAttendance, applyCorrections } = require('../utils/attendance');
+const displayId = require('../utils/displayId');
 
 const notFound = () => new AppError(404, 'NOT_FOUND', 'Employee not found');
 const invalid = (field, message) => new AppError(422, 'VALIDATION_ERROR', 'One or more fields are invalid', { [field]: message });
@@ -12,7 +13,10 @@ function checkDate(date) {
 async function findEmployee(db, id) {
   const employee = await db.employee.findUnique({
     where: { id },
-    select: { id: true, fullName: true, employeeNumber: true, jobCategory: true, siteId: true },
+    select: {
+      id: true, fullName: true, employeeNumber: true, jobCategory: true, siteId: true,
+      displayNumber: true, company: { select: { key: true } },
+    },
   });
   if (!employee) throw notFound();
   return employee;
@@ -138,6 +142,7 @@ async function dailyRecord(auth, employeeId, date) {
   return {
     employee: {
       id: employee.id,
+      display_id: displayId.format(employee.company.key, 'employee', employee.displayNumber),
       full_name: employee.fullName,
       employee_number: employee.employeeNumber,
       job_category: employee.jobCategory,

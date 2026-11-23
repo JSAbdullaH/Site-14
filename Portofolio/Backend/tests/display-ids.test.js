@@ -178,6 +178,11 @@ describe('API', () => {
     expect((await find('/tasks?search=AI-T-100001')).data.map((t) => t.title)).toEqual(['Pour the slab']);
     expect((await find('/sites')).data[0].display_id).toBe('AI-S-100001');
     expect((await find(`/employees/${employee.id}`)).display_id).toBe('AI-E-100001');
+
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
+    expect((await find(`/employees/${employee.id}/daily-record?date=${today}`)).employee.display_id).toBe('AI-E-100001');
+    const live = await find(`/locations/live?site_id=${site.id}`);
+    expect(live.data.map((w) => w.display_id)).toEqual(['AI-E-100001']);
   });
 });
 

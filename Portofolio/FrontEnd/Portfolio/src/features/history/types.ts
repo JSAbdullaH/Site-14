@@ -42,7 +42,7 @@ export type RecordTask = {
 };
 
 export type DailyRecord = {
-  employee: { id: string; full_name: string; employee_number: string | null; job_category: string };
+  employee: { id: string; display_id: string; full_name: string; employee_number: string | null; job_category: string };
   date: string;
   status: "present" | "absent";
   is_provisional: boolean;

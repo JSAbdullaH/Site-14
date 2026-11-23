@@ -76,6 +76,7 @@ export default function RosterSheet({
         (w) =>
           !term ||
           w.full_name.toLowerCase().includes(term) ||
+          w.display_id.toLowerCase().includes(term) ||
           (w.employee_number ?? "").toLowerCase().includes(term) ||
           w.job_category.toLowerCase().includes(term),
       )
@@ -255,7 +256,9 @@ export default function RosterSheet({
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium">{w.full_name}</span>
-                            <span className="block truncate text-xs text-muted-foreground">{detail(w, now)}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              <span className="font-mono">{w.display_id}</span> · {detail(w, now)}
+                            </span>
                           </span>
                           <span className="flex shrink-0 flex-col items-end gap-1">
                             <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ color: s.color, background: s.bg }}>

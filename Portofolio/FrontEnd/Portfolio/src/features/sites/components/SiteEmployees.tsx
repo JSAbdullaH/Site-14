@@ -16,7 +16,7 @@ type Props = {
 const LIMIT = 100;
 
 const describe = (e: Employee, ...extra: (string | null | undefined)[]) =>
-  [e.employee_number, e.job_category, ...extra].filter(Boolean).join(" · ");
+  [e.display_id, e.employee_number, e.job_category, ...extra].filter(Boolean).join(" · ");
 
 // SITE-49: the workers whose hours are attributed to this site.
 export default function SiteEmployees({ siteId, siteActive, onChange }: Props) {

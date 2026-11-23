@@ -27,6 +27,8 @@ export type LiveStatus =
 
 export type LiveWorker = {
   employee_id: string;
+  // The ID this system gives, like AI-E-100012.
+  display_id: string;
   full_name: string;
   job_category: string;
   employee_number: string | null;

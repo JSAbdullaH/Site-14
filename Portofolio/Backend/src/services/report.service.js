@@ -7,6 +7,7 @@ const template = require('../templates/attendance.html');
 const { findChrome } = require('../utils/chrome');
 const { sessionEnd, dayAttendance, applyCorrections } = require('../utils/attendance');
 const { clockInRiyadh } = require('../utils/day');
+const displayId = require('../utils/displayId');
 
 const TZ = '+03:00';
 const GAP_MINUTES = 10;
@@ -83,7 +84,10 @@ async function buildDailyRecords(auth, siteId, from, to) {
   const workedHere = [...new Set(sessions.map((s) => s.employeeId))];
   const employees = await auth.db.employee.findMany({
     where: { OR: [{ siteId, status: 'active' }, { id: { in: workedHere } }] },
-    select: { id: true, fullName: true, employeeNumber: true, jobCategory: true, consentGivenAt: true },
+    select: {
+      id: true, fullName: true, employeeNumber: true, jobCategory: true, consentGivenAt: true,
+      displayNumber: true, company: { select: { key: true } },
+    },
     orderBy: { fullName: 'asc' },
   });
 
@@ -105,6 +109,7 @@ async function buildDailyRecords(auth, siteId, from, to) {
   const records = employees.map((e) => {
     const base = {
       employee_id: e.id,
+      display_id: displayId.format(e.company.key, 'employee', e.displayNumber),
       full_name: e.fullName,
       employee_number: e.employeeNumber,
       job_category: e.jobCategory,

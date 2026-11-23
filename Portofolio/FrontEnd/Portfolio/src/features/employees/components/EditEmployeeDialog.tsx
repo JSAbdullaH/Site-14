@@ -99,7 +99,7 @@ export default function EditEmployeeDialog({ employee, onClose, onSaved }: Props
         <DialogHeader>
           <DialogTitle>Edit {employee.full_name}</DialogTitle>
           <DialogDescription>
-            Moving a worker to another site sends their hours there from now on.
+            <span className="font-mono">{employee.display_id}</span> · Moving a worker to another site sends their hours there from now on.
           </DialogDescription>
         </DialogHeader>
 

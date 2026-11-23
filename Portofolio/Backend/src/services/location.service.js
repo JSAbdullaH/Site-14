@@ -2,6 +2,7 @@ const AppError = require('../utils/AppError');
 const geofenceModel = require('../models/geofence.model');
 const locationModel = require('../models/location.model');
 const { offlineAfterMs } = require('./presence.service');
+const displayId = require('../utils/displayId');
 
 const iso = (d) => (d ? d.toISOString() : null);
 
@@ -32,6 +33,7 @@ function toWorker(e, siteId, zoned, now) {
   const positioned = Boolean(state);
   return {
     employee_id: e.id,
+    display_id: displayId.format(e.company.key, 'employee', e.displayNumber),
     full_name: e.fullName,
     job_category: e.jobCategory,
     employee_number: e.employeeNumber,

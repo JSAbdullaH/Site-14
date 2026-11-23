@@ -9,6 +9,8 @@ function rosterBySite(companyId, siteId) {
       fullName: true,
       jobCategory: true,
       employeeNumber: true,
+      displayNumber: true,
+      company: { select: { key: true } },
       consentGivenAt: true,
       device: {
         select: { id: true, serialNumber: true, name: true, deviceType: true, lastSeenAt: true, isActive: true, lastBatteryPercent: true },

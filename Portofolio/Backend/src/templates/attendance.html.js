@@ -21,13 +21,17 @@ const STATUS = {
 const tags = (r) =>
   `${STATUS[r.state]}${r.has_gap ? '<span class="tag tag-gap">GAP</span>' : ''}${r.corrected ? CORRECTED : ''}`;
 
+// The company's own number, when it has one, goes under the name; the ID column is the system's.
+const person = (r) =>
+  `${esc(r.full_name)}${r.employee_number ? `<span class="emp-no">${esc(r.employee_number)}</span>` : ''}`;
+
 function dayRows(records) {
   return records
     .map(
       (r) => `
       <tr>
-        <td>${esc(r.full_name)}</td>
-        <td class="mono">${esc(r.employee_number) || '&mdash;'}</td>
+        <td>${person(r)}</td>
+        <td class="mono">${esc(r.display_id)}</td>
         <td class="mono">${r.state === 'present' ? clock(r.first_seen) : '&mdash;'}</td>
         <td class="mono">${r.state === 'present' ? clock(r.last_seen) : '&mdash;'}</td>
         <td class="mono num">${r.state === 'no_consent' ? '&mdash;' : hours(r.total_minutes)}</td>
@@ -42,8 +46,8 @@ function periodRows(records) {
     .map(
       (r) => `
       <tr>
-        <td>${esc(r.full_name)}</td>
-        <td class="mono">${esc(r.employee_number) || '&mdash;'}</td>
+        <td>${person(r)}</td>
+        <td class="mono">${esc(r.display_id)}</td>
         <td class="mono num">${r.state === 'no_consent' ? '&mdash;' : r.days_present}</td>
         <td class="mono num">${r.state === 'no_consent' ? '&mdash;' : r.days_absent}</td>
         <td class="mono num">${r.state === 'no_consent' ? '&mdash;' : hours(r.total_minutes)}</td>
@@ -59,7 +63,7 @@ function register(layout, records, totals) {
   if (layout === 'period') {
     return `<table class="t">
     <thead><tr>
-      <th>Employee</th><th>No.</th><th class="num">Days</th><th class="num">Absent</th><th class="num">Hours</th><th class="num">Avg/day</th><th>Status</th>
+      <th>Employee</th><th>ID</th><th class="num">Days</th><th class="num">Absent</th><th class="num">Hours</th><th class="num">Avg/day</th><th>Status</th>
     </tr></thead>
     <tbody>${periodRows(records)}</tbody>
     <tfoot><tr class="totals">
@@ -70,7 +74,7 @@ function register(layout, records, totals) {
   }
   return `<table class="t">
     <thead><tr>
-      <th>Employee</th><th>No.</th><th>In</th><th>Out</th><th class="num">Hours</th><th>Status</th>
+      <th>Employee</th><th>ID</th><th>In</th><th>Out</th><th class="num">Hours</th><th>Status</th>
     </tr></thead>
     <tbody>${dayRows(records)}</tbody>
     <tfoot><tr class="totals">
@@ -113,6 +117,7 @@ function render(data) {
   .t th { text-align: left; font-weight: 600; background: #F7F7F6; border-bottom: 1px solid #E8E6E3; padding: 5px 6px; }
   .t td { border-bottom: 1px solid #F0EEEB; padding: 5px 6px; }
   .mono { font-variant-numeric: tabular-nums; }
+  .emp-no { display: block; color: #6B6B6B; font-size: 0.85em; }
   .num { text-align: right; }
   .t th.num { text-align: right; }
   .t tfoot { display: table-row-group; }
