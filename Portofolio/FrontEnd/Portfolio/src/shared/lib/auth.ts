@@ -3,6 +3,20 @@ const USER_KEY = "site14_user";
 
 export type Role = "company_admin" | "site_manager";
 
+export const ROLE_LABEL: Record<string, string> = {
+  company_admin: "Company admin",
+  site_manager: "Site manager",
+  platform_admin: "Platform admin",
+};
+
+export const ROLE_DESCRIPTION: Record<string, string> = {
+  company_admin: "Full access to the company: sites, employees, devices, reports and user accounts.",
+  site_manager: "Runs day-to-day work on the sites: live map, tasks, alerts and records.",
+  platform_admin: "Manages the SITE14 platform.",
+};
+
+export const roleLabel = (role?: string | null) => (role ? (ROLE_LABEL[role] ?? role.replace(/_/g, " ")) : "Account");
+
 export type SessionUser = {
   id: string;
   full_name: string;

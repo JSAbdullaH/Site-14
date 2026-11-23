@@ -1,4 +1,4 @@
-const { findZone } = require('./geo');
+const { settleZone } = require('./geo');
 
 const MINUTE = 60_000;
 const RIYADH_OFFSET = 3 * 60 * MINUTE;
@@ -19,15 +19,22 @@ function clockInRiyadh(at) {
 
 const minutesBetween = (from, to) => Math.max(0, Math.round((to - from) / MINUTE));
 
-function zoneOf(reading, geofences) {
-  const zone = findZone(reading.longitude, reading.latitude, geofences);
-  return zone ? { id: zone.id, name: zone.name, is_outdoor: zone.isOutdoor } : null;
+const zoneView = (zone) => (zone ? { id: zone.id, name: zone.name, is_outdoor: zone.isOutdoor } : null);
+
+// Each reading's zone, with the same edge hysteresis as live ingest, so jitter on a zone edge
+// does not split the day into false zone changes.
+function zonesOf(readings, geofences) {
+  let current = null;
+  return readings.map((r) => {
+    current = settleZone(r.longitude, r.latitude, geofences, current, r.accuracyM ?? null);
+    return { ...r, zone: zoneView(current) };
+  });
 }
 
 function walk(readings, geofences, endAt) {
   const segments = [];
   const gaps = [];
-  const points = readings.map((r) => ({ ...r, zone: zoneOf(r, geofences) }));
+  const points = zonesOf(readings, geofences);
 
   for (let i = 0; i < points.length; i += 1) {
     const point = points[i];

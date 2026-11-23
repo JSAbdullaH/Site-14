@@ -16,6 +16,9 @@ const rows = async (sql, params) => (await pool.query(sql, params)).rows;
 const IN_ZONE = { latitude: 24.7, longitude: 46.6 };
 const ON_SITE = { latitude: 24.7, longitude: 46.6008 };
 const OUTSIDE = { latitude: 24.7, longitude: 46.603 };
+// About 5 m either side of the site's east edge (longitude 46.601).
+const JUST_INSIDE = { latitude: 24.7, longitude: 46.60095 };
+const JUST_OUTSIDE = { latitude: 24.7, longitude: 46.60105 };
 
 const MINUTE = 60_000;
 const ago = (minutes) => new Date(Date.now() - minutes * MINUTE);
@@ -226,11 +229,11 @@ describe('repeated and excessive readings', () => {
 
   test('readings closer than a few seconds apart are dropped, but arriving or leaving never is', async () => {
     const start = ago(10).getTime();
-    const burst = Array.from({ length: 20 }, (_, i) => reading(new Date(start + i * 500), IN_ZONE));
+    const burst = Array.from({ length: 20 }, (_, i) => reading(new Date(start + i * 500), JUST_INSIDE));
     const res = await send(a, { readings: burst }).expect(200);
     expect(res.body).toMatchObject({ accepted: 4, throttled: 16 });
 
-    const exit = await send(a, { readings: [reading(new Date(start + 10_100), OUTSIDE)] }).expect(200);
+    const exit = await send(a, { readings: [reading(new Date(start + 10_100), JUST_OUTSIDE)] }).expect(200);
     expect(exit.body).toMatchObject({ accepted: 1, throttled: 0, location_status: 'off_site' });
   });
 
@@ -250,13 +253,63 @@ describe('repeated and excessive readings', () => {
       { readings: [{ ...reading(ago(1), IN_ZONE), recorded_at: '2026-11-04T09:30:00' }] },
       { readings: [{ ...reading(ago(1), IN_ZONE), battery_percent: 101 }] },
       { readings: [{ ...reading(ago(1), IN_ZONE), heart_rate_bpm: 300 }] },
+      { readings: [{ ...reading(ago(1), IN_ZONE), accuracy_m: -1 }] },
     ];
     for (const body of bad) await send(a, body).expect(422);
     expect(await logCount(a)).toBe(0);
   });
 
   test('unknown extra fields from newer firmware are ignored', async () => {
-    await send(a, { readings: [reading(ago(1), IN_ZONE, { accuracy_m: 4, speed: 1.2 })], firmware: '2.1' }).expect(200);
+    await send(a, { readings: [reading(ago(1), IN_ZONE, { speed: 1.2, altitude_m: 610 })], firmware: '2.1' }).expect(200);
+  });
+});
+
+describe('position accuracy', () => {
+  test('the accuracy is kept with each stored reading', async () => {
+    await send(a, { readings: [reading(ago(1), IN_ZONE, { accuracy_m: 6.5 })] }).expect(200);
+    expect(await rows('SELECT accuracy_m FROM telemetry_logs')).toEqual([{ accuracy_m: 6.5 }]);
+  });
+
+  test('a position rougher than 150 m is refused and opens nothing', async () => {
+    const res = await send(a, { readings: [reading(ago(1), IN_ZONE, { accuracy_m: 400 })] }).expect(200);
+    expect(res.body).toMatchObject({ accepted: 0, stored: 0, rejected: [{ index: 0, reason: 'inaccurate' }], session: null });
+    expect(await sessions(a)).toEqual([]);
+  });
+
+  test('jitter past the site edge within its accuracy does not end the shift; a clear exit does', async () => {
+    const arrival = ago(3);
+    await send(a, { readings: [reading(arrival, IN_ZONE, { accuracy_m: 5 })] }).expect(200);
+
+    const jitter = await send(a, { readings: [reading(ago(2), JUST_OUTSIDE, { accuracy_m: 15 })] }).expect(200);
+    expect(jitter.body).toMatchObject({ accepted: 1, stored: 1, location_status: 'on_site', session: { id: expect.any(String) } });
+
+    const exit = ago(1);
+    const left = await send(a, { readings: [reading(exit, OUTSIDE, { accuracy_m: 15 })] }).expect(200);
+    expect(left.body).toMatchObject({ location_status: 'off_site', session: null });
+    expect(await sessions(a)).toEqual([{ started_at: arrival, ended_at: exit }]);
+  });
+
+  test('a rough reading just inside the edge does not open a shift yet', async () => {
+    const res = await send(a, { readings: [reading(ago(1), JUST_INSIDE, { accuracy_m: 30 })] }).expect(200);
+    expect(res.body).toMatchObject({ accepted: 1, stored: 0, location_status: 'off_site', session: null });
+  });
+
+  test('a GPS jump faster than anyone moves is refused and does not end the shift', async () => {
+    const t0 = ago(2).getTime();
+    const far = { latitude: 24.7, longitude: 46.62 }; // 2 km east
+    const res = await send(a, {
+      readings: [reading(new Date(t0), IN_ZONE), reading(new Date(t0 + 5000), far), reading(new Date(t0 + 10_000), IN_ZONE)],
+    }).expect(200);
+    expect(res.body).toMatchObject({ accepted: 2, stored: 2, rejected: [{ index: 1, reason: 'implausible_jump' }], location_status: 'in_zone' });
+    expect(await sessions(a)).toEqual([{ started_at: new Date(t0), ended_at: null }]);
+  });
+
+  test('a jump is judged against the last position of the previous batch too', async () => {
+    const t0 = ago(2).getTime();
+    await send(a, { readings: [reading(new Date(t0), IN_ZONE)] }).expect(200);
+    const res = await send(a, { readings: [reading(new Date(t0 + 5000), { latitude: 24.7, longitude: 46.62 })] }).expect(200);
+    expect(res.body).toMatchObject({ accepted: 0, rejected: [{ index: 0, reason: 'implausible_jump' }] });
+    expect(res.body.session).not.toBeNull();
   });
 });
 

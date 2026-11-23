@@ -244,6 +244,7 @@ final class LocationStreamer: NSObject, ObservableObject {
                 recordedAt: loc.timestamp,
                 latitude: loc.coordinate.latitude,
                 longitude: loc.coordinate.longitude,
+                accuracyM: (loc.horizontalAccuracy * 10).rounded() / 10,
                 batteryPercent: DeviceInfo.batteryPercent()
             ))
         }

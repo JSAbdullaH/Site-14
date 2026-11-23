@@ -7,4 +7,8 @@ async function getMe(req, res) {
   res.json(company);
 }
 
-module.exports = { getMe };
+async function updateMe(req, res) {
+  res.json(await companyModel.update(req.auth.db, req.auth.companyId, req.body));
+}
+
+module.exports = { getMe, updateMe };

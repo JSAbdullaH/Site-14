@@ -27,4 +27,12 @@ async function acceptInvitation(req, res) {
   sendSession(res, await userService.acceptInvitation(req.params.token, req.body));
 }
 
-module.exports = { invite, list, resendInvitation, deactivate, describeInvitation, acceptInvitation };
+async function me(req, res) {
+  res.json(await userService.me(req.auth));
+}
+
+async function updateMe(req, res) {
+  res.json(await userService.updateMe(req.auth, req.body));
+}
+
+module.exports = { invite, list, resendInvitation, deactivate, describeInvitation, acceptInvitation, me, updateMe };

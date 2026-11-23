@@ -60,6 +60,8 @@ export type Reading = {
   recorded_at: string;
   latitude: number;
   longitude: number;
+  /** Horizontal accuracy in metres, as the browser reports it. */
+  accuracy_m: number;
   battery_percent: number | null;
 };
 

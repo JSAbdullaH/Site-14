@@ -92,7 +92,12 @@ function toPublic(user) {
   };
 }
 
+async function updateName(db, id, fullName) {
+  return db.user.update({ where: { id }, data: { fullName }, select: AUTH_FIELDS });
+}
+
 module.exports = {
+  updateName,
   create,
   findByEmail,
   findById,
