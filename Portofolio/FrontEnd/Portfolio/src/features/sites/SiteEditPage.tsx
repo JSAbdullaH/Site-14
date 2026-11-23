@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Building2, Check, Circle, Clock, MapPinned, Moon, Sun, Users } from "lucide-react";
+import type { ReactNode } from "react";
 import AppShell from "@/shared/components/AppShell";
 import FormField from "@/shared/components/FormField";
 import { ApiError } from "@/shared/lib/api";
 import { isAdmin } from "@/shared/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { LatLng, LngLat, Polygon } from "@/features/map/types";
 import BoundaryPicker from "./components/BoundaryPicker";
@@ -15,6 +15,7 @@ import SiteEmployees from "./components/SiteEmployees";
 import DeactivateSiteDialog from "./components/DeactivateSiteDialog";
 import { createSite, deactivateSite, getSite, setActiveSiteId, updateSite } from "./api";
 import type { Site } from "./types";
+import { selfIntersects } from "./geometry";
 
 type Field = "name" | "client" | "shift_start" | "shift_end" | "boundary";
 type Fields = Partial<Record<Field, string>>;
@@ -36,6 +37,66 @@ function boundaryCorners(boundary: Polygon): LatLng[] {
   const ring = boundary.coordinates[0] ?? [];
   const open = ring.length > 1 ? ring.slice(0, -1) : ring;
   return open.map(([lng, lat]) => ({ lat, lng }));
+}
+
+// Minutes from start to end, across midnight for a night shift.
+function shiftMinutes(start: string, end: string) {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  return (toMin(end) - toMin(start) + 1440) % 1440;
+}
+
+const durationText = (minutes: number) => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+};
+
+function Card({ step, icon, title, description, action, children }: {
+  step?: number;
+  icon: ReactNode;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border bg-card">
+      <header className="flex items-start gap-3 border-b px-5 py-4">
+        <span className="relative mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+          {icon}
+          {step !== undefined && (
+            <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+              {step}
+            </span>
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold">{title}</h2>
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+        </div>
+        {action}
+      </header>
+      <div className="px-5 pt-5">{children}</div>
+    </section>
+  );
+}
+
+function ChecklistItem({ done, children }: { done: boolean; children: ReactNode }) {
+  return (
+    <li className={`flex items-center gap-2.5 text-sm ${done ? "text-foreground" : "text-muted-foreground"}`}>
+      {done ? (
+        <span className="flex size-5 items-center justify-center rounded-full bg-ok text-white">
+          <Check className="size-3.5" strokeWidth={3} />
+        </span>
+      ) : (
+        <Circle className="size-5 text-border" />
+      )}
+      {children}
+    </li>
+  );
 }
 
 // SITE-47, SITE-48: create a site, or edit one and assign its employees (SITE-49).
@@ -90,7 +151,9 @@ export default function SiteEditPage() {
     setFormError("");
     setNotice("");
     const local: Fields = {};
+    if (!name.trim()) local.name = "Give the site a name";
     if (!ring) local.boundary = "error" in parsed ? parsed.error : "Mark the corners of the site";
+    else if (selfIntersects(corners)) local.boundary = "The outline crosses itself. Use Fix shape under the map.";
     if (shiftStart === shiftEnd) local.shift_end = "The shift must end at a different time than it starts";
     setFields(local);
     if (Object.keys(local).length || !ring) return;
@@ -182,7 +245,16 @@ export default function SiteEditPage() {
     );
   }
 
-  const cornersError = fields.boundary ?? (corners.length && "error" in parsed ? parsed.error : undefined);
+  // Shown once Create or Save is pressed; while drawing, the hint on the map guides instead.
+  const cornersError = fields.boundary;
+  const minutes = shiftMinutes(shiftStart, shiftEnd);
+  const night = shiftEnd < shiftStart;
+  const ready = {
+    name: name.trim().length > 0,
+    boundary: Boolean(ring) && !selfIntersects(corners),
+    hours: shiftStart !== shiftEnd,
+  };
+  const readyCount = Object.values(ready).filter(Boolean).length;
 
   return (
     <AppShell
@@ -192,116 +264,173 @@ export default function SiteEditPage() {
       {back}
 
       {editing && !site ? (
-        <Skeleton className="h-96 w-full max-w-[1040px]" />
+        <div className="grid max-w-[1200px] gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+          <Skeleton className="h-[420px]" />
+          <Skeleton className="h-[560px]" />
+        </div>
       ) : (
-        <div className="grid max-w-[1040px] items-start gap-6 lg:grid-cols-2">
-          <form onSubmit={submit} noValidate className="rounded-xl border bg-card p-8">
-            <h2 className="mb-6 text-xl font-semibold">Site details</h2>
-
-            {formError && (
-              <p className="mb-5 rounded-md bg-danger-bg px-4 py-3 text-sm font-medium text-danger">
-                {formError}
-              </p>
-            )}
-            {notice && (
-              <p className="mb-5 rounded-md bg-ok-bg px-4 py-3 text-sm font-medium text-ok" role="status">
-                {notice}
-              </p>
-            )}
-
-            <FormField
-              id="name"
-              label="Site name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              maxLength={120}
-              placeholder="Al Malqa Tower"
-              error={fields.name}
-            />
-
-            <FormField
-              id="client"
-              label="Client (optional)"
-              value={client}
-              onChange={(e) => setClient(e.target.value)}
-              maxLength={150}
-              placeholder="Who the project is built for"
-              error={fields.client}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                id="shift-start"
-                label="Shift starts"
-                type="time"
-                value={shiftStart}
-                onChange={(e) => setShiftStart(e.target.value)}
-                required
-                error={fields.shift_start}
-              />
-              <FormField
-                id="shift-end"
-                label="Shift ends"
-                type="time"
-                value={shiftEnd}
-                onChange={(e) => setShiftEnd(e.target.value)}
-                required
-                error={fields.shift_end}
-                hint={shiftEnd < shiftStart ? "Night shift: it ends the next morning." : undefined}
-              />
-            </div>
-
-            <div className="mb-6 grid gap-2">
-              <Label>Site boundary</Label>
-              <p className="text-sm text-muted-foreground">
-                Click the map at each corner of the site, in order around it. Drag a corner to move it,
-                or click it to remove it.
-              </p>
-              <BoundaryPicker corners={corners} onChange={setCorners} invalid={Boolean(cornersError)} />
-              {cornersError && <p className="text-sm font-medium text-destructive">{cornersError}</p>}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={busy}>
-                {busy ? "Saving..." : editing ? "Save changes" : "Create site"}
-              </Button>
-              {editing && site && (
-                <Button
-                  type="button"
-                  variant={site.is_active ? "destructive" : "outline"}
-                  disabled={busy}
-                  onClick={() => (site.is_active ? setClosing(true) : setActive(true))}
-                >
-                  {site.is_active ? "Deactivate site" : "Reactivate site"}
-                </Button>
+        <>
+          <form
+            onSubmit={submit}
+            noValidate
+            className="grid max-w-[1200px] items-start gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]"
+          >
+            <div className="contents min-w-0 lg:sticky lg:top-6 lg:grid lg:gap-6">
+              {formError && (
+                <p className="rounded-md bg-danger-bg px-4 py-3 text-sm font-medium text-danger" role="alert">
+                  {formError}
+                </p>
               )}
+              {notice && (
+                <p className="rounded-md bg-ok-bg px-4 py-3 text-sm font-medium text-ok" role="status">
+                  {notice}
+                </p>
+              )}
+
+              <Card step={1} icon={<Building2 className="size-4" />} title="Site details" description="How the site appears across SITE14.">
+                <FormField
+                  id="name"
+                  label="Site name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setFields((f) => ({ ...f, name: undefined }));
+                  }}
+                  required
+                  maxLength={120}
+                  placeholder="Al Malqa Tower"
+                  error={fields.name}
+                />
+                <FormField
+                  id="client"
+                  label="Client"
+                  value={client}
+                  onChange={(e) => setClient(e.target.value)}
+                  maxLength={150}
+                  placeholder="Optional: who the project is for"
+                  error={fields.client}
+                />
+              </Card>
+
+              <Card
+                step={2}
+                icon={<Clock className="size-4" />}
+                title="Working hours"
+                description="Hours worked outside them count as overtime."
+                action={
+                  shiftStart !== shiftEnd && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">
+                      {night ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
+                      {durationText(minutes)}
+                    </span>
+                  )
+                }
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    id="shift-start"
+                    label="Starts"
+                    type="time"
+                    value={shiftStart}
+                    onChange={(e) => setShiftStart(e.target.value)}
+                    required
+                    error={fields.shift_start}
+                  />
+                  <FormField
+                    id="shift-end"
+                    label="Ends"
+                    type="time"
+                    value={shiftEnd}
+                    onChange={(e) => setShiftEnd(e.target.value)}
+                    required
+                    error={fields.shift_end}
+                  />
+                </div>
+                {night && shiftStart !== shiftEnd && (
+                  <p className="-mt-2 mb-5 text-sm text-muted-foreground">Night shift: it ends the next morning.</p>
+                )}
+              </Card>
+
+              <section className="order-last rounded-xl border bg-card p-5 lg:order-none">
+                {!editing && (
+                  <>
+                    <div className="mb-3 flex items-center justify-between text-sm">
+                      <span className="font-semibold">Ready to create</span>
+                      <span className="text-muted-foreground tabular-nums">{readyCount} of 3</span>
+                    </div>
+                    <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-secondary">
+                      <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${(readyCount / 3) * 100}%` }} />
+                    </div>
+                    <ul className="mb-5 grid gap-2.5">
+                      <ChecklistItem done={ready.name}>A site name</ChecklistItem>
+                      <ChecklistItem done={ready.hours}>Working hours</ChecklistItem>
+                      <ChecklistItem done={ready.boundary}>A boundary with at least 3 corners</ChecklistItem>
+                      <li className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                        <Users className="size-5 p-0.5" />
+                        Then assign employees to it
+                      </li>
+                    </ul>
+                  </>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="submit" disabled={busy} className="flex-1">
+                    {busy ? "Saving..." : editing ? "Save changes" : "Create site"}
+                  </Button>
+                  {editing && site ? (
+                    <Button
+                      type="button"
+                      variant={site.is_active ? "destructive" : "outline"}
+                      disabled={busy}
+                      onClick={() => (site.is_active ? setClosing(true) : setActive(true))}
+                    >
+                      {site.is_active ? "Deactivate" : "Reactivate"}
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="ghost" onClick={() => navigate("/sites")}>
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </section>
             </div>
+
+            <Card
+              step={3}
+              icon={<MapPinned className="size-4" />}
+              title="Site boundary"
+              description="Search the address, then click the corners of the site in any order. Drag a corner to move it; click it to remove it."
+            >
+              <div className="pb-5">
+                <BoundaryPicker
+                  corners={corners}
+                  onChange={(next) => {
+                    setCorners(next);
+                    setFields((f) => ({ ...f, boundary: undefined }));
+                  }}
+                  invalid={Boolean(cornersError)}
+                  className="h-[420px] lg:h-[560px]"
+                />
+                {cornersError && <p className="mt-2 text-sm font-medium text-destructive">{cornersError}</p>}
+              </div>
+            </Card>
           </form>
 
           {editing && site && (
-            <DeactivateSiteDialog
-              site={closing ? site : null}
-              onClose={() => setClosing(false)}
-              onDeactivated={() => {
-                setSite({ ...site, is_active: false });
-                setNotice(`${site.name} is deactivated. Its records are kept.`);
-              }}
-            />
+            <>
+              <DeactivateSiteDialog
+                site={closing ? site : null}
+                onClose={() => setClosing(false)}
+                onDeactivated={() => {
+                  setSite({ ...site, is_active: false });
+                  setNotice(`${site.name} is deactivated. Its records are kept.`);
+                }}
+              />
+              <div className="mt-6 max-w-[1200px]">
+                <SiteEmployees siteId={site.id} siteActive={site.is_active} onChange={refreshSite} />
+              </div>
+            </>
           )}
-
-          {editing && site ? (
-            <SiteEmployees siteId={site.id} siteActive={site.is_active} onChange={refreshSite} />
-          ) : (
-            <section className="rounded-xl border bg-secondary p-8">
-              <h2 className="mb-2 text-lg font-semibold">Next: assign employees</h2>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                After the site is created you can assign workers to it here. Their hours, alerts and
-                reports are then recorded against this project, separately from your other sites.
-              </p>
-            </section>
-          )}
-        </div>
+        </>
       )}
     </AppShell>
   );

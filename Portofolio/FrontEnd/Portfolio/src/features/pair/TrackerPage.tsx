@@ -30,6 +30,8 @@ const SAMPLE_MS = 5_000;
 const FLUSH_MS = 10_000;
 const HEARTBEAT_MS = 30_000;
 const MAX_BUFFER = 120;
+// Rougher than this, a position cannot tell on site from off site: shown, but not sent. The server applies the same limit.
+const MAX_SEND_ACCURACY_M = 150;
 const PRECISE_TIMEOUTS_BEFORE_FALLBACK = 2;
 
 type WakeLockSentinel = { release: () => Promise<void> };
@@ -127,6 +129,7 @@ export default function TrackerPage() {
       setPhase("active");
       timeouts.current = 0;
       const at = pos.timestamp || Date.now();
+      if (!(pos.coords.accuracy <= MAX_SEND_ACCURACY_M)) return;
       if (at - lastSample.current < SAMPLE_MS) return;
       lastSample.current = at;
       buffer.current = [
@@ -135,6 +138,7 @@ export default function TrackerPage() {
           recorded_at: new Date(Math.min(at, Date.now())).toISOString(),
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
+          accuracy_m: Math.round(pos.coords.accuracy * 10) / 10,
           battery_percent: batteryLevel.current,
         },
       ].slice(-MAX_BUFFER);
@@ -413,6 +417,9 @@ export default function TrackerPage() {
                 <dt className="text-xs text-muted-foreground">Accuracy</dt>
                 <dd className="mt-0.5 font-medium tabular-nums">
                   {position ? `± ${Math.round(position.coords.accuracy)} m` : "—"}
+                  {position && position.coords.accuracy > MAX_SEND_ACCURACY_M && (
+                    <span className="block text-xs font-normal text-muted-foreground">Too rough to send. Move outdoors or turn on precise location.</span>
+                  )}
                   {fixAge !== null && fixAge > 30 && <span className="block text-xs font-normal text-muted-foreground">fix {fixAge} s old</span>}
                 </dd>
               </div>

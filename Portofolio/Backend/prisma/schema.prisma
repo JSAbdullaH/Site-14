@@ -488,6 +488,8 @@ model TelemetryLog {
   sessionId      BigInt   @map("session_id")
   latitude       Float
   longitude      Float
+  // Metres, as reported by the device. NULL for devices that do not send it.
+  accuracyM      Float?   @map("accuracy_m") @db.Real
   batteryPercent Int?     @map("battery_percent") @db.SmallInt
   heartRateBpm   Int?     @map("heart_rate_bpm") @db.SmallInt
   // Device clock

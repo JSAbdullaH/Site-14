@@ -1,0 +1,784 @@
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+FAIL tests/database.test.js (5.712 s)
+  schema rules
+    structure
+      ✓ has every table schema.prisma declares, and the daily_work_records view (80 ms)
+      ✓ every table has exactly the columns schema.prisma declares (migration and schema agree) (43 ms)
+      ✓ alert_type includes the heart rate alerts (33 ms)
+    tenant isolation (composite foreign keys)
+      ✓ an employee cannot be placed on a site of another company (87 ms)
+      ✓ a session cannot use a device of another company (68 ms)
+      ✓ a task cannot go to an employee of another company (67 ms)
+    privacy and sessions
+      ✓ no session opens for a worker without consent (RC002) (65 ms)
+      ✓ a worker has at most one open session (64 ms)
+      ✓ a session cannot end before it starts (64 ms)
+    telemetry_logs (append-only)
+      ✓ the same reading sent twice is stored once (63 ms)
+      ✓ UPDATE and DELETE are refused (AO001) (88 ms)
+      ✓ heart rate outside 20..250 is refused (63 ms)
+    alerts
+      ✓ only one open alert of a type per session; a new one after it is resolved (86 ms)
+      ✓ each type carries its own fields (63 ms)
+      ✓ handling columns can be filled once; findings and deletes are refused (113 ms)
+    other rules
+      ✓ emails are stored lower-case (66 ms)
+      ✓ a company with history cannot be deleted (RESTRICT) (62 ms)
+      ✓ reports keep a valid fingerprint and cannot be changed (87 ms)
+      ✓ record corrections are append-only and need a reason (85 ms)
+    daily_work_records view
+      ✓ sums closed sessions of the same Saudi day (66 ms)
+  Prisma models
+    ✓ every model round-trips through Prisma (361 ms)
+    ✓ Prisma reports the database error codes the services rely on (30 ms)
+  application role
+    ✓ the API role can write and read the log, but not change or delete it (45 ms)
+    ✓ corrections and reports are insert-only for the API role (43 ms)
+    ✓ on an alert, the API role can fill in the handling and nothing else (44 ms)
+    ✓ the rest of the schema stays usable, without TRUNCATE or the migration history (45 ms)
+    ✓ the owner is still stopped by the triggers (62 ms)
+    ✓ the daily record says whether the day was corrected (68 ms)
+    ✓ the role migration rolls back and applies again (56 ms)
+  seed
+    ✓ a company with two sites, three zones (one outdoor) and twenty tracked employees (2 ms)
+    ✓ the live map, the table, the alert list and the daily record all have data (3 ms)
+    ✓ employees without consent have no device and no session (1 ms)
+    ✓ the demo users can be looked up for sign-in (1 ms)
+    ✓ running the seed twice resets cleanly instead of duplicating rows (1298 ms)
+  tenant scope
+    ✓ every table in the schema has a company scope
+    ✓ Company: lists and counts only the own company rows (4 ms)
+    ✓ JobCategoryRule: lists and counts only the own company rows (2 ms)
+    ✓ User: lists and counts only the own company rows (2 ms)
+    ✓ AuthToken: lists and counts only the own company rows (3 ms)
+    ✓ RefreshToken: lists and counts only the own company rows (3 ms)
+    ✓ Site: lists and counts only the own company rows (3 ms)
+    ✓ Employee: lists and counts only the own company rows (3 ms)
+    ✓ Device: lists and counts only the own company rows (3 ms)
+    ✕ DevicePairing: lists and counts only the own company rows (2 ms)
+    ✕ Product: lists and counts only the own company rows (2 ms)
+    ✕ Order: lists and counts only the own company rows (1 ms)
+    ✕ OrderItem: lists and counts only the own company rows (1 ms)
+    ✕ PlatformAdmin: lists and counts only the own company rows (1 ms)
+    ✓ Geofence: lists and counts only the own company rows (3 ms)
+    ✓ WorkSession: lists and counts only the own company rows (2 ms)
+    ✓ TelemetryLog: lists and counts only the own company rows (3 ms)
+    ✓ Alert: lists and counts only the own company rows (3 ms)
+    ✓ EmployeeCurrentState: lists and counts only the own company rows (3 ms)
+    ✓ Task: lists and counts only the own company rows (2 ms)
+    ✓ RecordCorrection: lists and counts only the own company rows (2 ms)
+    ✓ Report: lists and counts only the own company rows (2 ms)
+    ✕ PresenceEvent: lists and counts only the own company rows (1 ms)
+    ✓ another company's row is not found by id, and cannot be changed or deleted (10 ms)
+    ✓ new rows are stamped with the own company, whatever the caller sends (1 ms)
+    ✓ a child row cannot be attached to another company's parent (3 ms)
+    ✓ a row cannot be moved to another company
+  rollback
+    ✕ rolling back leaves an empty database, and the migration runs again after it (7 ms)
+    ✓ the seed refuses production and remote databases (7 ms)
+
+  ● tenant scope › DevicePairing: lists and counts only the own company rows
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 0
+
+      543 |   test.each(MODELS)('%s: lists and counts only the own company rows', async (model) => {
+      544 |     const all = await prisma[lower(model)].count();
+    > 545 |     expect(all).toBe(2);
+          |                 ^
+      546 |     expect(await dbA[lower(model)].count()).toBe(1);
+      547 |     expect(await dbA[lower(model)].findMany()).toHaveLength(1);
+      548 |   });
+
+      at toBe (tests/database.test.js:545:17)
+
+  ● tenant scope › Product: lists and counts only the own company rows
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 0
+
+      543 |   test.each(MODELS)('%s: lists and counts only the own company rows', async (model) => {
+      544 |     const all = await prisma[lower(model)].count();
+    > 545 |     expect(all).toBe(2);
+          |                 ^
+      546 |     expect(await dbA[lower(model)].count()).toBe(1);
+      547 |     expect(await dbA[lower(model)].findMany()).toHaveLength(1);
+      548 |   });
+
+      at toBe (tests/database.test.js:545:17)
+
+  ● tenant scope › Order: lists and counts only the own company rows
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 0
+
+      543 |   test.each(MODELS)('%s: lists and counts only the own company rows', async (model) => {
+      544 |     const all = await prisma[lower(model)].count();
+    > 545 |     expect(all).toBe(2);
+          |                 ^
+      546 |     expect(await dbA[lower(model)].count()).toBe(1);
+      547 |     expect(await dbA[lower(model)].findMany()).toHaveLength(1);
+      548 |   });
+
+      at toBe (tests/database.test.js:545:17)
+
+  ● tenant scope › OrderItem: lists and counts only the own company rows
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 0
+
+      543 |   test.each(MODELS)('%s: lists and counts only the own company rows', async (model) => {
+      544 |     const all = await prisma[lower(model)].count();
+    > 545 |     expect(all).toBe(2);
+          |                 ^
+      546 |     expect(await dbA[lower(model)].count()).toBe(1);
+      547 |     expect(await dbA[lower(model)].findMany()).toHaveLength(1);
+      548 |   });
+
+      at toBe (tests/database.test.js:545:17)
+
+  ● tenant scope › PlatformAdmin: lists and counts only the own company rows
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 0
+
+      543 |   test.each(MODELS)('%s: lists and counts only the own company rows', async (model) => {
+      544 |     const all = await prisma[lower(model)].count();
+    > 545 |     expect(all).toBe(2);
+          |                 ^
+      546 |     expect(await dbA[lower(model)].count()).toBe(1);
+      547 |     expect(await dbA[lower(model)].findMany()).toHaveLength(1);
+      548 |   });
+
+      at toBe (tests/database.test.js:545:17)
+
+  ● tenant scope › PresenceEvent: lists and counts only the own company rows
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 0
+
+      543 |   test.each(MODELS)('%s: lists and counts only the own company rows', async (model) => {
+      544 |     const all = await prisma[lower(model)].count();
+    > 545 |     expect(all).toBe(2);
+          |                 ^
+      546 |     expect(await dbA[lower(model)].count()).toBe(1);
+      547 |     expect(await dbA[lower(model)].findMany()).toHaveLength(1);
+      548 |   });
+
+      at toBe (tests/database.test.js:545:17)
+
+  ● rollback › rolling back leaves an empty database, and the migration runs again after it
+
+    error: cannot drop table alerts because other objects depend on it
+
+      599 |     expect(await listTables()).toEqual([...SCHEMA_TABLES].sort());
+      600 |
+    > 601 |     await pool.query(fs.readFileSync(DOWN_SQL, 'utf8'));
+          |     ^
+      602 |     expect(await leftovers()).toEqual([]); // no tables, view, functions, enum types or sequences
+      603 |
+      604 |     await globalSetup();
+
+      at node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (tests/database.test.js:601:5)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+FAIL tests/ingest.test.js
+  device authentication
+    ✓ needs the serial and the matching key (194 ms)
+    ✓ a user token is not a device key (44 ms)
+    ✓ a deactivated device is refused (44 ms)
+  receiving readings
+    ✓ arriving on site opens a shift at the device time, and the live map shows the worker (93 ms)
+    ✓ every stored reading carries both the device clock and the server clock (60 ms)
+    ✓ moving between zones updates the map; leaving ends the shift at the exit time (69 ms)
+    ✓ coming back opens a new shift (56 ms)
+    ✓ a reading from outside before arrival stores nothing and opens nothing (48 ms)
+    ✓ a batch out of order is put in order first (58 ms)
+    ✓ a device silent on site and next heard outside: the silence is not counted as work (66 ms)
+    ✕ companies never see each other (64 ms)
+  who the data belongs to
+    ✓ an unassigned device: refused, nothing stored, but the device is seen (52 ms)
+    ✓ a worker without consent: no position is ever stored (55 ms)
+    ✓ a worker with no site, or on a deactivated site (57 ms)
+    ✓ a device given to another worker reports for the new wearer (77 ms)
+  repeated and excessive readings
+    ✓ a retried batch is stored once and the hours do not change (75 ms)
+    ✓ a batch that overlaps the last one keeps only the new readings (72 ms)
+    ✓ the same batch sent twice at the same moment is stored once (66 ms)
+    ✓ readings closer than a few seconds apart are dropped, but arriving or leaving never is (67 ms)
+    ✓ a batch has at most 120 readings (87 ms)
+    ✓ malformed readings are refused as a whole (52 ms)
+    ✓ unknown extra fields from newer firmware are ignored (51 ms)
+  position accuracy
+    ✓ the accuracy is kept with each stored reading (55 ms)
+    ✓ a position rougher than 150 m is refused and opens nothing (54 ms)
+    ✓ jitter past the site edge within its accuracy does not end the shift; a clear exit does (70 ms)
+    ✓ a rough reading just inside the edge does not open a shift yet (48 ms)
+    ✓ a GPS jump faster than anyone moves is refused and does not end the shift (62 ms)
+    ✓ a jump is judged against the last position of the previous batch too (61 ms)
+  device clock drift
+    ✓ reports the server time and how far the device clock is off (68 ms)
+    ✓ a reading from a clock far in the future is refused, and does not block the real ones (65 ms)
+    ✓ a small lead is accepted (55 ms)
+    ✓ a reading older than a day is refused, so finished days stay as reported (56 ms)
+  the site, for the app
+    ✓ a device gets its wearer's site with the boundary, shift and active zones (55 ms)
+    ✓ no site when the wearer has none or it is deactivated, and only for its own key (56 ms)
+
+  ● receiving readings › companies never see each other
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 28
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "battery_percent": null,
+    +     "consent": true,
+    +     "device": Object {
+    +       "device_type": "tracker",
+    +       "id": "54b37549-18ca-4258-b0e6-baf31f486416",
+    +       "last_seen_at": null,
+    +       "name": null,
+    +       "online": false,
+    +       "serial_number": "GPS-B",
+    +     },
+    +     "employee_id": "846809eb-66fe-412f-a85c-cfa29c09c319",
+    +     "employee_number": null,
+    +     "full_name": "Worker B",
+    +     "has_position": false,
+    +     "heart_rate_bpm": null,
+    +     "job_category": "construction",
+    +     "latitude": null,
+    +     "location_status": "off_site",
+    +     "longitude": null,
+    +     "out_of_zone": null,
+    +     "recorded_at": null,
+    +     "shift_started_at": null,
+    +     "status": "waiting",
+    +     "zone": null,
+    +   },
+    + ]
+
+      158 |     await send(a, { readings: [reading(ago(1), IN_ZONE)] }).expect(200);
+      159 |     const live = await request(app).get(api(`/locations/live?site_id=${b.siteId}`)).set(bearer(b)).expect(200);
+    > 160 |     expect(live.body.data).toEqual([]);
+          |                            ^
+      161 |   });
+      162 | });
+      163 |
+
+      at Object.toEqual (tests/ingest.test.js:160:28)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+FAIL tests/marketplace.test.js
+  marketplace
+    ✓ a purchase puts the devices straight into the buyer's inventory (194 ms)
+    ✓ stock is never oversold (81 ms)
+    ✕ only a company admin can buy (89 ms)
+    ✓ shipping loads keys onto the devices; the company sees the order delivered (136 ms)
+    ✓ cancelling returns the stock and removes the devices (100 ms)
+  website owner dashboard
+    ✓ signs in with its own account, separate from company accounts (196 ms)
+    ✓ sees every company and every device (92 ms)
+    ✓ manages the catalog (86 ms)
+
+  ● marketplace › only a company admin can buy
+
+    expected 403 "Forbidden", got 201 "Created"
+
+      83 |
+      84 |   test('only a company admin can buy', async () => {
+    > 85 |     await request(app).post(api('/marketplace/orders')).set(bearer(a, 'site_manager')).send({ ...ORDER, items: [{ product_id: watch.id, quantity: 1 }] }).expect(403);
+         |                                                                                                                                                           ^
+      86 |   });
+      87 |
+      88 |   test('shipping loads keys onto the devices; the company sees the order delivered', async () => {
+
+      at Object.expect (tests/marketplace.test.js:85:155)
+      ----
+      at Test._assertStatus (node_modules/supertest/lib/test.js:404:14)
+      at node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (node_modules/supertest/lib/test.js:302:23)
+      at localAssert (node_modules/supertest/lib/test.js:220:38)
+      at Server.<anonymous> (node_modules/supertest/lib/test.js:227:13)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+FAIL tests/presence.test.js
+  zone transitions
+    ✓ arriving in a zone, leaving it and coming back records each step and opens then resolves an alert (206 ms)
+    ✓ leaving the site closes the open out-of-zone alert (68 ms)
+    ✓ a batch sent after being offline replays every crossing in order (57 ms)
+    ✓ a retried batch adds no events (59 ms)
+  offline devices
+    ✓ a device silent while on shift is flagged offline once, and back online when heard again (80 ms)
+    ✓ a device that is off site is not flagged (54 ms)
+  notifications and alerts
+    ✕ lists the company's events newest first, counts unread, and marks them read (90 ms)
+    ✓ open alerts can be listed and acknowledged once (102 ms)
+
+  ● notifications and alerts › lists the company's events newest first, counts unread, and marks them read
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 4
+    + Received  + 2
+
+      Object {
+    -   "alert": Object {
+    -     "resolved": false,
+    -   },
+    +   "alert": null,
+        "employee": Object {
+          "full_name": "Worker A",
+        },
+    -   "type": "zone_exit",
+    +   "type": "zone_enter",
+        "zone_name": "Roof A",
+      }
+
+      124 |     const res = await request(app).get(api('/notifications')).set(bearer(a)).expect(200);
+      125 |     expect(res.body.unread_count).toBe(3);
+    > 126 |     expect(res.body.data[0]).toMatchObject({ type: 'zone_exit', employee: { full_name: 'Worker A' }, zone_name: 'Roof A', alert: { resolved: false } });
+          |                              ^
+      127 |     expect(res.body.data.every((e) => e.employee.full_name === 'Worker A')).toBe(true);
+      128 |
+      129 |     const filtered = await request(app).get(api('/notifications?type=zone_exit')).set(bearer(a)).expect(200);
+
+      at Object.toMatchObject (tests/presence.test.js:126:30)
+
+FAIL tests/simulator.test.js
+  POST /simulator/readings
+    ✕ shows what was received, and opens then closes a shift like a real device (75 ms)
+    ✓ cannot send as another company's device (44 ms)
+    ✕ passes on the refusals a device would get (43 ms)
+    ✕ is for admins only, and checks the position (42 ms)
+
+  ● POST /simulator/readings › shows what was received, and opens then closes a shift like a real device
+
+    expected 200 "OK", got 404 "Not Found"
+
+      32 | describe('POST /simulator/readings', () => {
+      33 |   test('shows what was received, and opens then closes a shift like a real device', async () => {
+    > 34 |     const inRes = await send(a, { device_id: a.deviceId, ...ON_SITE }).expect(200);
+         |                                                                        ^
+      35 |     expect(inRes.body.received).toEqual({
+      36 |       device_id: 'GPS-A',
+      37 |       longitude: ON_SITE.longitude,
+
+      at Object.expect (tests/simulator.test.js:34:72)
+      ----
+      at Test._assertStatus (node_modules/supertest/lib/test.js:404:14)
+      at node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (node_modules/supertest/lib/test.js:302:23)
+      at localAssert (node_modules/supertest/lib/test.js:220:38)
+      at Server.<anonymous> (node_modules/supertest/lib/test.js:227:13)
+
+  ● POST /simulator/readings › passes on the refusals a device would get
+
+    expected 409 "Conflict", got 404 "Not Found"
+
+      54 |   test('passes on the refusals a device would get', async () => {
+      55 |     await pool.query('UPDATE employees SET consent_given_at = NULL WHERE id = $1', [a.employeeId]);
+    > 56 |     const res = await send(a, { device_id: a.deviceId, ...ON_SITE }).expect(409);
+         |                                                                      ^
+      57 |     expect(res.body.error.code).toBe('NO_CONSENT');
+      58 |   });
+      59 |
+
+      at Object.expect (tests/simulator.test.js:56:70)
+      ----
+      at Test._assertStatus (node_modules/supertest/lib/test.js:404:14)
+      at node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (node_modules/supertest/lib/test.js:302:23)
+      at localAssert (node_modules/supertest/lib/test.js:220:38)
+      at Server.<anonymous> (node_modules/supertest/lib/test.js:227:13)
+
+  ● POST /simulator/readings › is for admins only, and checks the position
+
+    expected 403 "Forbidden", got 404 "Not Found"
+
+      60 |   test('is for admins only, and checks the position', async () => {
+      61 |     await pool.query("UPDATE users SET role = 'site_manager' WHERE id = $1", [a.userId]);
+    > 62 |     await send(a, { device_id: a.deviceId, ...ON_SITE }, 'site_manager').expect(403);
+         |                                                                          ^
+      63 |     await pool.query("UPDATE users SET role = 'company_admin' WHERE id = $1", [a.userId]);
+      64 |     await send(a, { device_id: a.deviceId, latitude: 91, longitude: 46.6 }).expect(422);
+      65 |     await request(app).post(api('/simulator/readings')).send({ device_id: a.deviceId, ...ON_SITE }).expect(401);
+
+      at Object.expect (tests/simulator.test.js:62:74)
+      ----
+      at Test._assertStatus (node_modules/supertest/lib/test.js:404:14)
+      at node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (node_modules/supertest/lib/test.js:302:23)
+      at localAssert (node_modules/supertest/lib/test.js:220:38)
+      at Server.<anonymous> (node_modules/supertest/lib/test.js:227:13)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+PASS tests/sites.test.js (6.001 s)
+  POST /sites (SITE-47)
+    ✓ creates a site with its boundary, client and shift (196 ms)
+    ✓ client is optional, and a blank client is stored as none (124 ms)
+    ✓ a night shift that runs past midnight is allowed (121 ms)
+    ✓ rejects a boundary with an open ring (134 ms)
+    ✓ rejects a boundary with too few corners (127 ms)
+    ✓ rejects a boundary with an empty ring (126 ms)
+    ✓ rejects a boundary with repeated corners (124 ms)
+    ✓ rejects a boundary with a latitude out of range (124 ms)
+    ✓ rejects a boundary with a point instead of a polygon (128 ms)
+    ✓ rejects a bad shift (126 ms)
+    ✓ a name already used in the company is a 409 (136 ms)
+    ✓ another company may use the same name (231 ms)
+    ✓ a Site Manager cannot create a site (226 ms)
+    ✓ needs a token (121 ms)
+  GET /sites (SITE-48)
+    ✓ lists every concurrent site with worker counts, active first then by name (161 ms)
+    ✓ filters by is_active (142 ms)
+    ✓ a Site Manager can list and read sites (194 ms)
+    ✓ never shows another company's sites (245 ms)
+    ✓ a malformed id is a 404 (144 ms)
+  PATCH /sites/:id
+    ✓ changes only the fields sent (138 ms)
+    ✓ checks a new shift end against the stored start (131 ms)
+    ✓ an empty body is a 422 (128 ms)
+    ✓ renaming to a name in use is a 409 (136 ms)
+    ✓ reactivates a deactivated site (139 ms)
+    ✓ cannot change another company's site (227 ms)
+    ✓ a Site Manager cannot edit a site (198 ms)
+  DELETE /sites/:id
+    ✓ deactivates the site and keeps the row (156 ms)
+    ✓ is blocked while employees are assigned (144 ms)
+    ✓ is blocked while a worker is on site (138 ms)
+    ✓ another company's site is a 404 (222 ms)
+  assigning employees to a site (SITE-49)
+    ✓ assigns, moves and unassigns an employee (171 ms)
+    ✓ lists employees by site, unassigned, and by search (212 ms)
+    ✓ cannot assign to a deactivated site (135 ms)
+    ✓ cannot assign a deactivated employee (125 ms)
+    ✓ cannot use another company's site or employee (229 ms)
+    ✓ a Site Manager can read the list but not reassign (193 ms)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+PASS tests/employees.test.js (6.979 s)
+  POST /employees
+    ✓ creates a worker, and their job category with the default 8-hour limit (308 ms)
+    ✓ security and cleaning start with the 12-hour statutory limit (148 ms)
+    ✓ records consent and the site (155 ms)
+    ✓ a taken employee number is a 409 (151 ms)
+    ✓ invalid input is a 422 that names the field (134 ms)
+    ✓ company_id cannot be sent (132 ms)
+  GET /employees
+    ✓ lists every active worker by name, with paging info (188 ms)
+    ✓ searches by name or number, and filters by site and category (176 ms)
+    ✓ pages (164 ms)
+    ✓ a site manager can read the list (209 ms)
+    ✓ needs a token (157 ms)
+  GET /employees/:id
+    ✓ returns the profile with device, live state and minutes worked today (192 ms)
+    ✓ an unknown id is a 404 (133 ms)
+  PATCH /employees/:id
+    ✓ edits fields and reassigns the site (161 ms)
+    ✓ consent keeps the first moment it was given, and can be withdrawn off shift (147 ms)
+    ✓ an empty body is a 422 (144 ms)
+  DELETE /employees/:id
+    ✓ deactivates, keeps the row, frees the device, and hides it from the default list (158 ms)
+    ✓ a worker with recorded activity is deactivated, and the activity stays (161 ms)
+    ✓ a shift still open is closed at the last reading, and its zone alert resolved (161 ms)
+  roles
+    ✓ a site manager cannot create, edit or deactivate (186 ms)
+  PATCH /employees/site
+    ✓ moves several employees to a site in one call (173 ms)
+    ✓ a null site unassigns them all (161 ms)
+    ✓ an employee from another company fails the whole call (249 ms)
+    ✓ a removed employee fails the whole call (179 ms)
+    ✓ an empty or duplicated list is refused (143 ms)
+  POST /employees/deactivate
+    ✓ removes several employees in one call and frees their devices (158 ms)
+    ✓ an employee from another company fails the whole call (233 ms)
+    ✓ a site manager cannot remove employees (200 ms)
+  company isolation
+    ✓ another company's employees cannot be listed, read, changed or deactivated (269 ms)
+    ✓ a site of another company cannot be assigned (241 ms)
+  CSV import
+    ✓ the template carries the exact headers (145 ms)
+    ✓ 86 valid rows: the preview writes nothing, the confirm creates 86 employees (186 ms)
+    ✓ rows missing a required field are named with the reason, and the rest import (144 ms)
+    ✓ a worker number that already exists, or repeats in the file, is reported and imported once (140 ms)
+    ✓ a column map reads the company's own headers, and sites match by name (133 ms)
+    ✓ an empty, malformed or headerless file is a clear error and nothing is created (135 ms)
+    ✓ sites of another company are not matched, and its workers' numbers are not duplicates (235 ms)
+    ✓ only an admin can import or download the template (194 ms)
+
+FAIL tests/auth.test.js
+  ✓ GET /health answers (58 ms)
+  POST /auth/register
+    ✓ creates the company and its first admin together, unverified (108 ms)
+    ✓ emails a six-digit code valid for 5 minutes, and stores only its hash (72 ms)
+    ✓ a taken email gets the same answer, leaves no extra company, and warns the owner (109 ms)
+    ✓ rejects a short password with 422 (33 ms)
+  POST /auth/check-email
+    ✓ an unknown email does not exist (34 ms)
+    ✓ a registered email exists, whatever its case (72 ms)
+    ✓ rejects an invalid email with 422 (32 ms)
+  register without email verification
+    ✓ signs the new admin in straight away and sends no code (73 ms)
+    ✓ a taken email still gets no session (107 ms)
+  email verification
+    ✓ an unverified admin cannot sign in (105 ms)
+    ✓ the code verifies the email once and signs the admin in (83 ms)
+    ✓ five wrong codes lock the code, even for the right one (83 ms)
+    ✓ a code older than 5 minutes is refused (74 ms)
+    ✓ a new code can be requested only after 1 minute (83 ms)
+    ✓ resend answers 204 for an unknown email and sends nothing (72 ms)
+    ✓ a code for another account does not verify this one (118 ms)
+  login with a one-time code
+    ✓ the password step sends a code and issues no token (115 ms)
+    ✓ the right code returns tokens, the user, and an httpOnly refresh cookie (112 ms)
+    ✓ a code works only once (140 ms)
+    ✓ five wrong codes lock the code, even for the right one (143 ms)
+    ✓ an expired code is refused (125 ms)
+    ✓ within 1 minute a second login sends no new code and keeps the first one (165 ms)
+    ✓ a code older than 5 minutes is refused (141 ms)
+    ✓ after 1 minute a new login retires the previous code (167 ms)
+    ✓ a wrong password and an unknown email look the same (195 ms)
+    ✓ locks the account after 5 failures, even for the right password (315 ms)
+    ✓ a correct password resets the failure count (185 ms)
+  refresh and logout
+    ✓ the cookie alone gets a new access token (129 ms)
+    ✓ the refresh token in the body works too (131 ms)
+    ✓ without a token refresh is 401 (87 ms)
+    ✕ logout revokes the session, so refresh stops working (122 ms)
+    ✓ logout needs an access token (130 ms)
+    ✓ an expired refresh token is refused (131 ms)
+  password reset
+    ✓ forgot-password answers 204 for anyone, and only mails real users (91 ms)
+    ✓ the link sets a new password once, unlocks the account, and ends every session (456 ms)
+    ✓ rejects a weak new password (94 ms)
+  protected routes and company scope
+    ✓ GET /companies/me needs a token (33 ms)
+    ✓ returns the company from the token, with the API field names (117 ms)
+
+  ● refresh and logout › logout revokes the session, so refresh stops working
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 3
+
+      Array [
+        Object {
+    +     "revoked": false,
+    +   },
+    +   Object {
+          "revoked": true,
+        },
+      ]
+
+      341 |     await request(app).post(api('/auth/logout')).set(bearer(access_token)).set('Cookie', cookie).expect(204);
+      342 |     const { rows } = await pool.query('SELECT revoked_at IS NOT NULL AS revoked FROM refresh_tokens');
+    > 343 |     expect(rows).toEqual([{ revoked: true }]);
+          |                  ^
+      344 |     await request(app).post(api('/auth/refresh')).set('Cookie', cookie).expect(401);
+      345 |   });
+      346 |
+
+      at Object.toEqual (tests/auth.test.js:343:18)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+PASS tests/tasks.test.js
+  POST /tasks (SITE-42)
+    ✓ creates a task for today on the worker's site (198 ms)
+    ✓ keeps the date it is given (127 ms)
+    ✓ a site manager can create tasks (197 ms)
+    ✓ rejects a bad title, a missing employee and a fake date (122 ms)
+    ✓ rejects an inactive worker, a worker with no site, and a worker on another site (141 ms)
+    ✓ rejects a task on a deactivated site (137 ms)
+    ✓ cannot give a task to another company's worker (221 ms)
+    ✓ requires a token (136 ms)
+  PATCH /tasks/:id (SITE-43)
+    ✓ moves a task through its statuses and stamps completion (173 ms)
+    ✓ renames a task and ignores a status it already has (179 ms)
+    ✓ rejects an empty body and an unknown status (153 ms)
+    ✓ returns 404 for another company's task and a bad id (234 ms)
+  DELETE /tasks/:id
+    ✓ deletes a task that is not done yet (208 ms)
+    ✓ keeps a completed task: it is on the worker's record (135 ms)
+    ✓ a site manager can delete tasks (180 ms)
+    ✓ returns 404 for another company's task, a bad id and a second delete (247 ms)
+  GET /tasks (SITE-44)
+    ✓ lists one worker's tasks, newest day first, and filters by status and day (186 ms)
+    ✓ never shows another company's tasks (241 ms)
+    ✓ rejects a bad filter (135 ms)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+PASS tests/records.test.js
+  daily record
+    ✓ a completed shift: first and last seen, minutes per zone, alerts and tasks (256 ms)
+    ✓ time without readings is counted as offline, not as time in a zone (181 ms)
+    ✓ a worker who did not report at all has a record marked absent (127 ms)
+    ✓ a day still in progress is marked provisional (130 ms)
+    ✓ a corrected day shows the original value and every correction (154 ms)
+    ✓ a site manager can read it; another company, a future day or a bad date cannot (287 ms)
+  corrections
+    ✓ a correction is a new row with the author, the time, the reason and the value it replaces (204 ms)
+    ✓ the original reading data is never touched (177 ms)
+    ✓ without a reason the correction is refused (159 ms)
+    ✓ values that make no sense are refused (169 ms)
+    ✓ hours can be corrected on a day whose shift runs past midnight (170 ms)
+    ✓ an absent day can be corrected against the worker's own site (143 ms)
+    ✓ a site manager can correct; another company and a future day cannot (285 ms)
+  movement history
+    ✓ the day in order: arriving, zones entered and left, leaving (193 ms)
+    ✓ a device that stopped reporting shows as a gap, not as time in a zone (152 ms)
+    ✓ a device that went quiet before the end of the shift stays offline (147 ms)
+    ✓ a day with no activity is an empty history, not an error (148 ms)
+    ✓ another company cannot read it (235 ms)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+PASS tests/users.test.js
+  POST /users (invite)
+    ✓ creates an inactive manager with no password and emails an invitation (205 ms)
+    ✓ a taken email is a 409 (126 ms)
+    ✓ needs an admin token (112 ms)
+  accepting an invitation
+    ✓ the invitation can be looked up by its token (145 ms)
+    ✓ the manager sets their own password and is signed in (205 ms)
+    ✓ a manager cannot use admin routes (193 ms)
+    ✓ a pending invitee cannot sign in or reset a password (209 ms)
+    ✓ resending replaces the earlier link (235 ms)
+  GET /users
+    ✓ lists the company users, filtered by is_active (149 ms)
+  DELETE /users/:id
+    ✓ deactivates an account, ends its sessions and blocks its access token at once (222 ms)
+    ✓ withdraws a pending invitation, so its link stops working (192 ms)
+    ✓ an admin cannot deactivate themselves (135 ms)
+    ✓ a malformed id is a 404 (137 ms)
+  company isolation
+    ✓ an admin can neither see nor touch another company's users (258 ms)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+PASS tests/devices.test.js
+  POST /devices (register one device)
+    ✓ registers the device and shows its key once (137 ms)
+    ✓ a serial is registered once, across all companies, without saying where (49 ms)
+    ✓ rejects an empty or malformed serial (45 ms)
+    ✓ a site manager can list devices but not register them (49 ms)
+    ✓ needs a token (37 ms)
+  POST /devices/batch (register many at once)
+    ✓ ninety watches in one call, each with its own key (71 ms)
+    ✓ all or nothing: one serial already registered stops the whole batch (54 ms)
+    ✓ a serial listed twice (any case) is named (38 ms)
+    ✓ names the bad line, and caps the batch size (47 ms)
+  GET /devices
+    ✓ filters by assignment and status, and never shows another company (65 ms)
+  PATCH /devices/:id (assign to an employee)
+    ✓ assigns the device, and the employee list shows it (58 ms)
+    ✓ one device per employee (57 ms)
+    ✓ moves to another employee and back to the shelf (69 ms)
+    ✓ refuses an inactive employee, and an employee of another company (52 ms)
+    ✓ cannot touch another company's device (59 ms)
+    ✓ the wearer cannot change mid-shift (59 ms)
+    ✓ deactivating takes the device off its wearer; it must be reactivated before reuse (61 ms)
+    ✓ an employee who is deactivated gives the device back (54 ms)
+  POST /devices/:id/key
+    ✓ a new key replaces the old one (58 ms)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+PASS tests/geofences.test.js
+  POST /geofences
+    ✓ creates a zone inside the site (98 ms)
+    ✓ a site manager can create zones too (43 ms)
+    ✓ requires a token (40 ms)
+    ✓ rejects a zone that leaves the site (41 ms)
+    ✓ rejects an open ring, too few corners and out-of-range coordinates (73 ms)
+    ✓ cannot add a zone to another company's site (44 ms)
+  GET /geofences
+    ✓ lists the site's zones, filtered by is_active (59 ms)
+    ✓ requires site_id (41 ms)
+    ✓ cannot list another company's zones (46 ms)
+  PATCH /geofences/:id
+    ✓ renames, re-flags and redraws a zone (52 ms)
+    ✓ rejects a redraw that leaves the site, and an empty body (49 ms)
+    ✓ cannot touch another company's zone (47 ms)
+  DELETE /geofences/:id
+    ✓ deactivates the zone and keeps the row (44 ms)
+    ✓ cannot deactivate another company's zone (43 ms)
+  GET /locations/live
+    ✓ returns every worker assigned to the site, with or without a position (83 ms)
+    ✓ hides inactive workers (49 ms)
+    ✓ cannot read another company's site (48 ms)
+
+(node:50318) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+PASS tests/pairing.test.js
+  device pairing
+    ✓ a phone opening the link becomes a real device of the company, detected from its browser (164 ms)
+    ✓ the SITE14 iPhone app pairs as a phone and is named after its model (54 ms)
+    ✓ the browser cannot claim to be a different kind of device (50 ms)
+    ✓ a laptop is recognised from its battery (50 ms)
+    ✓ expired, cancelled and unknown codes are refused (69 ms)
+    ✓ another company cannot read or cancel a pairing (48 ms)
+
+PASS tests/geo.test.js
+  pointInPolygon
+    ✓ a point well inside is inside
+    ✓ a point well outside is outside (1 ms)
+    ✓ a point exactly on an edge counts as inside
+    ✓ a point exactly on a corner counts as inside (1 ms)
+    ✓ a point oscillating across the edge flips cleanly each time (1 ms)
+    ✓ float noise right on the edge does not flip the result
+    ✓ works on a concave (L-shaped) polygon (1 ms)
+    ✓ a point inside a hole is outside; on the hole edge is inside
+    ✓ a missing or malformed boundary is never a match (1 ms)
+  polygonWithin
+    ✓ a zone inside the site is within it
+    ✓ a zone crossing the site edge is not
+    ✓ a zone with every corner inside a concave site but cutting across its notch is not
+    ✓ a zone that fills one arm of a concave site is within it
+    ✓ a zone that swallows a hole in the site is not (1 ms)
+  findZone
+    ✓ returns the first zone containing the point, or null (1 ms)
+  boundaryDistance and distanceMetres
+    ✓ is signed metres from the edge: negative inside, positive outside
+    ✓ a point in a hole is outside
+    ✓ a missing boundary is infinitely far
+    ✓ measures great-circle metres
+  settledInside
+    ✓ without an accuracy it is the plain geometric test (1 ms)
+    ✓ a worker inside stays inside while a reading is out by less than its accuracy
+    ✓ a worker outside enters only once a reading is in by its accuracy (1 ms)
+    ✓ a rough fix holds the state by at most the cap
+  settleZone
+    ✓ jitter across a shared edge keeps the current zone (1 ms)
+    ✓ moves to the next zone once clearly in it
+    ✓ without an accuracy it matches findZone
+  implausibleJump
+    ✓ a walk or a drive across the site is plausible (1 ms)
+    ✓ a kilometre in five seconds is a glitch
+    ✓ after a long gap any move is believed
+    ✓ without a previous reading nothing is a jump
+
+Test Suites: 6 failed, 9 passed, 15 total
+Tests:       14 failed, 339 passed, 353 total
+Snapshots:   0 total
+Time:        42.485 s, estimated 44 s
+Ran all test suites.

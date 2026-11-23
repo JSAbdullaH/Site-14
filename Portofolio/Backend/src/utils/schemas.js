@@ -15,6 +15,25 @@ const newPassword = z
 
 const linkToken = z.string().trim().min(20, 'Invalid token').max(200, 'Invalid token');
 
+// Strict: the role and the sign-in email cannot be changed here, and asking to is an error.
+const updateMeSchema = z
+  .object({ full_name: z.string().trim().min(2, 'Name needs at least 2 characters').max(120, 'Name is at most 120 characters') })
+  .strict();
+
+const updateCompanySchema = z
+  .object({
+    name: z.string().trim().min(2, 'Company name needs at least 2 characters').max(150, 'Company name is at most 150 characters').optional(),
+    commercial_registration: z
+      .string()
+      .trim()
+      .max(50, 'Commercial register is at most 50 characters')
+      .nullable()
+      .optional()
+      .transform((v) => (v === '' ? null : v)),
+  })
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
+
 const registerSchema = z.object({
   company_name: z.string().trim().min(2).max(150),
   commercial_registration: z.string().trim().max(50).optional(),
@@ -280,6 +299,8 @@ const readingSchema = z.object({
   recorded_at: deviceTime,
   latitude: z.number().finite().min(-90, 'Latitude must be between -90 and 90').max(90, 'Latitude must be between -90 and 90'),
   longitude: z.number().finite().min(-180, 'Longitude must be between -180 and 180').max(180, 'Longitude must be between -180 and 180'),
+  // Horizontal accuracy in metres (radius of 68% confidence), as iOS and browsers report it.
+  accuracy_m: z.number().finite().min(0, 'Accuracy cannot be negative').max(100000).nullable().optional(),
   battery_percent: z.number().int().min(0).max(100).nullable().optional(),
   heart_rate_bpm: z.number().int().min(20).max(250).nullable().optional(),
 });
@@ -507,6 +528,8 @@ module.exports = {
   updateTaskSchema,
   listTasksQuery,
   registerSchema,
+  updateMeSchema,
+  updateCompanySchema,
   loginSchema,
   loginVerifySchema,
   verifyEmailSchema,

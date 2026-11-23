@@ -7,7 +7,7 @@ Stage 4 is about turning the technical plan into a working product. In this stag
 The value of this stage is that it shows how the plan held up against real work. Stage 3 described how we intended to build and manage the system; this document records how we actually did it, what we changed along the way, and why. Where practice differed from the plan, we say so and explain the decision, because an honest record of deviations is more useful to the team than a document that only repeats the plan.
 
 
-> **Note:** All evidence referred to here — Jira exports, screenshots and test results — is stored in [`stage4-evidence/`](./stage4-evidence/), so it can be read without access to our Jira site.
+> **Note:** All evidence referred to here — the Jira export and the test results — is stored in [`stage4-evidence/`](./stage4-evidence/), so it can be read without access to our Jira site.
 
 ---
 ## Table of Contents
@@ -23,7 +23,7 @@ The value of this stage is that it shows how the plan held up against real work.
 
 ## 0. Sprint Planning
 
-**Links:** [All tickets](./stage4-evidence/jira/site14-jira-report.pdf) · [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf)
+**Links:** [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf#page=1) · [Tickets by sprint](./stage4-evidence/jira/site14-jira-report.pdf#page=2)
 
 We ran the MVP in **one-week sprints** on a Jira Scrum board. Each sprint opened with planning on its first day and closed with a review on its last. The user stories written in Stage 3 were split by layer into frontend `[FE]`, backend `[BE]` and database `[DB]` tickets, so that each ticket had a single owner and could be estimated on its own.
 
@@ -61,7 +61,7 @@ Priorities follow the MoSCoW ranking from [Stage 3, Section 0.2](./Stage3.md#02-
 | **Must have** | Company registration and secure sign-in with JWT access and refresh tokens · tenant isolation · sites · employees and CSV import · devices and phone pairing · location ingest · work sessions · live map · work zones and zone-exit alerts · tamper-evident record · daily PDF report with a verifiable reference |
 | **Should have** | Site Manager invitations · email verification · tasks · alert review and acknowledgement · weekly and monthly reports · movement history · offline-device detection |
 | **Could have** | One-time-code sign-in · marker colours by status · battery level · path replay · employee search and filters · first-setup guide |
-| **Won't have (this MVP)** | Health and heart-rate monitoring · smartwatch hardware and the Traccar bridge · per-category threshold editing · Docker Compose · CI pipeline · OpenAPI contract file |
+| **Won't have (this MVP)** | Health and heart-rate monitoring · dedicated wearable hardware and the Traccar bridge · per-category threshold editing · Docker Compose · CI pipeline · OpenAPI contract file |
 
 ### 0.3 Dependencies
 
@@ -84,7 +84,7 @@ Tasks depended only on Sites and Employees, so they ran in parallel with steps 5
 | Member | Role | Areas owned |
 |---|---|---|
 | Laila Khalid | Project Manager, Frontend Lead | Sprint planning and Jira, theme, live map UI, landing page, manager accounts and invitations, reports, tenant isolation |
-| Abdullah Alzara | Source Control Manager, Backend | Repository and deployment, registration and sign-in, device ingest and simulator, devices, sites, work sessions, phone pairing, marketplace, platform admin, notifications |
+| Abdullah Alzara | Source Control Manager, Backend | Repository and deployment, registration and sign-in, device ingest and simulator, devices, sites, work sessions, phone pairing, the iPhone and Apple Watch app, marketplace, platform admin, notifications |
 | Saad Alatar | Backend | Tokens, email verification, one-time code, zones and zone detection, live map API, alerts, tasks |
 | Faisal Alshahrani | Database, QA | Migration and seed data, data isolation, employees and CSV import, append-only record, daily record, history, end-to-end test |
 
@@ -93,6 +93,7 @@ Each area had a lead; the other members worked alongside as full-stack developer
 
 ### 0.5 Stand-ups and Tracking
 
+We held stand-ups at 6:30 pm, three to four days a week, in person at the academy or on Discord. Each member said what they had finished since the last stand-up, what they would work on next, and what was blocking them, so that problems crossing two areas were raised before the sprint review. Between stand-ups, the team kept working together on our Discord server, where members posted progress and shared work in progress such as test results.
 
 Every ticket moved through the Jira workflow defined in Stage 3: `To Do` → `In Dev` → `Code Review` → `In QA` → `UAT` → `Done`, plus `Blocked`. During the Stage 4 review we added a `Won't Do` status, so that a ticket we decided not to build is closed with its reason rather than left open or marked Done.
 
@@ -109,9 +110,9 @@ A ticket counts towards the sprint in which it reached `Done`. Tickets still ope
 | Sprint 3 | 18 | 5 | 0 | 13 | 28% |
 | Sprint 4 | 28 | 3 | 0 | 25 | 11% |
 | Sprint 5 | 58 | 47 | 0 | 11 | 81% |
-| Sprint 6 | 30 | in progress | — | — | — |
+| Sprint 6 | 38 | in progress | — | — | — |
 
-Source: [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf), exported from Jira.
+Source: [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf#page=1), exported from Jira.
 
 **Reading the numbers.** The low completion in Sprints 2 to 4 does not mean little was built: most of those tickets were built in their sprint but were not moved to `Done`, so they carried forward until the status review on 21 November. 31 tickets passed through more than one sprint, and 12 of them through three. The spike in Sprint 5 is that backlog being closed, not one week's work. We treat this as a tracking failure and address it in the [retrospective](#2-retrospectives).
 
@@ -123,7 +124,7 @@ The plan changed during development. Each change below is recorded as a decision
 |---|---|---|
 | Repositioned from a safety platform to an operations tracking platform | The value we offer is a record of field operations; safety is a supporting benefit | Midday-ban and working-hour alerts `SITE-35`, `SITE-37` and their evaluator `SITE-92` moved to Sprint 6 |
 | Removed health and heart-rate monitoring | Out of scope for operations tracking, as stated in the Project Charter | Leftovers in the code are tracked as `SITE-196` |
-| Replaced smartwatch hardware with the worker's phone | No wearable met our three requirements within the MVP time and budget: run our own software permanently, report live location to our server, and carry sensors we can extend later | Traccar bridge `SITE-89` closed as Won't Do; phone pairing `SITE-197` and the App Store app `SITE-198` added |
+| Replaced dedicated wearable hardware with the worker's own phone | No wearable met our three requirements within the MVP time and budget: run our own software permanently, report live location to our server, and carry sensors we can extend later. The worker's phone tracks through the web tracker or the iPhone app; the app's Apple Watch companion shares location only, not heart rate | Traccar bridge `SITE-89` closed as Won't Do; phone pairing `SITE-197` and the iPhone and Apple Watch app `SITE-198` added |
 | Removed in-device worker consent and communication | Not feasible in the MVP | Consent is recorded by the manager; workers without it show as *No consent*, not as absent |
 | Replaced data analytics with PDF reports | A referenced, hashed report gives the client evidence it can verify | Reports & Exports epic |
 | Did not build Docker Compose, the CI pipeline, the OpenAPI file or the threshold editor | Not needed for the product to work; deprioritized against feature delivery | `SITE-74`, `SITE-76`, `SITE-71`, `SITE-41` closed as Won't Do |
@@ -139,7 +140,7 @@ The plan changed during development. Each change below is recorded as a decision
 
 ## 1. Sprint Reviews
 
-**Links:**  [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf) · [All tickets](./stage4-evidence/jira/site14-jira-report.pdf)
+**Links:** [Sprint summary](./stage4-evidence/jira/site14-jira-report.pdf#page=1) · [Tickets by sprint](./stage4-evidence/jira/site14-jira-report.pdf#page=2)
 
 We held a review at the end of every sprint, with all four members present, either in person or on Discord. Each review followed the same four steps:
 
@@ -172,7 +173,7 @@ We held a review at the end of every sprint, with all four members present, eith
 ### Sprint 5 · 2 – 6 Nov, closed 21 Nov
 
 * **Delivered:** device registration and assignment, bulk registration from a serial list, telemetry ingest that is idempotent and rate-limited, the device simulator, tasks on the backend and frontend, the tamper-evident activity log, the daily record, corrections that append rather than overwrite, movement history and path replay, and PDF reports with a verifiable reference.
-* **Not building:** integration with a smartwatch. When we reached devices and IoT integration, no wearable met our requirements within the MVP, so the review decided to use the worker's phone as the tracking device instead ([Section 0.7](#07-adjustments-and-scope-changes)).
+* **Not building:** dedicated wearable hardware. When we reached devices and IoT integration, no wearable met our requirements within the MVP, so the review decided to use the worker's own phone as the tracking device instead, through the web tracker and later an iPhone app with an Apple Watch companion ([Section 0.7](#07-adjustments-and-scope-changes)).
 * **Next:** a final sprint to run UAT on every feature, finish the carried enhancements and get the MVP ready to present.
 
 ### Sprint 6 · 21 – 27 Nov · Final UAT, Enhancements & Presentation Ready
@@ -240,7 +241,7 @@ The backend was built as designed in Stage 3. On the frontend, the infrastructur
 | Backend | Express.js | Express 5 with Prisma ORM and zod validation | As planned |
 | Database | PostgreSQL | PostgreSQL with Prisma migrations, append-only triggers and a revoked `UPDATE`/`DELETE` role | As planned |
 | Infrastructure | Docker and Docker Compose | **Railway**, building from `package.json` | Railway runs the backend without a Dockerfile, and the team shares one cloud database, so Compose was not needed ([Section 0.7](#07-adjustments-and-scope-changes)). |
-| IoT middleware | Traccar | **Phone pairing**: the worker's phone becomes the tracking device | No wearable met our requirements within the MVP ([Section 0.7](#07-adjustments-and-scope-changes)). |
+| IoT middleware | Traccar | **Phone pairing**: the worker's phone becomes the tracking device, through the web tracker or the iPhone app with its Apple Watch companion | No wearable met our requirements within the MVP ([Section 0.7](#07-adjustments-and-scope-changes)). |
 
 ### 3.2 Coding Standards
 
@@ -253,18 +254,18 @@ Each developer worked on the tickets assigned to them in the sprint ([Section 0.
 
 ### 3.3 Source Control Management
 
-* **Repository:** one mono-repository on GitHub with `Portofolio/Backend` and `Portofolio/FrontEnd`.
+* **Repository:** one mono-repository on GitHub with `Portofolio/Backend`, `Portofolio/FrontEnd` and `Portofolio/Mobile` (the iPhone and Apple Watch app).
 * **Branches:** the GitFlow branches from Stage 3 were created — `main`, `develop`, `feature`, `bugfix`, `hotfix` — and each member developed on a feature branch for their area: `Company-account-and-auth`, `Laila-Frontend-Structure`, `Faisal-employee`, `Abdullah-multiple-site`, `Saad-map`, `Saad-tasks`.
-* **Activity:** 113 commits from all four members.
+* **Activity:** 106 commits, excluding merges, from all four members.
 
 | Member | Commits (excluding merges) |
 |---|---|
-| Laila Khalid | 36 |
-| Abdullah Alzara | 36 |
+| Laila Khalid | 44 |
+| Abdullah Alzara | 35 |
 | Faisal Alshahrani | 16 |
-| Saad Alatar | 14 |
+| Saad Alatar | 11 |
 
-**Where practice differed from the plan.** Stage 3 planned protected branches, a pull request for every merge and one approving review. In practice, of 11 merges, one went through a pull request ([#6](https://github.com/JSAbdullaH/Portfolio-Project/pull/6)); the others were merged directly between feature branches. 39 of 102 commit messages follow the Conventional Commits types, and 16 carry a Jira key. The cost showed in Sprint 4: merging the employee and multi-site branches broke the employee list and dropped the multi-site pages, and 12 backend tests failed until the conflicts were resolved. The fixes are recorded in [`Bug-fix.md`].
+**Where practice differed from the plan.** Stage 3 planned protected branches, a pull request for every merge and one approving review. In practice, of 13 merges, one went through a pull request ([#6](https://github.com/JSAbdullaH/Portfolio-Project/pull/6)); the others were merged directly between feature branches. 42 of 106 commit messages follow the Conventional Commits types, and 17 carry a Jira key. The cost showed in Sprint 4: merging the employee and multi-site branches broke the employee list and dropped the multi-site pages, and 12 backend tests failed until the conflicts were resolved. The fixes are recorded in [`Bug-fix.md`](../Portofolio/Bug-fix.md).
 
 
 
@@ -278,7 +279,7 @@ Each developer worked on the tickets assigned to them in the sprint ([Section 0.
 
 ## 4. Bug Tracking
 
-**Links:** [Merge fixes](../Portofolio/Bug-fix.md) · [All tickets](./stage4-evidence/jira/site14-jira-report.pdf)
+**Links:** [Merge fixes](../Portofolio/Bug-fix.md) · [Bugs in Jira](./stage4-evidence/jira/site14-jira-report.pdf#page=13)
 
 Defects are logged as Jira `Bug` issues under the Bug Fixes epic, with steps to reproduce, the expected and actual result, the environment, and the test case that found them. Priorities follow the scale in [Stage 3, Section 5.2.4](./Stage3.md#524-defect-management).
 
@@ -287,35 +288,49 @@ Defects are logged as Jira `Bug` issues under the Bug Fixes epic, with steps to 
 | Merge defects fixed after integrating the feature branches | 12 failing tests, plus the code defects behind them | All fixed — [`Bug-fix.md`](../Portofolio/Bug-fix.md) |
 | Bugs logged in Jira | 6 | 5 in development, 1 in QA — all in Sprint 6 |
 
-| Key | Bug | Priority |
-|---|---|---|
-| `SITE-98` | CSV import creates duplicate people when a row has no worker number | Highest |
-| `SITE-193` | Report prints the uncorrected hours and never says a record was corrected | Highest |
-| `SITE-194` | Monthly report uses the daily layout and counts open sessions up to now | Highest |
-| `SITE-99` | Work sessions carry no zone, so hours cannot be attributed per zone | High |
-| `SITE-195` | PDF generation can fail when the cached Chrome process has closed | Medium |
-| `SITE-196` | Heart-rate alerts still appear although health monitoring is out of scope | Medium |
+| Key | Bug | Priority | Status | Owner |
+|---|---|---|---|---|
+| `SITE-98` | CSV import creates duplicate people when a row has no worker number | Highest | In Dev | Faisal |
+| `SITE-193` | Report prints the uncorrected hours and never says a record was corrected | Highest | In Dev | Faisal |
+| `SITE-194` | Monthly report uses the daily layout and counts open sessions up to now | Highest | In Dev | Not assigned yet |
+| `SITE-99` | Work sessions carry no zone, so hours cannot be attributed per zone | High | In QA | Not assigned yet |
+| `SITE-195` | PDF generation can fail when the cached Chrome process has closed | Medium | In Dev | Saad |
+| `SITE-196` | Heart-rate alerts still appear although health monitoring is out of scope | Medium | In Dev | Laila |
 
 ---
 
 ## 5. Testing Evidence and Results
 
-**Links:** [Test cases](./stage4-evidence/jira/site14-jira-report.pdf) · [Automated tests](https://github.com/JSAbdullaH/Portfolio-Project/tree/main/Portofolio/Backend/tests)
+**Links:** [QA test cases](./stage4-evidence/jira/site14-jira-report.pdf#page=14) · [Automated tests](https://github.com/JSAbdullaH/Portfolio-Project/tree/main/Portofolio/Backend/tests)
 
 ### 5.1 Automated Tests
 
-| Suite | Type | What it covers |
-|---|---|---|
-| `geo.test.js` | Unit | Point-in-polygon and zone geometry, without a database |
-| `auth`, `users`, `sites`, `employees`, `devices`, `geofences`, `tasks`, `records`, `pairing`, `marketplace`, `presence`, `ingest`, `simulator` | API integration | Each endpoint through Express and Supertest against a real PostgreSQL test database: status codes, response shapes, and the rule that a request from one company for another company's data returns 404 |
-| `database.test.js` | Database integration | Triggers and constraints: append-only tables, revoked updates and deletes, consent |
-| `e2e/journey.spec.js` | End to end | The critical journey through the browser with Playwright |
+**Evidence:** [full test log](./stage4-evidence/tests/test-run-353.txt)
 
-288 tests across 15 Jest files, plus the Playwright journey. The suite refuses to run against any database whose name does not contain `test`, because its setup rebuilds the target database; this protects the shared team database.
+| Type | What it checks | Suites | Tests | Passed | Failed |
+|---|---|---|---|---|---|
+| Unit | Geometry logic with no database or server: point in zone, zone inside site, GPS jump filter (`geo.test.js`) | 1 | 30 | 30 | 0 |
+| API integration | Each endpoint through Express and Supertest against a real PostgreSQL test database: status codes, response shapes, roles, and the rule that one company can never read another company's data (`auth`, `users`, `sites`, `employees`, `devices`, `geofences`, `tasks`, `records`, `pairing`, `marketplace`, `presence`, `ingest`, `simulator`) | 13 | 260 | 253 | 7 |
+| Database integration | Triggers and constraints: append-only tables, revoked updates and deletes, consent, tenant scope, and the migration rollback (`database.test.js`) | 1 | 63 | 56 | 7 |
+| **Total** | | **15** | **353** | **339** | **14** |
 
-**Results.** After the Sprint 4 merge fixes, the backend suite passed in full at the time (155 of 155).
+The suite refuses to run against any database whose name does not contain `test`, because its setup rebuilds the target database; this protects the shared team database. The Playwright journey (`e2e/journey.spec.js`) runs separately and is not part of these results.
 
+#### Failures and their causes
 
+We traced every failure to its cause before deciding what to do with it. None is a product defect: each one is a test that was not updated after a change in the code, or a development script.
+
+| Test | What it checks | Expected | Actual | Cause | Action |
+|---|---|---|---|---|---|
+| Tenant scope ×6 (`database.test.js`) | Each table returns only the caller's company rows | 2 rows in total, 1 for company A | 0 rows | Tables added later (device pairing, marketplace orders, presence events) have no fixture rows; products and platform admins are platform-wide by design, not company-scoped | Add fixtures; exclude the platform tables |
+| Rollback (`database.test.js`) | `down.sql` empties the database and the migration applies again | No objects left | `cannot drop table alerts` | `down.sql` does not drop the newer tables that reference alerts | Update `down.sql` |
+| Companies never see each other (`ingest.test.js`) | Company A's readings never reach company B's live map | Empty list | Company B's own worker, with no position | The live map now lists every assigned worker, with or without a position; company A's worker does not appear | Assert that company A's worker is absent |
+| Notifications order (`presence.test.js`) | Newest event first | `zone_exit` | `zone_enter` | Two events with the same timestamp have no tie-break | Add a secondary sort |
+| Only an admin can buy (`marketplace.test.js`) | A site manager is refused | 403 | 201 | The role is now read from the database, not from the token; the test user is an admin in the database | Set the user's role in the database in the test |
+| Simulator ×3 (`simulator.test.js`) | Simulated readings open and close a shift | 200 / 409 / 403 | 404 | The simulator route was removed when phone pairing replaced it | Remove the tests |
+| Logout revokes the session (`auth.test.js`) | Logout revokes the session behind the cookie | One revoked token | Two tokens, one revoked | Email verification now signs the user in, so the test holds two sessions; logout correctly revokes only the current one | Assert on the cookie's own token |
+
+Automated tests cover the API and the database rules; the manual test cases in [Section 5.2](#52-manual-qa-plan) cover the user interface, which the automated suite does not.
 
 ### 5.2 Manual QA Plan
 
@@ -334,37 +349,47 @@ The QA epic `SITE-100` holds one QA story per feature and one test case per acce
 | `SITE-186` | Landing page and registration | 6 |
 | | **Total** | **83** |
 
-Full list: [QA test cases](./stage4-evidence/jira/site14-jira-report.pdf).
+Full list: [QA test cases](./stage4-evidence/jira/site14-jira-report.pdf#page=14).
 
-**Status on 21 November:** 7 test cases passed, 3 blocked, 73 to run in Sprint 6. The Reports run (`SITE-104`) found four of the six open bugs in [Section 4](#4-bug-tracking), which is the purpose of the plan.
 
 ### 5.3 Integration Checks
 
 * **Frontend and backend.** The frontend calls the API under `/api/v1`; in development Vite forwards these calls to the backend, and in production the frontend uses the deployed API address. Expired access tokens are renewed through the refresh cookie and the original request is retried.
 * **Database.** Tenant isolation, append-only rules and consent are enforced by the database as well as the API, and verified by `database.test.js`.
-* **Devices.** The simulator and the paired phone post readings to the same ingest endpoint, which is how a wearable will connect later without backend changes.
+* **Devices.** The web tracker, the iPhone app and its Apple Watch companion all post readings to the same ingest endpoint with the same device key, so a new kind of device can connect without backend changes.
 
 ### 5.4 Test Case Evidence
 
-
-| Test case | Result | Evidence |
-|---|---|---|
-| TC: Sign in with a valid email and password | | ![](./stage4-evidence/screenshots/tc-signin.png) |
-| TC: Import employees from a CSV file | | ![](./stage4-evidence/screenshots/tc-csv-import.png) |
-| TC: Generate a daily PDF report | | ![](./stage4-evidence/screenshots/tc-report.png) |
+Each manual test case is recorded in Jira with its steps, its expected result and its result. The [QA test cases report](./stage4-evidence/jira/site14-jira-report.pdf#page=14) lists all 83 with the result of each, and the [full automated test log](./stage4-evidence/tests/test-run-353.txt) shows every automated test by name with its result.
 
 ---
 
 ## 6. Production Environment
 
-**Links:** TODO: live site URL · TODO: API URL
+**Links:** Dashboard: TODO: dashboard URL · API: [site-14-back-end-testing-xaxhq7.cranl.net](https://site-14-back-end-testing-xaxhq7.cranl.net/health)
 
-| Part | Where it runs |
+Both the API and the dashboard are hosted on **Cranl**, which builds each service with Railpack directly from `package.json`, so no Dockerfile is needed.
+
+| Part | Where it runs | How it is built and configured |
+|---|---|---|
+| Backend API | Cranl | Railpack build from `package.json`. [`railpack.json`](../Portofolio/Backend/railpack.json) installs Chromium and fonts so PDF reports work on the server. [`railway.json`](../Portofolio/Backend/railway.json) sets the health check on `/health` and restarts the service on failure. |
+| Frontend dashboard | Cranl | Static Vite build. [`.env.production`](../Portofolio/FrontEnd/Portfolio/.env.production) points `VITE_API_URL` at the API above. |
+| Database | Cloud PostgreSQL, shared by the team | Prisma migrations run against it. `db:seed` refuses to run on a remote database unless `ALLOW_REMOTE_RESET=true`. |
+| Worker tracking app | iPhone app with an Apple Watch companion, bundle `sa.site14.tracker`, version 1.0 (build 1) | Uploaded to TestFlight with [`testflight.sh`](../Portofolio/Mobile/scripts/testflight.sh). The API address is set at build time. Submitted to the Apple App Store and awaiting review (`SITE-198`). |
+
+**Production configuration.** Secrets live only in Cranl's environment variables and are never committed; [`.env.example`](../Portofolio/Backend/.env.example) lists every key. The ones production depends on:
+
+| Variable | Purpose |
 |---|---|
-| Backend API | Railway, built from `package.json` with a health check on `/health` and a restart on failure ([`railway.json`](../Portofolio/Backend/railway.json)) |
-| Frontend dashboard | TODO: where the frontend is hosted |
-| Database | Cloud PostgreSQL, shared by the team; secrets are kept in environment variables and never committed |
-| Worker tracking app | Submitted to the Apple App Store and awaiting review (`SITE-198`) |
+| `NODE_ENV` | Set to `production` |
+| `DATABASE_URL` | Connection to the cloud PostgreSQL database |
+| `JWT_ACCESS_SECRET`, `PLATFORM_JWT_SECRET` | Separate signing keys for tenant users and platform admins, each at least 32 characters |
+| `APP_URL` | Dashboard address, used in email links and automatically allowed by CORS |
+| `CORS_ORIGINS` | Any other origins allowed to call the API with credentials |
+| `TRUST_PROXY`, `COOKIE_SAMESITE` | Correct client IPs and refresh-cookie behaviour behind Cranl's proxy |
+| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Outgoing mail for invitations, sign-in codes and password resets |
+
+**Health check.** On 22 November 2026, `GET /health` on the production API returned `200 {"status":"ok"}`.
 
 
 

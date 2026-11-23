@@ -75,6 +75,8 @@ struct Reading: Codable, Equatable {
     let recordedAt: Date
     let latitude: Double
     let longitude: Double
+    /// Horizontal accuracy in metres. Optional so readings buffered by an older build still load.
+    var accuracyM: Double? = nil
     let batteryPercent: Int?
 }
 
