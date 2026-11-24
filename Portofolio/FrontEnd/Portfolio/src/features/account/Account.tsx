@@ -1,4 +1,6 @@
 ﻿import { useEffect, useState } from "react";
+import { Monitor, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import AppShell from "@/shared/components/AppShell";
 import FormField from "@/shared/components/FormField";
 import { Button } from "@/components/ui/button";
@@ -15,8 +17,15 @@ type Company = {
 
 const NOT_SET = "Not set";
 
+const THEMES = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
+] as const;
+
 export default function Account() {
   const user = getUser();
+  const { theme, setTheme } = useTheme();
 
   const [company, setCompany] = useState<Company | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -74,6 +83,30 @@ export default function Account() {
           <p className="text-sm text-muted-foreground">
             Editing company details is not available yet.
           </p>
+        </section>
+
+        <section className="rounded-xl border bg-card p-8">
+          <h2 className="mb-1 text-xl font-semibold">Appearance</h2>
+          <p className="mb-6 text-sm text-muted-foreground">
+            System follows the light or dark setting of your device.
+          </p>
+          <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-lg bg-secondary p-1 text-sm font-medium">
+            {THEMES.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={theme === value}
+                onClick={() => setTheme(value)}
+                className={`inline-flex items-center gap-2 rounded-md px-4 py-2 transition-colors ${
+                  theme === value ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="size-4" />
+                {label}
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="rounded-xl border bg-card p-8">

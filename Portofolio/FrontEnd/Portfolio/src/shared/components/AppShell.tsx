@@ -146,7 +146,7 @@ export default function AppShell({ title, subtitle, children }: Props) {
   }
 
   return (
-    <div className="flex min-h-svh bg-background">
+    <div className="flex h-svh bg-sidebar">
       {menuOpen && (
         <button
           type="button"
@@ -156,11 +156,11 @@ export default function AppShell({ title, subtitle, children }: Props) {
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r bg-sidebar px-4 py-6 transition-[transform,width] duration-200 md:sticky md:top-0 md:h-svh md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col overflow-x-hidden overflow-y-auto bg-sidebar px-4 py-6 transition-[transform,width] duration-200 md:sticky md:top-0 md:h-svh md:translate-x-0 ${
           collapsed ? "md:w-[72px] md:px-3" : "md:w-64"
         } ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className={`mb-8 flex items-center justify-between gap-2 px-4 ${centerOnRail}`}>
+        <div className={`mb-8 flex items-center justify-between gap-2 pl-4 ${centerOnRail}`}>
           <span className={`text-lg font-semibold tracking-tight ${hideOnRail}`}>SITE14</span>
           <button
             type="button"
@@ -219,7 +219,7 @@ export default function AppShell({ title, subtitle, children }: Props) {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background md:my-2 md:mr-2 md:rounded-2xl md:border md:border-sidebar-border md:shadow-sm">
         <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4 md:h-20 md:gap-6 md:px-8">
           <button
             type="button"
@@ -237,7 +237,7 @@ export default function AppShell({ title, subtitle, children }: Props) {
           <NotificationBell events={feed.events} unread={feed.unread} capped={feed.capped} onOpen={feed.markRead} />
         </header>
 
-        <main className="min-w-0 flex-1 p-4 md:p-8">{children}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
       </div>
       <Toaster position="top-right" richColors closeButton />
     </div>

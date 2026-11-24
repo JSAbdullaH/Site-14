@@ -14,6 +14,7 @@ import {
 } from "@/shared/lib/validation";
 import { useFormValidation } from "@/shared/lib/useFormValidation";
 import SignedInNotice from "@/shared/components/SignedInNotice";
+import PixelShowcase from "./components/PixelShowcase";
 
 type Session = { access_token: string; user: SessionUser };
 type CheckEmail = { exists: boolean; invitation_pending: boolean };
@@ -219,177 +220,182 @@ export default function Signin() {
   const isCodeStep = step === "login-code" || step === "verify";
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-5 py-12">
-      <div className="w-full max-w-md rounded-xl border bg-card p-8">
-        {signedIn ? (
-          <SignedInNotice onSignedOut={() => setSignedIn(false)} />
-        ) : (
-          <>
-            <h1 className="mb-1 text-2xl font-semibold tracking-tight">{title}</h1>
-            <p className="mb-8 text-sm text-muted-foreground">{subtitle}</p>
+    <main className="grid min-h-screen bg-ink lg:grid-cols-2">
+      <div className="flex items-center justify-center bg-card px-6 py-12 md:px-16 lg:order-2 lg:my-3 lg:mr-3 lg:rounded-2xl">
+        <div className="w-full max-w-md [&_[data-slot=button]]:h-12 [&_[data-slot=button]]:text-base [&_input]:h-12 [&_input]:px-4 [&_input]:text-base">
+          {signedIn ? (
+            <SignedInNotice onSignedOut={() => setSignedIn(false)} />
+          ) : (
+            <>
+              <h1 className="mb-2 text-3xl font-semibold tracking-tight">{title}</h1>
+              <p className="mb-8 text-sm text-muted-foreground">{subtitle}</p>
 
-            {step !== "email" && (
-              <div className="mb-6 flex items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm">
-                <span className="truncate font-medium">{email}</span>
-                <button
-                  type="button"
-                  onClick={startOver}
-                  className="shrink-0 font-medium text-primary hover:underline"
-                >
-                  Change
-                </button>
-              </div>
-            )}
-
-            {formError && (
-              <p className="mb-5 rounded-md bg-danger-bg px-4 py-3 text-sm font-medium text-danger">
-                {formError}
-              </p>
-            )}
-            {notice && !formError && (
-              <p className="mb-5 rounded-md bg-muted px-4 py-3 text-sm font-medium">
-                {notice}
-              </p>
-            )}
-
-            {step === "email" && (
-              <form onSubmit={checkEmail} noValidate>
-                <FormField
-                  id="email"
-                  label="Email"
-                  type="email"
-                  autoComplete="email"
-                  autoFocus
-                  value={email}
-                  error={emailForm.errors.email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    emailForm.handleChange({ email: e.target.value });
-                  }}
-                  onBlur={() => emailForm.handleBlur("email", { email })}
-                />
-
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Checking..." : "Continue"}
-                </Button>
-              </form>
-            )}
-
-            {step === "password" && (
-              <form onSubmit={signIn} noValidate>
-                <FormField
-                  id="password"
-                  label="Password"
-                  type="password"
-                  autoComplete="current-password"
-                  autoFocus
-                  value={password}
-                  error={passwordForm.errors.password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    passwordForm.handleChange({ email, password: e.target.value });
-                  }}
-                  onBlur={() => passwordForm.handleBlur("password", { email, password })}
-                />
-
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Signing in..." : "Sign in"}
-                </Button>
-
-                <div className="mt-5 text-sm">
-                  <Link
-                    to="/forgot-password"
-                    className="font-medium text-muted-foreground hover:text-primary"
+              {step !== "email" && (
+                <div className="mb-6 flex items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm">
+                  <span className="truncate font-medium">{email}</span>
+                  <button
+                    type="button"
+                    onClick={startOver}
+                    className="shrink-0 font-medium text-primary hover:underline"
                   >
-                    Forgot password?
-                  </Link>
+                    Change
+                  </button>
                 </div>
-              </form>
-            )}
+              )}
 
-            {step === "register" && (
-              <form onSubmit={register} noValidate>
-                <p className="mb-5 text-sm text-muted-foreground">
-                  No account uses this email yet. Fill in the details below to create one.
+              {formError && (
+                <p className="mb-5 rounded-md bg-danger-bg px-4 py-3 text-sm font-medium text-danger">
+                  {formError}
                 </p>
+              )}
+              {notice && !formError && (
+                <p className="mb-5 rounded-md bg-muted px-4 py-3 text-sm font-medium">
+                  {notice}
+                </p>
+              )}
 
-                <FormField
-                  id="company_name"
-                  label="Company name"
-                  autoFocus
-                  {...registerField("company_name", companyName, setCompanyName)}
-                />
+              {step === "email" && (
+                <form onSubmit={checkEmail} noValidate>
+                  <FormField
+                    id="email"
+                    label="Email"
+                    type="email"
+                    autoComplete="email"
+                    autoFocus
+                    value={email}
+                    error={emailForm.errors.email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      emailForm.handleChange({ email: e.target.value });
+                    }}
+                    onBlur={() => emailForm.handleBlur("email", { email })}
+                  />
 
-                <FormField
-                  id="commercial_registration"
-                  label="Commercial register"
-                  hint="Optional"
-                  {...registerField("commercial_registration", cr, setCr)}
-                />
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Checking..." : "Continue"}
+                  </Button>
+                </form>
+              )}
 
-                <FormField
-                  id="full_name"
-                  label="Your full name"
-                  autoComplete="name"
-                  {...registerField("full_name", fullName, setFullName)}
-                />
+              {step === "password" && (
+                <form onSubmit={signIn} noValidate>
+                  <FormField
+                    id="password"
+                    label="Password"
+                    type="password"
+                    autoComplete="current-password"
+                    autoFocus
+                    value={password}
+                    error={passwordForm.errors.password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      passwordForm.handleChange({ email, password: e.target.value });
+                    }}
+                    onBlur={() => passwordForm.handleBlur("password", { email, password })}
+                  />
 
-                <FormField
-                  id="password"
-                  label="Password"
-                  type="password"
-                  autoComplete="new-password"
-                  hint="At least 10 characters"
-                  {...registerField("password", password, setPassword)}
-                />
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Signing in..." : "Sign in"}
+                  </Button>
 
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Creating..." : "Create account"}
-                </Button>
-              </form>
-            )}
+                  <div className="mt-5 text-sm">
+                    <Link
+                      to="/forgot-password"
+                      className="font-medium text-muted-foreground hover:text-primary"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                </form>
+              )}
 
-            {isCodeStep && (
-              <form onSubmit={step === "verify" ? confirmEmail : sendLoginCode} noValidate>
-                <FormField
-                  id="code"
-                  label={step === "verify" ? "Confirmation code" : "Sign-in code"}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  autoFocus
-                  value={code}
-                  error={codeForm.errors.code}
-                  onChange={(e) => {
-                    setCode(e.target.value);
-                    codeForm.handleChange({ email, code: e.target.value });
-                  }}
-                  onBlur={() => codeForm.handleBlur("code", { email, code })}
-                />
+              {step === "register" && (
+                <form onSubmit={register} noValidate>
+                  <p className="mb-5 text-sm text-muted-foreground">
+                    No account uses this email yet. Fill in the details below to create one.
+                  </p>
 
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Verifying..." : "Continue"}
-                </Button>
+                  <FormField
+                    id="company_name"
+                    label="Company name"
+                    autoFocus
+                    {...registerField("company_name", companyName, setCompanyName)}
+                  />
 
-                <button
-                  type="button"
-                  onClick={resendCode}
-                  disabled={busy}
-                  className="mt-5 text-sm font-medium text-muted-foreground hover:text-primary"
-                >
-                  Send a new code
-                </button>
-              </form>
-            )}
+                  <FormField
+                    id="commercial_registration"
+                    label="Commercial register"
+                    hint="Optional"
+                    {...registerField("commercial_registration", cr, setCr)}
+                  />
 
-            {step === "invited" && (
-              <p className="text-sm text-muted-foreground">
-                Your company invited you to SITE14. Open the invitation link in your
-                email to set your password, then sign in here.
-              </p>
-            )}
-          </>
-        )}
+                  <FormField
+                    id="full_name"
+                    label="Your full name"
+                    autoComplete="name"
+                    {...registerField("full_name", fullName, setFullName)}
+                  />
+
+                  <FormField
+                    id="password"
+                    label="Password"
+                    type="password"
+                    autoComplete="new-password"
+                    hint="At least 10 characters"
+                    {...registerField("password", password, setPassword)}
+                  />
+
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Creating..." : "Create account"}
+                  </Button>
+                </form>
+              )}
+
+              {isCodeStep && (
+                <form onSubmit={step === "verify" ? confirmEmail : sendLoginCode} noValidate>
+                  <FormField
+                    id="code"
+                    label={step === "verify" ? "Confirmation code" : "Sign-in code"}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    value={code}
+                    error={codeForm.errors.code}
+                    onChange={(e) => {
+                      setCode(e.target.value);
+                      codeForm.handleChange({ email, code: e.target.value });
+                    }}
+                    onBlur={() => codeForm.handleBlur("code", { email, code })}
+                  />
+
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Verifying..." : "Continue"}
+                  </Button>
+
+                  <button
+                    type="button"
+                    onClick={resendCode}
+                    disabled={busy}
+                    className="mt-5 text-sm font-medium text-muted-foreground hover:text-primary"
+                  >
+                    Send a new code
+                  </button>
+                </form>
+              )}
+
+              {step === "invited" && (
+                <p className="text-sm text-muted-foreground">
+                  Your company invited you to SITE14. Open the invitation link in your
+                  email to set your password, then sign in here.
+                </p>
+              )}
+            </>
+          )}
+        </div>
       </div>
+      <section className="hidden items-center justify-center p-10 lg:order-1 lg:flex">
+        <PixelShowcase />
+      </section>
     </main>
   );
 }
