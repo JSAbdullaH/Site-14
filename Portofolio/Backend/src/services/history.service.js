@@ -62,6 +62,7 @@ async function history(auth, employeeId, date) {
         latitude: p.latitude,
         longitude: p.longitude,
         recorded_at: p.recordedAt.toISOString(),
+        accuracy_m: p.accuracyM ?? null,
         battery_percent: p.batteryPercent,
         zone_id: p.zone ? p.zone.id : null,
       })),

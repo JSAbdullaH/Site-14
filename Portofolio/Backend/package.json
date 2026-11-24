@@ -26,6 +26,10 @@
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
+    "@turf/boolean-point-in-polygon": "^7.4.0",
+    "@turf/distance": "^7.4.0",
+    "@turf/helpers": "^7.4.0",
+    "@turf/point-to-polygon-distance": "^7.4.0",
     "argon2": "^0.45.1",
     "cookie-parser": "^1.4.7",
     "csv-parse": "^7.0.3",

@@ -49,13 +49,14 @@ Content-Type: application/json
   "sent_at": "2026-11-04T09:30:05Z",
   "readings": [
     { "recorded_at": "2026-11-04T09:30:00Z", "latitude": 24.7741, "longitude": 46.6386,
-      "battery_percent": 81, "heart_rate_bpm": 92 }
+      "accuracy_m": 6.5, "battery_percent": 81, "heart_rate_bpm": 92 }
   ]
 }
 ```
 
 - `recorded_at` is the **device clock** at the moment of the reading. Times need a zone (`Z` or `+03:00`).
 - `sent_at` (optional, recommended) is the device clock when the batch is sent. The server uses it to measure clock drift.
+- `accuracy_m` (optional, strongly recommended) is the horizontal accuracy in metres, as iOS (`horizontalAccuracy`) and browsers (`coords.accuracy`) report it. Positions rougher than 150 m are refused. With it, the server ignores jitter at a site or zone edge: a reading changes on site, off site or the zone only when it is past the edge by its accuracy, at most 10 m to enter and 25 m to leave. Without it, the edge is exact.
 - Up to 120 readings per call. A reading every 5 s is plenty: readings less than 3 s apart are dropped.
 - Buffer while offline and send the buffer when back. Order inside a batch does not matter.
 - At most 30 calls per minute per device (`429`).
@@ -78,7 +79,7 @@ Content-Type: application/json
 | `accepted` | New readings used. `stored` of them were on the site and went into the log. |
 | `duplicates` | Not newer than the last accepted reading: a retry. Safe to ignore. |
 | `throttled` | Too close to the previous reading. |
-| `rejected` | `clock_ahead` (more than 2 min in the future) or `too_old` (more than 24 h old). |
+| `rejected` | `clock_ahead` (more than 2 min in the future), `too_old` (more than 24 h old), `inaccurate` (`accuracy_m` over 150) or `implausible_jump` (farther from the previous position than 50 m/s allows, after both accuracies; only within 2 min of it). Do not resend them. |
 
 | Status | Do |
 |---|---|

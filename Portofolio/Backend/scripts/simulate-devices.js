@@ -281,6 +281,8 @@ class SimulatedWorker {
       recorded_at: at.toISOString(),
       latitude: Number(p.lat.toFixed(7)),
       longitude: Number(p.lng.toFixed(7)),
+      // The noise above is up to 3 m each way: a phone outdoors reports about this.
+      accuracy_m: Number(rand(4, 8).toFixed(1)),
       battery_percent: this.battery,
       heart_rate_bpm: Math.round(this.restingBpm + effort),
     };

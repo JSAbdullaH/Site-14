@@ -19,7 +19,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "@/shared/lib/api";
-import { clearToken, getUser } from "@/shared/lib/auth";
+import { clearToken, getUser, roleLabel } from "@/shared/lib/auth";
 import { useAlertFeed } from "@/shared/lib/useAlertFeed";
 import { Toaster } from "@/components/ui/sonner";
 import NotificationBell from "./NotificationBell";
@@ -59,13 +59,6 @@ function initials(name?: string) {
     .toUpperCase();
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  company_admin: "Company admin",
-  site_manager: "Site manager",
-  platform_admin: "Platform admin",
-};
-
-const roleLabel = (role?: string) => (role ? (ROLE_LABEL[role] ?? role.replace(/_/g, " ")) : "Account");
 
 export default function AppShell({ title, subtitle, children }: Props) {
   const location = useLocation();

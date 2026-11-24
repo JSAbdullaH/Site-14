@@ -56,6 +56,9 @@ export default function ConnectDeviceDialog({ open, onOpenChange, onConnected }:
 
   const remaining = useCountdown(step === "waiting" ? pairing?.expires_at ?? null : null);
   const link = pairing ? pairUrl(pairing.code.replace("-", "")) : "";
+  // Shown without "https://": shorter to read and to type, and browsers add it.
+  const pairBase = pairUrl("").replace(/\/$/, "").replace(/^https?:\/\//, "");
+  const pairHost = pairBase.replace(/\/pair$/, "");
 
   useEffect(() => {
     if (!open) return;
@@ -151,7 +154,7 @@ export default function ConnectDeviceDialog({ open, onOpenChange, onConnected }:
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className={step === "waiting" ? "sm:max-w-xl" : "sm:max-w-lg"}>
         {step === "setup" && (
           <form onSubmit={start} noValidate>
             <DialogHeader>
@@ -221,31 +224,37 @@ export default function ConnectDeviceDialog({ open, onOpenChange, onConnected }:
               </DialogDescription>
             </DialogHeader>
 
-            <div className="mt-2 flex flex-col items-center gap-4">
-              <div className="rounded-xl border bg-white p-3">
-                {qr ? (
-                  <img src={qr} alt={`QR code for ${link}`} className="size-56" />
-                ) : (
-                  <Skeleton className="size-56" />
-                )}
+            <div className="grid min-w-0 gap-4">
+              <div className="grid min-w-0 items-center justify-items-center gap-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:justify-items-stretch sm:gap-5">
+                <div className="rounded-xl border bg-white p-2.5">
+                  {qr ? (
+                    <img src={qr} alt={`QR code for ${link}`} className="size-44 sm:size-48" />
+                  ) : (
+                    <Skeleton className="size-44 sm:size-48" />
+                  )}
+                </div>
+
+                <div className="min-w-0 text-center sm:text-left">
+                  <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Or type this code</p>
+                  <p className="mt-1 font-mono text-2xl font-semibold tracking-[0.15em] whitespace-nowrap sm:text-3xl">{pairing.code}</p>
+                  <p className="mt-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">At</p>
+                  <p className="mt-1 font-mono text-xs text-foreground [overflow-wrap:anywhere]">{pairBase}</p>
+                </div>
               </div>
 
-              <div className="text-center">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Or type this code at</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">{pairUrl("").replace(/\/$/, "")}</p>
-                <p className="mt-2 font-mono text-3xl font-semibold tracking-[0.2em]">{pairing.code}</p>
-              </div>
-
-              <div className="flex w-full items-center gap-2 rounded-md border bg-secondary/50 px-3 py-2">
+              <div className="flex min-w-0 items-center gap-2 rounded-md border bg-secondary/50 py-1.5 pr-1.5 pl-3">
                 <Link2 className="size-4 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 flex-1 truncate font-mono text-xs">{link}</span>
-                <Button type="button" size="sm" variant="ghost" onClick={copyLink}>
+                <span className="flex min-w-0 flex-1 font-mono text-xs" title={link}>
+                  <span className="truncate">{pairHost}</span>
+                  <span className="shrink-0">/pair/{pairing.code.replace("-", "")}</span>
+                </span>
+                <Button type="button" size="sm" variant="ghost" className="shrink-0" onClick={copyLink}>
                   <Copy />
-                  {copied ? "Copied" : "Copy"}
+                  {copied ? "Copied" : "Copy link"}
                 </Button>
               </div>
 
-              <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+              <p className="flex items-center justify-center gap-2 text-center text-sm text-muted-foreground" aria-live="polite">
                 <span className="relative flex size-2">
                   <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
                   <span className="relative inline-flex size-2 rounded-full bg-primary" />

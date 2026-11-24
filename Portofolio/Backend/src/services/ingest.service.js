@@ -1,7 +1,7 @@
 const { prisma } = require('../config/db');
 const AppError = require('../utils/AppError');
 const { sha256, safeEqual } = require('../utils/tokens');
-const { pointInPolygon, findZone } = require('../utils/geo');
+const { settledInside, settleZone, implausibleJump } = require('../utils/geo');
 const { OFFLINE_GAP_MINUTES } = require('../utils/day');
 const { fromTime } = require('../models/site.model');
 const presence = require('./presence.service');
@@ -11,6 +11,8 @@ const SECOND = 1000;
 const MAX_CLOCK_AHEAD_SECONDS = 120;
 const MAX_READING_AGE_HOURS = 24;
 const MIN_READING_INTERVAL_SECONDS = 3;
+// Rougher than this, a position cannot tell on site from off site. Matches the iOS app.
+const MAX_ACCURACY_M = 150;
 
 const unauthenticated = () => new AppError(401, 'DEVICE_UNAUTHENTICATED', 'Unknown device or wrong key');
 
@@ -50,17 +52,22 @@ function check(reading, now, newest) {
   if (at - now > MAX_CLOCK_AHEAD_SECONDS * SECOND) return 'clock_ahead';
   if (now - at > MAX_READING_AGE_HOURS * 3600 * SECOND) return 'too_old';
   if (newest && at <= newest) return 'duplicate';
+  if (reading.accuracy_m != null && reading.accuracy_m > MAX_ACCURACY_M) return 'inaccurate';
   return null;
 }
 
-async function currentZone(tx, employeeId, session, zones) {
-  if (!session) return null;
+// The zone the wearer is in and their last accepted position in this session.
+async function currentState(tx, employeeId, session, zones) {
+  if (!session) return { zone: null, previous: null };
   const state = await tx.employeeCurrentState.findUnique({
     where: { employeeId },
-    select: { sessionId: true, geofenceId: true },
+    select: { sessionId: true, geofenceId: true, latitude: true, longitude: true, recordedAt: true },
   });
-  if (!state || state.sessionId !== session.id || !state.geofenceId) return null;
-  return zones.find((z) => z.id === state.geofenceId) || null;
+  if (!state || state.sessionId !== session.id) return { zone: null, previous: null };
+  return {
+    zone: (state.geofenceId && zones.find((z) => z.id === state.geofenceId)) || null,
+    previous: { latitude: state.latitude, longitude: state.longitude, recorded_at: state.recordedAt },
+  };
 }
 
 async function apply(tx, d, readings, now) {
@@ -95,7 +102,7 @@ async function apply(tx, d, readings, now) {
     session = null;
   }
 
-  let zone = await currentZone(tx, employee.id, session, zones);
+  let { zone, previous } = await currentState(tx, employee.id, session, zones);
   let newest = d.lastRecordedAt;
   let latest = null;
   const rows = [];
@@ -112,7 +119,13 @@ async function apply(tx, d, readings, now) {
       continue;
     }
 
-    const onSite = pointInPolygon(r.longitude, r.latitude, site.boundary);
+    if (implausibleJump(previous, r)) {
+      result.rejected.push({ index: r.index, recorded_at: r.recorded_at.toISOString(), reason: 'implausible_jump' });
+      continue;
+    }
+
+    const accuracy = r.accuracy_m ?? null;
+    const onSite = settledInside(r.longitude, r.latitude, site.boundary, { accuracy, wasInside: Boolean(session) });
     const crossing = onSite !== Boolean(session);
     if (!crossing && newest && r.recorded_at - newest < MIN_READING_INTERVAL_SECONDS * SECOND) {
       result.throttled += 1;
@@ -137,7 +150,7 @@ async function apply(tx, d, readings, now) {
     }
 
     if (onSite) {
-      const next = zoned ? findZone(r.longitude, r.latitude, zones) : null;
+      const next = zoned ? settleZone(r.longitude, r.latitude, zones, zone, accuracy) : null;
       if (zoned && (next ? next.id : null) !== (zone ? zone.id : null)) {
         if (next) {
           await presence.resolveZoneAlert(tx, session.id, r.recorded_at);
@@ -153,6 +166,7 @@ async function apply(tx, d, readings, now) {
         sessionId: session.id,
         latitude: r.latitude,
         longitude: r.longitude,
+        accuracyM: accuracy,
         batteryPercent: r.battery_percent ?? null,
         heartRateBpm: r.heart_rate_bpm ?? null,
         recordedAt: r.recorded_at,
@@ -161,6 +175,7 @@ async function apply(tx, d, readings, now) {
       lastOnSite = r.recorded_at;
     }
     newest = r.recorded_at;
+    previous = r;
     latest = { ...r, onSite };
     result.accepted += 1;
   }
@@ -366,4 +381,5 @@ module.exports = {
   MAX_CLOCK_AHEAD_SECONDS,
   MAX_READING_AGE_HOURS,
   MIN_READING_INTERVAL_SECONDS,
+  MAX_ACCURACY_M,
 };

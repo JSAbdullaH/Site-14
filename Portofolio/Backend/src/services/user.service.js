@@ -112,4 +112,16 @@ async function deactivate(auth, id) {
   });
 }
 
-module.exports = { invite, list, resendInvitation, describeInvitation, acceptInvitation, deactivate };
+// The signed-in user's own account. Only the name can change: the email signs them in,
+// and the role is given by a company admin.
+async function me(auth) {
+  const user = await userModel.findById(auth.userId, auth.db);
+  if (!user) throw notFound();
+  return userModel.toPublic(user);
+}
+
+async function updateMe(auth, { full_name: fullName }) {
+  return userModel.toPublic(await userModel.updateName(auth.db, auth.userId, fullName));
+}
+
+module.exports = { invite, list, resendInvitation, describeInvitation, acceptInvitation, deactivate, me, updateMe };
