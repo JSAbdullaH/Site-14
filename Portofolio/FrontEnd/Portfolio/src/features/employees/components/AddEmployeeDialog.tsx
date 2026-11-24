@@ -16,7 +16,7 @@ import { useFormValidation } from "@/shared/lib/useFormValidation";
 import { listSites } from "@/features/sites/api";
 import { createEmployee } from "../api";
 
-type SiteOption = { id: string; name: string };
+type SiteOption = { id: string; name: string; display_id?: string };
 
 type Props = {
   open: boolean;
@@ -154,7 +154,7 @@ export default function AddEmployeeDialog({
               <option value="">Not assigned yet</option>
               {sites.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name}
+                  {s.display_id ? `${s.name} (${s.display_id})` : s.name}
                 </option>
               ))}
             </select>

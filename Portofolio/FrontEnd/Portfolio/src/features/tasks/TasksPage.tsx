@@ -144,7 +144,7 @@ export default function TasksPage() {
             {sites.length === 0 && <option value="">No active sites</option>}
             {sites.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {s.display_id ? `${s.name} (${s.display_id})` : s.name}
               </option>
             ))}
           </select>

@@ -17,7 +17,7 @@ import type { Employee } from "@/features/employees/types";
 import { createTask } from "../api";
 import { todayInRiyadh } from "../types";
 
-type SiteOption = { id: string; name: string };
+type SiteOption = { id: string; name: string; display_id?: string };
 
 type Props = {
   open: boolean;
@@ -152,7 +152,7 @@ export default function NewTaskDialog({
               <option value="">Choose a site</option>
               {sites.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name}
+                  {s.display_id ? `${s.name} (${s.display_id})` : s.name}
                 </option>
               ))}
             </select>

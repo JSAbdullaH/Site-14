@@ -181,7 +181,7 @@ export default function EmployeesTab() {
             </option>
             {sites.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {s.display_id ? `${s.name} (${s.display_id})` : s.name}
               </option>
             ))}
             <option value="none">Unassign from any site</option>

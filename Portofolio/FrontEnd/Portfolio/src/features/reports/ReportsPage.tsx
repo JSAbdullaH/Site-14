@@ -10,7 +10,7 @@ import { listSites } from "@/features/sites/api";
 import { generateReport, verifyReport } from "./api";
 import type { GeneratedReport, ReportType, ReportVerification } from "./types";
 
-type SiteOption = { id: string; name: string };
+type SiteOption = { id: string; name: string; display_id?: string };
 
 const REFERENCE = /SITE14-R-\d{8}-[0-9A-F]{8}/i;
 
@@ -77,7 +77,7 @@ export default function ReportsPage() {
   useEffect(() => {
     listSites(true)
       .then((res) => {
-        setSites(res.data.map((s) => ({ id: s.id, name: s.name })));
+        setSites(res.data.map((s) => ({ id: s.id, name: s.name, display_id: s.display_id })));
         if (res.data.length) setSiteId(res.data[0].id);
       })
       .catch((err) => setSitesError(err instanceof ApiError ? err.message : "Could not load sites."));
@@ -141,7 +141,7 @@ export default function ReportsPage() {
                   {sites.length === 0 && <option value="">No active sites</option>}
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name}
+                      {s.display_id ? `${s.name} (${s.display_id})` : s.name}
                     </option>
                   ))}
                 </select>

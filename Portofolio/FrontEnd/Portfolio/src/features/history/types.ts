@@ -36,6 +36,7 @@ export type RecordAlert = {
 
 export type RecordTask = {
   id: string;
+  display_id: string;
   title: string;
   status: "todo" | "in_progress" | "done";
   completed_at: string | null;

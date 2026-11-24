@@ -53,7 +53,7 @@ export default function MapPage() {
         >
           {sites.map((s) => (
             <option key={s.id} value={s.id}>
-              {s.name}
+              {s.display_id ? `${s.name} (${s.display_id})` : s.name}
             </option>
           ))}
         </select>

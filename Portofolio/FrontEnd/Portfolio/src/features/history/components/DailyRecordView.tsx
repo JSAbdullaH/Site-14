@@ -151,7 +151,10 @@ export default function DailyRecordView({ record, onCorrect }: Props) {
             <ul className="divide-y">
               {record.tasks.map((t) => (
                 <li key={t.id} className="flex items-center justify-between gap-4 py-2 text-sm first:pt-0 last:pb-0">
-                  <span className={t.status === "done" ? "" : "text-muted-foreground"}>{t.title}</span>
+                  <span className={t.status === "done" ? "" : "text-muted-foreground"}>
+                    <span className="mr-2 font-mono text-xs text-muted-foreground">{t.display_id}</span>
+                    {t.title}
+                  </span>
                   {t.status === "done" ? (
                     <StatusBadge tone="ok">Done {t.completed_at ? clock(t.completed_at) : ""}</StatusBadge>
                   ) : (

@@ -18,7 +18,7 @@ import { listSites } from "@/features/sites/api";
 import { updateEmployee } from "../api";
 import type { Employee, UpdateEmployeeInput } from "../types";
 
-type SiteOption = { id: string; name: string };
+type SiteOption = { id: string; name: string; display_id?: string };
 
 type Props = {
   // The tab mounts a fresh dialog per employee (key), so the fields start from it.
@@ -159,7 +159,7 @@ export default function EditEmployeeDialog({ employee, onClose, onSaved }: Props
               <option value="">Not assigned</option>
               {siteOptions.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name}
+                  {s.display_id ? `${s.name} (${s.display_id})` : s.name}
                 </option>
               ))}
             </select>

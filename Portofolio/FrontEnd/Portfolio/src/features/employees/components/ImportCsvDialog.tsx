@@ -94,7 +94,7 @@ export default function ImportCsvDialog({ open, onOpenChange, onImported }: Prop
   });
   const [editing, setEditing] = useState<WorkRow | null>(null);
   const [editError, setEditError] = useState("");
-  const [sites, setSites] = useState<{ id: string; name: string }[]>([]);
+  const [sites, setSites] = useState<{ id: string; name: string; display_id?: string }[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -445,7 +445,7 @@ export default function ImportCsvDialog({ open, onOpenChange, onImported }: Prop
                                   )}
                                   {sites.map((s) => (
                                     <option key={s.id} value={s.name}>
-                                      {s.name}
+                                      {s.display_id ? `${s.name} (${s.display_id})` : s.name}
                                     </option>
                                   ))}
                                 </select>

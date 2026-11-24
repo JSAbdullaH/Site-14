@@ -180,7 +180,9 @@ describe('API', () => {
     expect((await find(`/employees/${employee.id}`)).display_id).toBe('AI-E-100001');
 
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
-    expect((await find(`/employees/${employee.id}/daily-record?date=${today}`)).employee.display_id).toBe('AI-E-100001');
+    const record = await find(`/employees/${employee.id}/daily-record?date=${today}`);
+    expect(record.employee.display_id).toBe('AI-E-100001');
+    expect(record.tasks.map((t) => t.display_id)).toEqual(['AI-T-100001']);
     const live = await find(`/locations/live?site_id=${site.id}`);
     expect(live.data.map((w) => w.display_id)).toEqual(['AI-E-100001']);
   });

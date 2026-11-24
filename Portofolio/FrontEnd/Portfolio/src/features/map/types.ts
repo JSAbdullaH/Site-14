@@ -65,4 +65,4 @@ export const isPositioned = (w: LiveWorker): w is PositionedWorker =>
 export const isOnMap = (w: LiveWorker): w is PositionedWorker =>
   isPositioned(w) && w.status !== "offline" && Boolean(w.device?.online);
 
-export type SiteOption = { id: string; name: string };
+export type SiteOption = { id: string; name: string; display_id?: string };

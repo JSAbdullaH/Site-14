@@ -131,7 +131,7 @@ async function dailyRecord(auth, employeeId, date) {
     auth.db.task.findMany({
       where: { employeeId, scheduledFor: new Date(`${date}T00:00:00Z`) },
       orderBy: [{ createdAt: 'asc' }, { title: 'asc' }],
-      select: { id: true, title: true, status: true, completedAt: true },
+      select: { id: true, displayNumber: true, title: true, status: true, completedAt: true },
     }),
   ]);
 
@@ -160,6 +160,7 @@ async function dailyRecord(auth, employeeId, date) {
     alerts: sessions.flatMap((s) => s.alerts).map(alertToPublic),
     tasks: tasks.map((t) => ({
       id: t.id,
+      display_id: displayId.format(employee.company.key, 'task', t.displayNumber),
       title: t.title,
       status: t.status,
       completed_at: t.completedAt ? t.completedAt.toISOString() : null,
