@@ -130,7 +130,7 @@ export default function MarketplacePage() {
             ) : shown.length === 0 ? (
               <EmptyState title="No devices available" description="New devices are added regularly. Check back soon." />
             ) : (
-              <div className="grid content-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid content-start gap-8 p-2 sm:grid-cols-2 xl:grid-cols-3">
                 {shown.map((p) => (
                   <ProductCard
                     key={p.id}
