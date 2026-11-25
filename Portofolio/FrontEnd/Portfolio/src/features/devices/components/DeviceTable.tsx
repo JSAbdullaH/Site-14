@@ -168,8 +168,8 @@ export default function DeviceTable({
                         >
                           {d.is_active ? "Deactivate" : "Reactivate"}
                         </DropdownMenuItem>
-                        {/* Purchased devices and devices with recorded shifts stay for the records. */}
-                        {d.source !== "marketplace" && !d.has_history && (
+                        {/* Purchased devices stay in the inventory. */}
+                        {d.source !== "marketplace" && (
                           <DropdownMenuItem variant="destructive" onClick={() => onRemove(d)}>
                             Remove device
                           </DropdownMenuItem>

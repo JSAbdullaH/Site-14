@@ -176,11 +176,20 @@ describe('PATCH /devices/:id (assign to an employee)', () => {
     await as(b).rotate(deviceId).expect(404);
   });
 
-  test('the wearer cannot change mid-shift', async () => {
-    await openSession(a);
+  test('changing the wearer mid-shift needs confirming, and then ends the shift', async () => {
+    const session = await openSession(a);
+    const listed = (await as(a).list().expect(200)).body.data.find((d) => d.id === a.deviceId);
+    expect(listed.on_shift).toBe(true);
+
     const res = await as(a).update(a.deviceId, { employee_id: null }).expect(409);
     expect(res.body.error.code).toBe('ON_SHIFT');
     await as(a).update(a.deviceId, { is_active: false }).expect(409);
+    await as(a).update(a.deviceId, { end_shift: true }).expect(422);
+    await as(a).update(a.deviceId, { name: 'Renamed' }).expect(200);
+
+    const done = await as(a).update(a.deviceId, { employee_id: null, end_shift: true }).expect(200);
+    expect(done.body).toMatchObject({ employee: null, on_shift: false });
+    expect((await q('SELECT ended_at FROM work_sessions WHERE id = $1', [session])).ended_at).not.toBeNull();
   });
 
   test('deactivating takes the device off its wearer; it must be reactivated before reuse', async () => {
@@ -197,6 +206,49 @@ describe('PATCH /devices/:id (assign to an employee)', () => {
   test('an employee who is deactivated gives the device back', async () => {
     await request(app).delete(api(`/employees/${a.employeeId}`)).set(bearer(a)).expect(204);
     expect((await q('SELECT employee_id FROM devices WHERE id = $1', [a.deviceId])).employee_id).toBeNull();
+  });
+});
+
+describe('DELETE /devices/:id', () => {
+  const remove = (c, id, query = '') => request(app).delete(api(`/devices/${id}${query}`)).set(bearer(c));
+
+  test('a device with recorded shifts is deleted, its shifts stay with the employee', async () => {
+    const session = await openSession(a, new Date(Date.now() - 3 * 3600_000));
+    await pool.query("UPDATE work_sessions SET ended_at = now() - interval '1 hour' WHERE id = $1", [session]);
+    await remove(a, a.deviceId).expect(204);
+    expect(await q('SELECT id FROM devices WHERE id = $1', [a.deviceId])).toBeUndefined();
+    expect(await q('SELECT employee_id, device_id FROM work_sessions WHERE id = $1', [session])).toEqual({
+      employee_id: a.employeeId,
+      device_id: null,
+    });
+  });
+
+  test('removing a device mid-shift needs confirming, and then ends the shift', async () => {
+    const session = await openSession(a);
+    expect((await remove(a, a.deviceId).expect(409)).body.error.code).toBe('ON_SHIFT');
+    await remove(a, a.deviceId, '?end_shift=true').expect(204);
+    expect((await q('SELECT ended_at, device_id FROM work_sessions WHERE id = $1', [session]))).toMatchObject({
+      ended_at: expect.any(Date),
+      device_id: null,
+    });
+  });
+
+  test("cannot remove another company's device", async () => {
+    await remove(b, a.deviceId).expect(404);
+  });
+});
+
+describe('DELETE /ingest/device (the device disconnects itself)', () => {
+  test('deletes the device, ends the shift, and the old key stops working', async () => {
+    await pool.query('UPDATE devices SET api_key_hash = $2 WHERE id = $1', [a.deviceId, sha256('key-a')]);
+    const session = await openSession(a);
+    const self = (path, method = 'delete') =>
+      request(app)[method](api(path)).set('X-Device-Serial', 'GPS-A').set('X-Device-Key', 'key-a');
+
+    await self('/ingest/device').expect(204);
+    expect(await q('SELECT id FROM devices WHERE id = $1', [a.deviceId])).toBeUndefined();
+    expect((await q('SELECT ended_at FROM work_sessions WHERE id = $1', [session])).ended_at).not.toBeNull();
+    await self('/ingest/heartbeat', 'post').send({}).expect(401);
   });
 });
 

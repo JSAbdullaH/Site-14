@@ -1,4 +1,5 @@
 import { platformFetch } from "@/shared/lib/platformApi";
+import { apiFetch } from "@/shared/lib/api";
 import type { DeviceType } from "@/shared/lib/deviceTypes";
 import type { PlatformAdmin } from "@/shared/lib/platformAuth";
 import type {
@@ -9,6 +10,8 @@ import type {
   OrderStatus,
   Overview,
   Paged,
+  PlatformSite,
+  PlatformUser,
   ProductInput,
   ShippedKey,
 } from "./types";
@@ -25,6 +28,27 @@ export const platformLogin = (email: string, password: string) =>
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
+
+type PlatformSession = { access_token: string; expires_in: number; admin: PlatformAdmin };
+
+// SITE14 staff: the company session they are signed in with opens the owner portal.
+export const portalFromSession = () => apiFetch<PlatformSession>("/platform/auth/session", { method: "POST" });
+
+export const listPlatformUsers = (p: { search?: string; company_id?: string; platform_admin?: boolean; page?: number }) =>
+  platformFetch<Paged<PlatformUser>>(
+    `/users${qs({ ...p, platform_admin: p.platform_admin === undefined ? undefined : String(p.platform_admin), limit: 50 })}`,
+  );
+
+export const updatePlatformUser = (
+  id: string,
+  body: { role?: "company_admin" | "site_manager"; is_active?: boolean; is_platform_admin?: boolean },
+) => platformFetch<PlatformUser>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+
+export const listPlatformSites = (p: { search?: string; company_id?: string; status?: "active" | "inactive" | "all"; page?: number }) =>
+  platformFetch<Paged<PlatformSite>>(`/sites${qs({ ...p, limit: 50 })}`);
+
+export const updatePlatformSite = (id: string, body: { is_active: boolean }) =>
+  platformFetch<PlatformSite>(`/sites/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 
 export const getOverview = () => platformFetch<Overview>("/overview");
 

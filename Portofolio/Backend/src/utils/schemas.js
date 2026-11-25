@@ -246,9 +246,11 @@ const updateDeviceSchema = z
     is_active: z.boolean().optional(),
     name: deviceName.nullable().optional(),
     device_type: deviceType.optional(),
+    // The admin confirmed ending the wearer's shift (needed while they are at work).
+    end_shift: z.boolean().optional(),
   })
   .strict()
-  .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
+  .refine((o) => Object.keys(o).some((k) => k !== 'end_shift'), 'Send at least one field to change');
 
 const listDevicesQuery = z.object({
   search: z.string().trim().min(1).max(64).optional(),
@@ -484,6 +486,27 @@ const platformDevicesQuery = platformListQuery.extend({
   company_id: z.string().uuid('Invalid company').optional(),
 });
 
+const platformUsersQuery = platformListQuery.extend({
+  company_id: z.string().uuid('Invalid company').optional(),
+  platform_admin: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
+});
+
+const platformSitesQuery = platformListQuery.extend({
+  company_id: z.string().uuid('Invalid company').optional(),
+  status: z.enum(['active', 'inactive', 'all']).default('all'),
+});
+
+const platformUpdateUserSchema = z
+  .object({
+    role: z.enum(['company_admin', 'site_manager']).optional(),
+    is_active: z.boolean().optional(),
+    is_platform_admin: z.boolean().optional(),
+  })
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, 'Send at least one field to change');
+
+const platformUpdateSiteSchema = z.object({ is_active: z.boolean() }).strict();
+
 const EVENT_TYPES = ['site_enter', 'site_exit', 'zone_enter', 'zone_exit', 'device_offline', 'device_online'];
 
 const listAlertsQuery = z.object({
@@ -521,6 +544,10 @@ module.exports = {
   platformLoginSchema,
   platformListQuery,
   platformDevicesQuery,
+  platformUsersQuery,
+  platformSitesQuery,
+  platformUpdateUserSchema,
+  platformUpdateSiteSchema,
   MAX_ORDER_QUANTITY,
   generateReportQuery,
   referenceParams,

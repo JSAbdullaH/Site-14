@@ -16,6 +16,7 @@ import {
   Store,
   Users,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -193,6 +194,16 @@ export default function AppShell({ title, subtitle, children }: Props) {
         </nav>
 
         <div className="mt-auto pt-6">
+          {user?.is_platform_admin && (
+            <Link
+              to="/admin/signin?session=1"
+              title={collapsed ? "Owner portal" : undefined}
+              className={`mb-1 flex h-10 items-center gap-3 rounded-md px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground ${centerOnRail}`}
+            >
+              <ShieldCheck className="size-[18px] shrink-0" />
+              <span className={hideOnRail}>Owner portal</span>
+            </Link>
+          )}
           <Link
             to="/account"
             title={collapsed ? (user?.full_name ?? "Account") : undefined}

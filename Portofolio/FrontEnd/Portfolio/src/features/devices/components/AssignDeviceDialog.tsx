@@ -37,6 +37,8 @@ export default function AssignDeviceDialog({ device, onClose, onAssigned }: Prop
 
   const free = (employees ?? []).filter((e) => !e.device || e.device.id === device?.id);
   const chosen = free.find((e) => e.id === employeeId);
+  // Moving the device off a wearer who is at work ends their shift.
+  const endsShift = Boolean(device?.on_shift && device.employee && employeeId && employeeId !== device.employee.id);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -44,7 +46,7 @@ export default function AssignDeviceDialog({ device, onClose, onAssigned }: Prop
     setBusy(true);
     setError("");
     try {
-      await updateDevice(device.id, { employee_id: employeeId });
+      await updateDevice(device.id, { employee_id: employeeId, ...(endsShift && { end_shift: true }) });
       onClose();
       onAssigned();
     } catch (err) {
@@ -110,12 +112,19 @@ export default function AssignDeviceDialog({ device, onClose, onAssigned }: Prop
             </p>
           )}
 
+          {endsShift && device?.employee && (
+            <p role="alert" className="mb-4 rounded-md bg-danger-bg px-4 py-3 text-sm font-medium text-danger">
+              {device.employee.full_name} is at work right now. Giving the device to someone else ends their shift now,
+              at the last position it sent.
+            </p>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!employeeId || busy}>
-              {busy ? "Assigning..." : "Assign device"}
+            <Button type="submit" variant={endsShift ? "destructive" : "default"} disabled={!employeeId || busy}>
+              {busy ? "Assigning..." : endsShift ? "End shift and assign" : "Assign device"}
             </Button>
           </DialogFooter>
         </form>

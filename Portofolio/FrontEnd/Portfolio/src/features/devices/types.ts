@@ -27,8 +27,10 @@ export type Device = {
   last_recorded_at: string | null;
   clock_offset_seconds: number | null;
   created_at: string;
-  /** Has recorded shifts: kept for the records, so it can be deactivated but not removed. */
+  /** Has recorded shifts. Removing it keeps them with the employee. */
   has_history?: boolean;
+  /** The wearer is at work: taking it back, deactivating or removing it ends their shift. */
+  on_shift?: boolean;
 };
 
 export type DeviceWithKey = Device & { api_key: string };

@@ -12,6 +12,7 @@ const AUTH_FIELDS = {
   isActive: true,
   lockedUntil: true,
   createdAt: true,
+  isPlatformAdmin: true,
 };
 
 async function create(tx, { companyId, fullName, email, passwordHash, role, isActive = true }) {
@@ -88,6 +89,8 @@ function toPublic(user) {
     is_active: user.isActive,
     is_email_verified: user.isEmailVerified,
     invitation_pending: isPendingInvitation(user),
+    // Can open the SITE14 owner portal with this account.
+    is_platform_admin: Boolean(user.isPlatformAdmin),
     created_at: user.createdAt.toISOString(),
   };
 }

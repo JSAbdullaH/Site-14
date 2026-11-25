@@ -1,6 +1,7 @@
 
 const { prisma, Prisma } = require('../config/db');
 const AppError = require('../utils/AppError');
+const { closeOpenShift } = require('./presence.service');
 
 const notFound = () => new AppError(404, 'NOT_FOUND', 'Employee not found');
 const invalid = (field, message) => new AppError(422, 'VALIDATION_ERROR', 'One or more fields are invalid', { [field]: message });
@@ -15,6 +16,7 @@ const LIST_FIELDS = {
   createdAt: true,
   site: { select: { id: true, name: true } },
   device: { select: { id: true, serialNumber: true } },
+  workSessions: { where: { endedAt: null }, select: { id: true }, take: 1 },
 };
 
 const PROFILE_FIELDS = {
@@ -44,6 +46,8 @@ function toPublic(e) {
     site_id: e.site ? e.site.id : null,
     site_name: e.site ? e.site.name : null,
     device: e.device ? { id: e.device.id, serial_number: e.device.serialNumber } : null,
+    // At work right now: removing them ends this shift, so the dashboard asks first.
+    on_shift: Boolean(e.workSessions && e.workSessions.length),
     created_at: e.createdAt.toISOString(),
   };
 }
@@ -238,23 +242,7 @@ async function deactivateMany(auth, ids) {
 }
 
 async function closeAndDeactivate(tx, id) {
-  const open = await tx.workSession.findFirst({
-    where: { employeeId: id, endedAt: null },
-    select: { id: true, startedAt: true },
-  });
-  if (open) {
-    const last = await tx.telemetryLog.findFirst({
-      where: { sessionId: open.id },
-      orderBy: { recordedAt: 'desc' },
-      select: { recordedAt: true },
-    });
-    const endedAt = last ? last.recordedAt : open.startedAt;
-    await tx.workSession.update({ where: { id: open.id }, data: { endedAt } });
-    await tx.alert.updateMany({
-      where: { sessionId: open.id, alertType: 'zone_exit', resolvedAt: null },
-      data: { resolvedAt: endedAt },
-    });
-  }
+  await closeOpenShift(tx, id);
   await tx.device.updateMany({ where: { employeeId: id }, data: { employeeId: null } });
   await tx.employee.update({ where: { id }, data: { status: 'inactive' } });
 }

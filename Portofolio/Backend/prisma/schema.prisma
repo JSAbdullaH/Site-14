@@ -176,6 +176,8 @@ model User {
   lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   notificationsReadAt DateTime? @map("notifications_read_at") @db.Timestamptz(6)
+  // SITE14 staff: signs in to the owner portal (/admin) with this same account.
+  isPlatformAdmin     Boolean   @default(false) @map("is_platform_admin")
 
   company            Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
   authTokens         AuthToken[]
@@ -460,8 +462,8 @@ model WorkSession {
   companyId  String    @map("company_id") @db.Uuid
   employeeId String    @map("employee_id") @db.Uuid
   siteId     String    @map("site_id") @db.Uuid
-  // The device worn, as a snapshot.
-  deviceId   String    @map("device_id") @db.Uuid
+  // The device worn, as a snapshot. NULL once that device is deleted: the hours stay with the employee.
+  deviceId   String?   @map("device_id") @db.Uuid
   // Device clock
   startedAt  DateTime  @map("started_at") @db.Timestamptz(6)
   // NULL = still on site. At most one open session per employee (partial unique index).
@@ -470,7 +472,8 @@ model WorkSession {
   company       Company                @relation(fields: [companyId], references: [id], onDelete: Restrict)
   employee      Employee               @relation(fields: [companyId, employeeId], references: [companyId, id], onDelete: Restrict)
   site          Site                   @relation(fields: [companyId, siteId], references: [companyId, id], onDelete: Restrict)
-  device        Device                 @relation(fields: [companyId, deviceId], references: [companyId, id], onDelete: Restrict)
+  // Restrict, not SetNull: SetNull would clear company_id too. device.service clears device_id before a delete.
+  device        Device?                @relation(fields: [companyId, deviceId], references: [companyId, id], onDelete: Restrict)
   telemetryLogs TelemetryLog[]
   alerts        Alert[]
   currentStates EmployeeCurrentState[]

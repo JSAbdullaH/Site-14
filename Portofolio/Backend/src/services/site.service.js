@@ -82,4 +82,4 @@ async function deactivate(auth, id) {
   });
 }
 
-module.exports = { create, list, get, update, deactivate };
+module.exports = { create, list, get, update, deactivate, assertCanDeactivate };

@@ -54,9 +54,15 @@ export default function EmployeeDeviceDialog({ employee, onClose, onChanged }: P
       });
   }, []);
 
+  const working = Boolean(employee.on_shift && current);
+  const shiftNote = working
+    ? `\n\n${employee.full_name} is at work right now. Their shift ends now, at the last position the device sent.`
+    : "";
+
   // One device per worker: the current one is taken back before the new one is given.
+  // Only reached after the admin confirmed, so a shift in progress may end.
   async function giveBack() {
-    if (current) await assignDevice(current.id, null);
+    if (current) await assignDevice(current.id, null, true);
   }
 
   async function submit(e: FormEvent) {
@@ -73,6 +79,8 @@ export default function EmployeeDeviceDialog({ employee, onClose, onChanged }: P
       }
       cleanSerial = parsed.data;
     }
+
+    if (working && !window.confirm(`Give ${employee.full_name} a different device?${shiftNote}`)) return;
 
     setBusy(true);
     try {
@@ -102,7 +110,7 @@ export default function EmployeeDeviceDialog({ employee, onClose, onChanged }: P
   }
 
   async function takeBack() {
-    if (!current || !window.confirm(`Take ${current.serial_number} back from ${employee.full_name}?`)) return;
+    if (!current || !window.confirm(`Take ${current.serial_number} back from ${employee.full_name}?${shiftNote}`)) return;
     setBusy(true);
     setError("");
     try {

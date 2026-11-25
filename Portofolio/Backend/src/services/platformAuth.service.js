@@ -51,13 +51,49 @@ async function login({ email, password }) {
     select: FIELDS,
   });
   const { token, expiresIn } = signPlatformToken(admin.id);
-  return { access_token: token, expires_in: expiresIn, admin: toPublic(updated) };
+  return { access_token: token, expires_in: expiresIn, admin: { ...toPublic(updated), kind: 'admin', company: null } };
 }
 
-async function me(adminId) {
-  const admin = await prisma.platformAdmin.findUnique({ where: { id: adminId }, select: FIELDS });
+const USER_FIELDS = {
+  id: true,
+  fullName: true,
+  email: true,
+  isActive: true,
+  isPlatformAdmin: true,
+  createdAt: true,
+  company: { select: { id: true, name: true } },
+};
+
+const userToPublic = (u) => ({
+  id: u.id,
+  full_name: u.fullName,
+  email: u.email,
+  kind: 'user',
+  company: u.company,
+  last_login_at: null,
+  created_at: u.createdAt.toISOString(),
+});
+
+// A company user marked as SITE14 staff opens the owner portal with the session they
+// already have: no second password.
+async function fromSession(userId) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: USER_FIELDS });
+  if (!user || !user.isActive || !user.isPlatformAdmin) {
+    throw new AppError(403, 'NOT_PLATFORM_ADMIN', 'This account does not have access to the SITE14 owner portal');
+  }
+  const { token, expiresIn } = signPlatformToken(user.id, 'user');
+  return { access_token: token, expires_in: expiresIn, admin: userToPublic(user) };
+}
+
+async function me(platform) {
+  if (platform.kind === 'user') {
+    const user = await prisma.user.findUnique({ where: { id: platform.userId }, select: USER_FIELDS });
+    if (!user) throw new AppError(404, 'NOT_FOUND', 'Admin not found');
+    return userToPublic(user);
+  }
+  const admin = await prisma.platformAdmin.findUnique({ where: { id: platform.adminId }, select: FIELDS });
   if (!admin) throw new AppError(404, 'NOT_FOUND', 'Admin not found');
-  return toPublic(admin);
+  return { ...toPublic(admin), kind: 'admin', company: null };
 }
 
 async function upsertAdmin({ email, fullName, password }) {
@@ -71,4 +107,4 @@ async function upsertAdmin({ email, fullName, password }) {
   return toPublic(admin);
 }
 
-module.exports = { login, me, upsertAdmin };
+module.exports = { login, fromSession, me, upsertAdmin };

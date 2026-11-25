@@ -22,6 +22,8 @@ export type SessionUser = {
   full_name: string;
   email: string;
   role: Role;
+  /** SITE14 staff: can open the owner portal with this account. */
+  is_platform_admin?: boolean;
 };
 
 export function saveToken(token: string) {

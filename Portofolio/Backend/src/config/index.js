@@ -37,6 +37,12 @@ const schema = z.object({
   LOGIN_OTP_TTL_MINUTES: z.coerce.number().int().positive().default(5),
   LOGIN_OTP_RESEND_SECONDS: z.coerce.number().int().positive().default(60),
   OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  // Test accounts (comma separated) that register and sign in with the password alone,
+  // no emailed code: for app review and demos. Keep it empty on a real deployment.
+  OTP_EXEMPT_EMAILS: z
+    .string()
+    .default('')
+    .transform((v) => v.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)),
   EMAIL_VERIFY_TTL_MINUTES: z.coerce.number().int().positive().default(5),
   EMAIL_VERIFY_RESEND_SECONDS: z.coerce.number().int().positive().default(60),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(60),

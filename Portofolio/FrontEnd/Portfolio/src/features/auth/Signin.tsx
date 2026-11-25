@@ -126,7 +126,12 @@ export default function Signin() {
   // ---------- Step 2a: existing account ----------
   async function requestLoginCode() {
     try {
-      await post("/auth/login", { email, password });
+      const res = await post<Partial<Session>>("/auth/login", { email, password });
+      // Test accounts are signed in with the password alone.
+      if (res.access_token && res.user) {
+        finish({ access_token: res.access_token, user: res.user }, from);
+        return;
+      }
       goTo("login-code");
     } catch (err) {
       // Registered but never confirmed: send a fresh confirmation code instead.

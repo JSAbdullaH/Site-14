@@ -9,6 +9,14 @@ struct StoredDevice: Codable, Equatable {
     var companyName: String
     var name: String
     var apiBaseURL: URL
+
+    // JSON.encoder writes apiBaseURL as "api_base_url", and JSON.decoder reads that back as "apiBaseUrl",
+    // not "apiBaseURL". Without this key the saved device never loads again: the app forgot its company
+    // on every launch and the watch dropped the credentials the iPhone sent it.
+    private enum CodingKeys: String, CodingKey {
+        case serialNumber, apiKey, companyName, name
+        case apiBaseURL = "apiBaseUrl"
+    }
 }
 
 struct PersonName: Codable, Equatable {

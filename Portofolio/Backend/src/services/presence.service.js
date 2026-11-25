@@ -34,6 +34,33 @@ async function resolveZoneAlert(tx, sessionId, at) {
   });
 }
 
+// Ends the employee's open shift at the last position their device sent (or when it
+// started, if it sent none), so it stops counting hours. The live map then shows them
+// off the site. Returns the end time, or null when no shift was open.
+async function closeOpenShift(tx, employeeId) {
+  const open = await tx.workSession.findFirst({
+    where: { employeeId, endedAt: null },
+    select: { id: true, startedAt: true },
+  });
+  if (!open) return null;
+  const last = await tx.telemetryLog.findFirst({
+    where: { sessionId: open.id },
+    orderBy: { recordedAt: 'desc' },
+    select: { recordedAt: true },
+  });
+  const endedAt = last ? last.recordedAt : open.startedAt;
+  await tx.workSession.update({ where: { id: open.id }, data: { endedAt } });
+  await tx.alert.updateMany({
+    where: { sessionId: open.id, alertType: 'zone_exit', resolvedAt: null },
+    data: { resolvedAt: endedAt },
+  });
+  await tx.employeeCurrentState.updateMany({
+    where: { employeeId, sessionId: open.id },
+    data: { sessionId: null, geofenceId: null },
+  });
+  return endedAt;
+}
+
 async function backOnline(tx, deviceId, now) {
   const { count } = await tx.device.updateMany({
     where: { id: deviceId, offlineNotifiedAt: { not: null } },
@@ -115,6 +142,9 @@ async function sweepOffline(now = new Date()) {
           occurredAt: d.lastSeenAt,
         },
       });
+      // Offline means disconnected: the shift ends at the last reading. If the device
+      // comes back on site, its next readings (and any it buffered) open a new shift.
+      await closeOpenShift(tx, d.employee.id);
       return true;
     });
     if (created) flagged += 1;
@@ -215,6 +245,7 @@ async function markRead(auth) {
 
 module.exports = {
   offlineAfterMs,
+  closeOpenShift,
   openZoneAlert,
   resolveZoneAlert,
   backOnline,

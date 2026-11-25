@@ -71,6 +71,11 @@ struct APIClient {
         try await send("POST", "/ingest/readings", body: ReadingsBatch(sentAt: Date(), readings: readings), device: device)
     }
 
+    /// The device disconnects itself: the server deletes it and ends any shift. Answers 204, no body.
+    func disconnect(_ device: StoredDevice) async throws {
+        let _: NoContent = try await send("DELETE", "/ingest/device", device: device)
+    }
+
     func site(_ device: StoredDevice) async throws -> SiteResponse {
         try await send("GET", "/ingest/site", device: device)
     }
@@ -103,6 +108,7 @@ struct APIClient {
             let body = (try? JSON.decoder.decode(ErrorEnvelope.self, from: data))?.error
             throw APIError(status: status, code: body?.code, message: body?.message ?? "Something went wrong (\(status)). Try again.")
         }
+        if data.isEmpty, let none = NoContent() as? T { return none }
         do {
             return try JSON.decoder.decode(T.self, from: data)
         } catch {
@@ -110,3 +116,6 @@ struct APIClient {
         }
     }
 }
+
+/// The answer to a call that returns 204 No Content.
+struct NoContent: Decodable {}

@@ -1,12 +1,33 @@
 const platformAuth = require('../services/platformAuth.service');
 const platformService = require('../services/platform.service');
+const platformManage = require('../services/platformManage.service');
 
 async function login(req, res) {
   res.json(await platformAuth.login(req.body));
 }
 
+async function fromSession(req, res) {
+  res.json(await platformAuth.fromSession(req.auth.userId));
+}
+
 async function me(req, res) {
-  res.json(await platformAuth.me(req.platform.adminId));
+  res.json(await platformAuth.me(req.platform));
+}
+
+async function users(req, res) {
+  res.json(await platformManage.users(req.validQuery));
+}
+
+async function updateUser(req, res) {
+  res.json(await platformManage.updateUser(req.platform, req.params.id, req.body));
+}
+
+async function sites(req, res) {
+  res.json(await platformManage.sites(req.validQuery));
+}
+
+async function updateSite(req, res) {
+  res.json(await platformManage.updateSite(req.params.id, req.body));
 }
 
 async function overview(_req, res) {
@@ -55,7 +76,12 @@ async function cancelOrder(req, res) {
 
 module.exports = {
   login,
+  fromSession,
   me,
+  users,
+  updateUser,
+  sites,
+  updateSite,
   overview,
   companies,
   devices,

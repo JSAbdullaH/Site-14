@@ -31,10 +31,18 @@ export const registerDevices = (serials: string[], deviceType: DeviceType) =>
 
 export const updateDevice = (
   id: string,
-  body: { employee_id?: string | null; is_active?: boolean; name?: string | null; device_type?: DeviceType },
+  body: {
+    employee_id?: string | null;
+    is_active?: boolean;
+    name?: string | null;
+    device_type?: DeviceType;
+    /** Confirmed: ending the wearer's shift is fine. Needed while they are at work. */
+    end_shift?: boolean;
+  },
 ) => apiFetch<Device>(`/devices/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 
-export const removeDevice = (id: string) => apiFetch<void>(`/devices/${id}`, { method: "DELETE" });
+export const removeDevice = (id: string, endShift = false) =>
+  apiFetch<void>(`/devices/${id}${endShift ? "?end_shift=true" : ""}`, { method: "DELETE" });
 
 export const rotateDeviceKey = (id: string) =>
   apiFetch<DeviceWithKey>(`/devices/${id}/key`, { method: "POST" });

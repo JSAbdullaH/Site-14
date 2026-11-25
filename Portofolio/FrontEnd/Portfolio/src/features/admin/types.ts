@@ -124,3 +124,30 @@ export const ORDER_STATUS = {
   delivered: { tone: "ok", label: "Delivered" },
   cancelled: { tone: "neutral", label: "Cancelled" },
 } as const;
+
+export type PlatformUser = {
+  id: string;
+  full_name: string;
+  email: string;
+  role: "company_admin" | "site_manager";
+  company: { id: string; name: string };
+  is_active: boolean;
+  is_email_verified: boolean;
+  is_platform_admin: boolean;
+  invitation_pending: boolean;
+  created_at: string;
+};
+
+export type PlatformSite = {
+  id: string;
+  name: string;
+  client: string | null;
+  company: { id: string; name: string };
+  shift_start: string;
+  shift_end: string;
+  is_active: boolean;
+  employee_count: number;
+  on_site_count: number;
+  zone_count: number;
+  created_at: string;
+};

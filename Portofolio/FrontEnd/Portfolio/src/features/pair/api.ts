@@ -29,6 +29,10 @@ export const claimPairing = (code: string, body: ClaimInput) =>
 export const sendHeartbeat = (d: StoredDevice, battery: number | null) =>
   request<Heartbeat>("/ingest/heartbeat", { method: "POST", headers: deviceHeaders(d), body: JSON.stringify({ battery_percent: battery }) });
 
+// The device disconnects itself: the server deletes it and ends any shift.
+export const disconnectDevice = (d: StoredDevice) =>
+  request<void>("/ingest/device", { method: "DELETE", headers: deviceHeaders(d) });
+
 export const sendReadings = (d: StoredDevice, readings: Reading[]) =>
   request<IngestResult>("/ingest/readings", {
     method: "POST",

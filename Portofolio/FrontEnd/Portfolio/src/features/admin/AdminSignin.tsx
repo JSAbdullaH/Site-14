@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FormField from "@/shared/components/FormField";
 import { ApiError } from "@/shared/lib/api";
+import { getToken, getUser } from "@/shared/lib/auth";
 import { savePlatformSession } from "@/shared/lib/platformAuth";
-import { platformLogin } from "./api";
+import { platformLogin, portalFromSession } from "./api";
 
 export default function AdminSignin() {
   const navigate = useNavigate();
@@ -16,6 +17,31 @@ export default function AdminSignin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [params] = useSearchParams();
+  // Signed in to the company app already: SITE14 staff continue with that account.
+  const companyUser = getToken() ? getUser() : null;
+  const tried = useRef(false);
+
+  const continueWithCompany = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await portalFromSession();
+      savePlatformSession(res.access_token, res.admin);
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not open the owner portal. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }, [from, navigate]);
+
+  // The company app's "Owner portal" link lands here with ?session=1.
+  useEffect(() => {
+    if (tried.current || params.get("session") !== "1" || !companyUser) return;
+    tried.current = true;
+    continueWithCompany();
+  }, [params, companyUser, continueWithCompany]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -43,12 +69,21 @@ export default function AdminSignin() {
           <ShieldCheck className="size-5" />
         </span>
         <h1 className="mt-4 text-xl font-semibold">Owner console</h1>
-        <p className="mt-1 mb-6 text-sm text-muted-foreground">For the SITE14 team only. Company accounts sign in at the main site.</p>
+        <p className="mt-1 mb-6 text-sm text-muted-foreground">For the SITE14 team only. Staff with a company account can continue with it.</p>
 
         {error && (
           <p role="alert" className="mb-5 rounded-md bg-danger-bg px-4 py-3 text-sm font-medium text-danger">
             {error}
           </p>
+        )}
+
+        {companyUser && (
+          <>
+            <Button type="button" variant="outline" className="h-10 w-full" disabled={busy} onClick={continueWithCompany}>
+              Continue as {companyUser.email}
+            </Button>
+            <p className="my-5 text-center text-xs text-muted-foreground">or sign in with an owner-console account</p>
+          </>
         )}
 
         <FormField id="admin_email" label="Email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />

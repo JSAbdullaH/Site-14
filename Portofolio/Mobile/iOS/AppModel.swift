@@ -1,3 +1,5 @@
+// xcode: set sdk=iOS
+
 import Foundation
 import SwiftUI
 
@@ -56,6 +58,11 @@ final class AppModel: ObservableObject {
     }
 
     func disconnect() {
+        // Tell the server first so it deletes the device. Best effort: offline, it still
+        // shows the wearer offline once it stops hearing from this iPhone.
+        if let device {
+            Task { try? await APIClient(baseURL: device.apiBaseURL).disconnect(device) }
+        }
         streamer.stop()
         streamer.use(nil)
         CredentialStore.clear()

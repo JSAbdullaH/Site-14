@@ -111,9 +111,9 @@ export default function WorkerPanel({ worker, onMap, now, onClose, onCenter }: P
           <div className="mt-3 flex gap-2.5 rounded-xl border border-warn/15 bg-warn-bg px-3 py-2.5 text-xs text-warn">
             <WifiOff className="mt-px size-4 shrink-0" />
             <p>
-              <span className="font-semibold">Removed from the map.</span> The device stopped sending
-              {device?.last_seen_at ? ` at ${clock(device.last_seen_at)}` : ""}. The worker comes back on the map as soon as it
-              reconnects.
+              <span className="font-semibold">Disconnected.</span> The device stopped sending
+              {device?.last_seen_at ? ` at ${clock(device.last_seen_at)}` : ""}, so any shift was ended there. A new shift
+              starts when it is back on the site.
             </p>
           </div>
         )}

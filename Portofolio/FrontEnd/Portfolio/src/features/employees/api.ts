@@ -48,10 +48,11 @@ export const registerDevice = (serialNumber: string) =>
     body: JSON.stringify({ serial_number: serialNumber }),
   });
 
-export const assignDevice = (deviceId: string, employeeId: string | null) =>
+// endShift: the admin confirmed ending the wearer's shift (needed while they are at work).
+export const assignDevice = (deviceId: string, employeeId: string | null, endShift = false) =>
   apiFetch<DeviceOption>(`/devices/${deviceId}`, {
     method: "PATCH",
-    body: JSON.stringify({ employee_id: employeeId }),
+    body: JSON.stringify({ employee_id: employeeId, ...(endShift && { end_shift: true }) }),
   });
 
 export const deactivateEmployee = (id: string) =>

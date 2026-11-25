@@ -7,6 +7,9 @@ export type PlatformAdmin = {
   email: string;
   last_login_at: string | null;
   created_at: string;
+  /** "user": a company account with owner-portal access. "admin": an owner-console account. */
+  kind?: "admin" | "user";
+  company?: { id: string; name: string } | null;
 };
 
 function read(key: string) {

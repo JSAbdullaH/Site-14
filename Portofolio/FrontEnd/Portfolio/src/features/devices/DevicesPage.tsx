@@ -90,12 +90,12 @@ export default function DevicesPage() {
   // Errors thrown here are shown inside the dialog, which stays open.
   const confirm = pending ? confirmation(pending, {
     unassign: async (d) => {
-      await updateDevice(d.id, { employee_id: null });
+      await updateDevice(d.id, { employee_id: null, end_shift: true });
       toast.success(`${displayName(d)} taken back`);
       await load();
     },
     deactivate: async (d) => {
-      await updateDevice(d.id, { is_active: false });
+      await updateDevice(d.id, { is_active: false, end_shift: true });
       toast.success(`${displayName(d)} deactivated`);
       await load();
     },
@@ -105,7 +105,7 @@ export default function DevicesPage() {
       await load();
     },
     remove: async (d) => {
-      await removeDevice(d.id);
+      await removeDevice(d.id, true);
       toast.success(`${displayName(d)} removed`);
       await load();
     },
@@ -277,29 +277,38 @@ export default function DevicesPage() {
 type Pending = { kind: "unassign" | "deactivate" | "newKey" | "remove"; device: Device };
 type Actions = Record<Pending["kind"], (d: Device) => Promise<void>>;
 
+// Shown first when the wearer is at work right now.
+function shiftWarning(d: Device) {
+  return d.on_shift && d.employee
+    ? [`${d.employee.full_name} is at work right now. Their shift ends now, at the last position the device sent.`]
+    : [];
+}
+
 function confirmation({ kind, device: d }: Pending, actions: Actions) {
   const name = displayName(d);
   const onConfirm = () => actions[kind](d);
+  const working = Boolean(d.on_shift && d.employee);
   switch (kind) {
     case "unassign":
       return {
-        title: `Take ${name} back?`,
+        title: working ? `${d.employee?.full_name} is at work. Take ${name} back?` : `Take ${name} back?`,
         description: `${d.employee?.full_name ?? "The wearer"} stops being tracked until they get a device again.`,
-        details: ["The device stays in your inventory, ready to give to someone else."],
-        confirmLabel: "Take back",
-        tone: "default" as const,
+        details: [...shiftWarning(d), "The device stays in your inventory, ready to give to someone else."],
+        confirmLabel: working ? "End shift and take back" : "Take back",
+        tone: working ? ("danger" as const) : ("default" as const),
         onConfirm,
       };
     case "deactivate":
       return {
-        title: `Deactivate ${name}?`,
+        title: working ? `${d.employee?.full_name} is at work. Deactivate ${name}?` : `Deactivate ${name}?`,
         description: "It stops being accepted at once.",
         details: [
+          ...shiftWarning(d),
           ...(d.employee ? [`It is taken back from ${d.employee.full_name}.`] : []),
           "Its recorded shifts stay in History and on reports.",
           "You can reactivate it later from the Deactivated list.",
         ],
-        confirmLabel: "Deactivate",
+        confirmLabel: working ? "End shift and deactivate" : "Deactivate",
         onConfirm,
       };
     case "newKey":
@@ -312,13 +321,16 @@ function confirmation({ kind, device: d }: Pending, actions: Actions) {
       };
     case "remove":
       return {
-        title: `Remove ${name}?`,
-        description: "It is deleted from your company. To use it again, it must be connected or registered again.",
+        title: working ? `${d.employee?.full_name} is at work. Remove ${name}?` : `Remove ${name}?`,
+        description: "It is deleted from your company and its key stops working. To use it again, it must be connected or registered again.",
         details: [
+          ...shiftWarning(d),
           ...(d.employee ? [`It is taken back from ${d.employee.full_name}.`] : []),
-          "It has no recorded shifts, so no history is lost.",
+          d.has_history
+            ? "The hours it recorded stay with the employee, in History and on reports."
+            : "It has no recorded shifts, so no history is lost.",
         ],
-        confirmLabel: "Remove device",
+        confirmLabel: working ? "End shift and remove" : "Remove device",
         onConfirm,
       };
   }
