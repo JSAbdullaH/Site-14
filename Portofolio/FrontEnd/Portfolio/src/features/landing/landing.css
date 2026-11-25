@@ -1,3 +1,6 @@
+@layer theme, base, components, utilities;
+
+@layer components {
 .landing { --l-bg: #FFFFFF; --l-alt: #F6F6F5; --l-alt2: #FAFAF9; --l-card: #FFFFFF; --l-fg: #1A1A1A; --l-muted: #6B6862; --l-body: #4A4843; --l-line: #E4E2DE; --l-line2: #EFEEEC; --l-stamp: #EFEEEC; }
 .dark .landing { --l-bg: #262624; --l-alt: #1F1E1D; --l-alt2: #232321; --l-card: #30302E; --l-fg: #ECEAE4; --l-muted: #A3A097; --l-body: #C9C6BE; --l-line: #45443F; --l-line2: #3A3936; --l-stamp: #30302E; }
 .dark .landing .dots { background-image: radial-gradient(#55534D 1px, transparent 1.3px); }
@@ -85,4 +88,5 @@
 @media (prefers-reduced-motion: reduce) {
   .landing .feature-visual, .landing .feature-text { transition: none; }
   .landing .feature-item.is-active .feature-visual::after { animation: none; display: none; }
+}
 }
