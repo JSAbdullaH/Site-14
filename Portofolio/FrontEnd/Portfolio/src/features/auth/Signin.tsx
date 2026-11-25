@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FormField from "@/shared/components/FormField";
 import { ApiError, apiFetch } from "@/shared/lib/api";
@@ -220,8 +221,16 @@ export default function Signin() {
   const isCodeStep = step === "login-code" || step === "verify";
 
   return (
-    <main className="grid min-h-screen bg-ink lg:grid-cols-2">
-      <div className="flex items-center justify-center bg-card px-6 py-12 md:px-16 lg:order-2 lg:my-3 lg:mr-3 lg:rounded-2xl">
+    <main className="grid min-h-screen bg-[#23211D] lg:grid-cols-2 dark:bg-[#161514]">
+      <div className="relative flex items-center justify-center bg-[#E8E6E1] px-6 py-12 dark:bg-[#23211D] md:px-16 lg:order-2 lg:my-3 lg:mr-3 lg:rounded-2xl">
+        <Link
+          to="/"
+          aria-label="Back to home"
+          title="Back to home"
+          className="absolute top-5 left-5 inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <ArrowLeft className="size-5" />
+        </Link>
         <div className="w-full max-w-md [&_[data-slot=button]]:h-12 [&_[data-slot=button]]:text-base [&_input]:h-12 [&_input]:px-4 [&_input]:text-base">
           {signedIn ? (
             <SignedInNotice onSignedOut={() => setSignedIn(false)} />

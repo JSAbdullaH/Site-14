@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { LogoMark } from "@/shared/components/Logo";
 import { Building2, Cpu, LayoutDashboard, LogOut, Package, ShoppingCart } from "lucide-react";
 import { clearPlatformSession, getPlatformAdmin } from "@/shared/lib/platformAuth";
 
@@ -27,7 +28,7 @@ export default function AdminShell({ title, subtitle, actions, children }: Props
     <div className="flex min-h-screen bg-background">
       <aside className="flex w-60 shrink-0 flex-col bg-ink px-3 py-6 text-white">
         <div className="mb-8 px-3">
-          <p className="text-lg font-semibold tracking-tight">SITE14</p>
+          <LogoMark size={30} label="SITE14" className="mb-2 text-white" />
           <p className="text-[11px] font-semibold tracking-[0.14em] text-white/50 uppercase">Owner console</p>
         </div>
         <nav className="flex flex-col gap-1">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Wordmark } from "@/shared/components/Wordmark";
 import type { ReactNode } from "react";
 import {
   Bell,
@@ -154,7 +155,14 @@ export default function AppShell({ title, subtitle, children }: Props) {
         } ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className={`mb-8 flex items-center justify-between gap-2 pl-4 ${centerOnRail}`}>
-          <span className={`text-lg font-semibold tracking-tight ${hideOnRail}`}>SITE14</span>
+          <Link
+            to="/"
+            aria-label="SITE14 home"
+            title="Back to home"
+            className={`shrink-0 rounded-sm text-foreground transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring ${hideOnRail}`}
+          >
+            <Wordmark height={26} label="SITE14" className="block" />
+          </Link>
           <button
             type="button"
             onClick={() => setCollapsed((v) => !v)}
