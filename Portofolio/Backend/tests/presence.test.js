@@ -94,25 +94,31 @@ describe('zone transitions', () => {
 });
 
 describe('offline devices', () => {
-  test('a device silent while on shift is flagged offline once, and back online when heard again', async () => {
-    await send(a, [reading(ago(1), IN_ZONE)]).expect(200);
+  test('a device silent while on shift is flagged offline once, its shift ends, and a new one opens when heard again', async () => {
+    const lastHeard = ago(1);
+    await send(a, [reading(lastHeard, IN_ZONE)]).expect(200);
     await pool.query("UPDATE devices SET last_seen_at = now() - interval '10 minutes' WHERE id = $1", [a.deviceId]);
 
     expect(await sweepOffline()).toBe(1);
     expect(await sweepOffline()).toBe(0);
-    expect((await live(a)).status).toBe('offline');
+    expect(await rows('SELECT ended_at FROM work_sessions WHERE employee_id = $1', [a.employeeId])).toEqual([{ ended_at: lastHeard }]);
+    expect(await live(a)).toMatchObject({ status: 'offline', latitude: null, longitude: null });
 
     await send(a, [reading(new Date(), IN_ZONE)]).expect(200);
     const types = (await events(a)).map((e) => e.event_type);
     expect(types.filter((t) => t === 'device_offline')).toHaveLength(1);
     expect(types).toContain('device_online');
     expect((await live(a)).status).toBe('in_zone');
+    expect(await rows('SELECT id FROM work_sessions WHERE employee_id = $1', [a.employeeId])).toHaveLength(2);
   });
 
-  test('a device that is off site is not flagged', async () => {
+  test('off site with a working phone is off_site and not drawn; silent is offline', async () => {
     await send(a, [reading(ago(30), IN_ZONE), reading(ago(20), OUTSIDE)]).expect(200);
+    expect(await live(a)).toMatchObject({ status: 'off_site', latitude: null, longitude: null, device: { online: true } });
+
     await pool.query("UPDATE devices SET last_seen_at = now() - interval '10 minutes' WHERE id = $1", [a.deviceId]);
     expect(await sweepOffline()).toBe(0);
+    expect((await live(a)).status).toBe('offline');
   });
 });
 

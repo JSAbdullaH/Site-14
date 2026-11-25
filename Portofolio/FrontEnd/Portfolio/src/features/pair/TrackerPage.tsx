@@ -19,7 +19,7 @@ import DeviceIcon from "@/shared/components/DeviceIcon";
 import { ApiError } from "@/shared/lib/api";
 import { timeAgo } from "@/shared/lib/deviceTypes";
 import PairLayout from "./components/PairLayout";
-import { forgetStoredDevice, loadStoredDevice, sendHeartbeat, sendReadings } from "./api";
+import { disconnectDevice, forgetStoredDevice, loadStoredDevice, sendHeartbeat, sendReadings } from "./api";
 import { readBattery } from "./detect";
 import { DENIED_STEPS, PHASE_TEXT, detectPlatform, getQuickFix } from "./geolocation";
 import type { LocationPhase } from "./geolocation";
@@ -292,8 +292,10 @@ export default function TrackerPage() {
   }
 
   const disconnect = () => {
-    if (!window.confirm("Disconnect this device? It stops sending its location.")) return;
+    if (!window.confirm("Disconnect this device? It stops sending its location and is removed from your company.")) return;
     stop();
+    // Best effort: offline, the server still takes it off the map once it stops hearing from it.
+    if (device) disconnectDevice(device).catch(() => {});
     forgetStoredDevice();
     setDevice(null);
   };

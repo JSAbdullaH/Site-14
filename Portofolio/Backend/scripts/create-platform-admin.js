@@ -24,6 +24,20 @@ async function main() {
     console.log('Usage: npm run platform:admin -- --email owner@example.com --name "Full Name" [--catalog]');
     console.log('The password is read from PLATFORM_ADMIN_PASSWORD, or asked for.');
     console.log('--catalog also adds the default marketplace products that are missing (matched by SKU).');
+    console.log('');
+    console.log('Or give a company user owner-portal access with their own account (no new password):');
+    console.log('  npm run platform:admin -- --grant user@company.com      (--revoke to take it away)');
+    return;
+  }
+
+  const grant = arg('grant') || arg('revoke');
+  if (grant) {
+    const on = Boolean(arg('grant'));
+    const user = await prisma.user.findUnique({ where: { email: grant.toLowerCase() }, select: { id: true, isActive: true, passwordHash: true } });
+    if (!user) throw new Error(`No company user with the email ${grant}`);
+    if (on && (!user.isActive || !user.passwordHash)) throw new Error('That account is inactive or has not accepted its invitation');
+    await prisma.user.update({ where: { id: user.id }, data: { isPlatformAdmin: on } });
+    console.log(on ? `${grant} can now open the owner portal with their account` : `${grant} no longer has owner-portal access`);
     return;
   }
 

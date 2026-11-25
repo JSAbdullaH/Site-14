@@ -44,6 +44,8 @@ const isUniqueViolation = (err) =>
 const canSignIn = (user) =>
     user && user.isActive && user.passwordHash && (!config.REQUIRE_EMAIL_VERIFICATION || user.isEmailVerified);
 
+const isOtpExempt = (email) => config.OTP_EXEMPT_EMAILS.includes(String(email).trim().toLowerCase());
+
 async function sendQuietly(fn) {
     try {
         await fn();
@@ -184,7 +186,7 @@ async function register(input) {
             company: {
                 name: input.company_name
             },
-            verification_required: config.REQUIRE_EMAIL_VERIFICATION,
+            verification_required: true,
             ...verificationTimings(),
         };
     }
@@ -194,14 +196,16 @@ async function register(input) {
         company: {
             name: input.company_name
         },
-        verification_required: config.REQUIRE_EMAIL_VERIFICATION,
+        verification_required: true,
     };
 
-    // Without verification the new admin is signed in straight away.
-    if (!config.REQUIRE_EMAIL_VERIFICATION) {
+    // A new account always confirms its email with a code, except the test accounts.
+    if (isOtpExempt(created.user.email)) {
+        await userModel.update(prisma, created.user.id, { isEmailVerified: true });
         return {
             ...result,
-            ...(await issueSession(created.user))
+            verification_required: false,
+            ...(await issueSession({ ...created.user, isEmailVerified: true }))
         };
     }
 
@@ -272,6 +276,9 @@ async function login(input) {
     }
 
     await userModel.resetFailures(user.id);
+
+    // Test accounts sign in with the password alone.
+    if (isOtpExempt(user.email)) return { code_required: false, ...(await issueSession(user)) };
 
     const cooldownMs = config.LOGIN_OTP_RESEND_SECONDS * 1000;
     const live = await authTokens.findActiveCode(user.id, 'login_otp');

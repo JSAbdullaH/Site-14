@@ -12,7 +12,7 @@ import type { DeviceType } from "@/shared/lib/deviceTypes";
 import { ApiError } from "@/shared/lib/api";
 import PairLayout from "./components/PairLayout";
 import GetAppCard from "./components/GetAppCard";
-import { claimPairing, forgetStoredDevice, loadStoredDevice, lookupPairing, saveStoredDevice } from "./api";
+import { claimPairing, disconnectDevice, forgetStoredDevice, loadStoredDevice, lookupPairing, saveStoredDevice } from "./api";
 import { detectThisDevice } from "./detect";
 import { detectPlatform } from "./geolocation";
 import type { DetectedDevice, PairingInfo } from "./types";
@@ -128,7 +128,8 @@ export default function PairPage() {
             <Button
               variant="ghost"
               onClick={() => {
-                if (!window.confirm("Disconnect this device? It stops sending its location. Your company can connect it again later.")) return;
+                if (!window.confirm("Disconnect this device? It stops sending its location and is removed from your company. Your company can connect it again later.")) return;
+                disconnectDevice(stored).catch(() => {});
                 forgetStoredDevice();
                 setStored(null);
               }}

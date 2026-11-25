@@ -103,7 +103,7 @@ export default function RosterSheet({
     }
   }
 
-  const urgent = counts.out_of_zone + counts.offline;
+  const urgent = counts.out_of_zone;
   const live = workers.filter((w) => onMapIds.has(w.employee_id)).length;
   const shown = groups.reduce((n, g) => n + g.items.length, 0);
 

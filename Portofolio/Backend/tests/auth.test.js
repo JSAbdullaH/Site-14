@@ -131,32 +131,53 @@ describe('POST /auth/check-email', () => {
   });
 });
 
-describe('register without email verification', () => {
-  const original = config.REQUIRE_EMAIL_VERIFICATION;
+describe('test accounts without an emailed code', () => {
+  const original = config.OTP_EXEMPT_EMAILS;
   beforeEach(() => {
-    config.REQUIRE_EMAIL_VERIFICATION = false;
+    config.OTP_EXEMPT_EMAILS = ['sara@albina.test'];
   });
   afterEach(() => {
-    config.REQUIRE_EMAIL_VERIFICATION = original;
+    config.OTP_EXEMPT_EMAILS = original;
   });
 
-  test('signs the new admin in straight away and sends no code', async () => {
+  test('register signs the test admin in straight away and sends no code', async () => {
     const res = await register().expect(201);
     expect(res.body).toMatchObject({
       verification_required: false,
       access_token: expect.any(String),
-      refresh_token: expect.any(String),
       user: { email: 'sara@albina.test', role: 'company_admin' },
     });
     expect(res.headers['set-cookie'].join(';')).toMatch(/site14_refresh=.+HttpOnly/);
     expect(outbox).toHaveLength(0);
-    await request(app).get(api('/companies/me')).set(bearer(res.body.access_token)).expect(200);
+  });
+
+  test('sign in needs the password but no code', async () => {
+    await register().expect(201);
+    await login(account.email, 'wrong-password-1A!').expect(401);
+    const res = await login('SARA@albina.test', account.password).expect(200);
+    expect(res.body).toMatchObject({ code_required: false, access_token: expect.any(String) });
+    expect(outbox).toHaveLength(0);
   });
 
   test('a taken email still gets no session', async () => {
     await register().expect(201);
     const res = await register({ ...account, company_name: 'Another Co' }).expect(201);
     expect(res.body).not.toHaveProperty('access_token');
+  });
+});
+
+describe('register always asks for a code', () => {
+  const original = config.REQUIRE_EMAIL_VERIFICATION;
+  afterEach(() => {
+    config.REQUIRE_EMAIL_VERIFICATION = original;
+  });
+
+  test('even with REQUIRE_EMAIL_VERIFICATION off', async () => {
+    config.REQUIRE_EMAIL_VERIFICATION = false;
+    const res = await register().expect(201);
+    expect(res.body.verification_required).toBe(true);
+    expect(res.body).not.toHaveProperty('access_token');
+    expect(outbox).toHaveLength(1);
   });
 });
 

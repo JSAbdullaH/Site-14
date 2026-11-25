@@ -2,10 +2,12 @@ const { prisma, Prisma } = require('../config/db');
 const { FIELDS, toPublic, newKey, healthWhere, ONLINE_WINDOW_MS } = require('../models/device.model');
 const { DEVICE_TYPES } = require('../utils/userAgent');
 const AppError = require('../utils/AppError');
-
+const { closeOpenShift } = require('./presence.service');
 
 const notFound = () => new AppError(404, 'NOT_FOUND', 'Device not found');
 const invalid = (field, message) => new AppError(422, 'VALIDATION_ERROR', 'One or more fields are invalid', { [field]: message });
+const onShift = (action) =>
+  new AppError(409, 'ON_SHIFT', `The wearer is at work. ${action} ends their shift now. Confirm to go ahead.`);
 const isUniqueViolation = (err) => err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
 
 const serialTaken = (serials) =>
@@ -146,16 +148,21 @@ async function checkEmployee(db, deviceId, employeeId) {
 async function update(auth, id, input) {
   const current = await auth.db.device.findUnique({
     where: { id },
-    select: { employeeId: true, isActive: true, source: true, workSessions: { where: { endedAt: null }, select: { id: true } } },
+    select: {
+      employeeId: true,
+      isActive: true,
+      source: true,
+      employee: { select: { workSessions: { where: { endedAt: null }, select: { id: true }, take: 1 } } },
+    },
   });
   if (!current) throw notFound();
+  current.workSessions = current.employee ? current.employee.workSessions : [];
 
   const willBeActive = input.is_active ?? current.isActive;
   const employeeId = willBeActive ? (input.employee_id !== undefined ? input.employee_id : current.employeeId) : null;
 
-  if (employeeId !== current.employeeId && current.workSessions.length) {
-    throw new AppError(409, 'ON_SHIFT', 'The wearer is on site. Change the device after the shift ends.');
-  }
+  const endsShift = employeeId !== current.employeeId && current.workSessions.length > 0;
+  if (endsShift && !input.end_shift) throw onShift('Changing who carries this device');
   if (input.employee_id && !willBeActive) {
     throw new AppError(409, 'DEVICE_INACTIVE', 'Reactivate the device before assigning it');
   }
@@ -165,15 +172,18 @@ async function update(auth, id, input) {
   if (employeeId && employeeId !== current.employeeId) await checkEmployee(auth.db, id, employeeId);
 
   try {
-    const device = await auth.db.device.update({
-      where: { id },
-      data: {
-        employeeId,
-        isActive: willBeActive,
-        ...(input.name !== undefined && { name: input.name }),
-        ...(input.device_type && { deviceType: input.device_type }),
-      },
-      select: FIELDS,
+    const device = await auth.db.$transaction(async (tx) => {
+      if (endsShift) await closeOpenShift(tx, current.employeeId);
+      return tx.device.update({
+        where: { id },
+        data: {
+          employeeId,
+          isActive: willBeActive,
+          ...(input.name !== undefined && { name: input.name }),
+          ...(input.device_type && { deviceType: input.device_type }),
+        },
+        select: FIELDS,
+      });
     });
     return toPublic(device);
   } catch (err) {
@@ -199,19 +209,42 @@ async function rotateKey(auth, id) {
   return { ...toPublic(device), api_key: apiKey };
 }
 
-async function remove(auth, id) {
-  const device = await auth.db.device.findUnique({
-    where: { id },
-    select: { source: true, _count: { select: { workSessions: true } } },
-  });
+// Deletes the device and its key. Its recorded shifts stay with the employee, without
+// the device. A shift still open ends at the last position it sent.
+async function deleteDevice(tx, device) {
+  if (device.employeeId) await closeOpenShift(tx, device.employeeId);
+  await tx.workSession.updateMany({ where: { deviceId: device.id }, data: { deviceId: null } });
+  await tx.device.delete({ where: { id: device.id } });
+}
+
+const REMOVE_FIELDS = {
+  id: true,
+  source: true,
+  employeeId: true,
+  employee: { select: { workSessions: { where: { endedAt: null }, select: { id: true }, take: 1 } } },
+};
+
+async function remove(auth, id, { endShift = false } = {}) {
+  const device = await auth.db.device.findUnique({ where: { id }, select: REMOVE_FIELDS });
   if (!device) throw notFound();
   if (device.source === 'marketplace') {
     throw new AppError(409, 'PURCHASED_DEVICE', 'A purchased device stays in your inventory. Deactivate it instead.');
   }
-  if (device._count.workSessions) {
-    throw new AppError(409, 'HAS_HISTORY', 'This device has recorded shifts, so it is kept for the records. Deactivate it instead.');
-  }
-  await auth.db.device.delete({ where: { id } });
+  if (device.employee && device.employee.workSessions.length && !endShift) throw onShift('Removing this device');
+  await auth.db.$transaction((tx) => deleteDevice(tx, device));
 }
 
-module.exports = { list, summary, get, create, createBatch, update, rotateKey, remove };
+// The device itself asked to disconnect (the app's or the web tracker's Disconnect button).
+// A connected device is deleted; a purchased one stays in the inventory, given back.
+async function disconnect(device) {
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM devices WHERE id = ${device.id}::uuid FOR UPDATE`;
+    const d = await tx.device.findUnique({ where: { id: device.id }, select: REMOVE_FIELDS });
+    if (!d) return;
+    if (d.source !== 'marketplace') return deleteDevice(tx, d);
+    if (d.employeeId) await closeOpenShift(tx, d.employeeId);
+    await tx.device.update({ where: { id: d.id }, data: { employeeId: null } });
+  });
+}
+
+module.exports = { list, summary, get, create, createBatch, update, rotateKey, remove, disconnect };

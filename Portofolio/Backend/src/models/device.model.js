@@ -26,7 +26,14 @@ const FIELDS = {
   lastRecordedAt: true,
   lastBatteryPercent: true,
   clockOffsetSeconds: true,
-  employee: { select: { id: true, fullName: true, site: { select: { id: true, name: true } } } },
+  employee: {
+    select: {
+      id: true,
+      fullName: true,
+      site: { select: { id: true, name: true } },
+      workSessions: { where: { endedAt: null }, select: { id: true }, take: 1 },
+    },
+  },
   orderItem: { select: { order: { select: { id: true, referenceNumber: true, status: true } } } },
   _count: { select: { workSessions: true } },
 };
@@ -61,8 +68,10 @@ function toPublic(d) {
     last_recorded_at: iso(d.lastRecordedAt),
     clock_offset_seconds: d.clockOffsetSeconds,
     created_at: d.createdAt.toISOString(),
-    // A device with recorded shifts is kept for the records: it can be deactivated, not deleted.
+    // Has recorded shifts. Deleting it keeps them with the employee.
     has_history: Boolean(d._count && d._count.workSessions),
+    // The wearer is at work: taking the device back, deactivating or removing it ends the shift.
+    on_shift: Boolean(d.employee && d.employee.workSessions && d.employee.workSessions.length),
   };
 }
 

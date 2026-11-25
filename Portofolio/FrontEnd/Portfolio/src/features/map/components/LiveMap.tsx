@@ -907,9 +907,9 @@ export default function LiveMap({ siteId, notice, siteSwitcher }: Props) {
                 <PanelLeftOpen className="size-4.5" />
                 Team
                 <span className="rounded-full bg-ok-bg px-1.5 text-[12px] tabular-nums text-ok">{live.length}</span>
-                {counts.out_of_zone + counts.offline > 0 && (
+                {counts.out_of_zone > 0 && (
                   <span className="rounded-full bg-danger px-1.5 text-[12px] font-bold tabular-nums text-white">
-                    {counts.out_of_zone + counts.offline}
+                    {counts.out_of_zone}
                   </span>
                 )}
               </button>

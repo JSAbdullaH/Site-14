@@ -10,6 +10,8 @@ export type Employee = {
   site_name?: string | null;
   device?: { id: string; serial_number: string } | null;
   consent_given_at?: string | null;
+  /** At work right now: removing them or their device ends this shift. */
+  on_shift?: boolean;
 };
 
 export type ListEmployeesResponse = {

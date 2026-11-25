@@ -91,6 +91,8 @@ export default function EmployeesTab() {
     setSelected((prev) => (ids.every((id) => prev.has(id)) ? new Set() : new Set(ids)));
   }
 
+  const workingSelected = employees.filter((e) => selected.has(e.id) && e.on_shift).length;
+
   async function removeSelected() {
     const { removed } = await deactivateEmployees([...selected]);
     toast.success(`${removed} employee${removed === 1 ? " was" : "s were"} removed`, {
@@ -235,16 +237,23 @@ export default function EmployeesTab() {
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
-        title={`Remove ${removing?.full_name ?? "this employee"}?`}
+        title={
+          removing?.on_shift
+            ? `${removing.full_name} is at work. Remove them anyway?`
+            : `Remove ${removing?.full_name ?? "this employee"}?`
+        }
         description="They leave the active team and stop being tracked."
         details={[
+          ...(removing?.on_shift
+            ? [`${removing.full_name} is at work right now. Their shift ends now, at the last position their device sent.`]
+            : []),
           removing?.device
             ? `Their device ${removing.device.serial_number} is freed, ready to give to someone else.`
             : "They have no device to free.",
           "A shift still open is closed at the last position their device sent.",
           "Hours, alerts and tasks they already have stay in History and on reports.",
         ]}
-        confirmLabel="Remove employee"
+        confirmLabel={removing?.on_shift ? "End shift and remove" : "Remove employee"}
         onConfirm={() => removing && remove(removing)}
       />
 
@@ -254,6 +263,9 @@ export default function EmployeesTab() {
         title={`Remove ${selected.size} employee${selected.size === 1 ? "" : "s"}?`}
         description="They leave the active team and stop being tracked."
         details={[
+          ...(workingSelected
+            ? [`${workingSelected} of them ${workingSelected === 1 ? "is" : "are"} at work right now. Their shift ends now.`]
+            : []),
           "Any devices they hold are freed, ready to give to someone else.",
           "A shift still open is closed at the last position their device sent.",
           "Hours, alerts and tasks they already have stay in History and on reports.",

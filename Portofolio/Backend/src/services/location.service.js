@@ -10,26 +10,32 @@ function locationStatus(state) {
   return state.geofence ? 'in_zone' : 'on_site';
 }
 
+const onShiftAt = (e, siteId) => {
+  const state = e.currentState;
+  return Boolean(state && state.sessionId !== null && state.session && state.session.siteId === siteId);
+};
+
+// online + inside the site  -> on_site / in_zone / out_of_zone, drawn on the site
+// online + outside the site -> off_site, phone working but not drawn
+// device silent             -> offline (disconnected: the sweep has ended any shift)
 function liveStatus(e, siteId, zoned, now) {
   const device = e.device && e.device.isActive ? e.device : null;
-  const state = e.currentState;
-  const onShift = state && state.sessionId !== null && state.session && state.session.siteId === siteId;
-  if (onShift) {
-    if (!device || !device.lastSeenAt || now - device.lastSeenAt.getTime() > offlineAfterMs()) return 'offline';
-    if (state.geofence) return 'in_zone';
-    return zoned ? 'out_of_zone' : 'on_site';
-  }
   if (!device) return 'no_device';
   if (!e.consentGivenAt) return 'no_consent';
-  if (!state && !device.lastSeenAt) return 'waiting';
-  return 'off_site';
+  if (!device.lastSeenAt) return 'waiting';
+  if (now - device.lastSeenAt.getTime() > offlineAfterMs()) return 'offline';
+  if (!onShiftAt(e, siteId)) return 'off_site';
+  if (e.currentState.geofence) return 'in_zone';
+  return zoned ? 'out_of_zone' : 'on_site';
 }
 
 function toWorker(e, siteId, zoned, now) {
   const state = e.currentState;
   const device = e.device && e.device.isActive ? e.device : null;
   const alert = state && state.session && state.session.alerts[0];
-  const positioned = Boolean(state);
+  // The position is shown only while they are on this site. Off site the server still
+  // holds their last on-site position, which would draw them inside the site.
+  const positioned = onShiftAt(e, siteId);
   return {
     employee_id: e.id,
     full_name: e.fullName,

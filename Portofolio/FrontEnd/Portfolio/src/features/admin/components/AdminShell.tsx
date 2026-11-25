@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Building2, Cpu, LayoutDashboard, LogOut, Package, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Building2, Cpu, LayoutDashboard, LogOut, MapPinned, Package, ShoppingCart, Users } from "lucide-react";
 import { clearPlatformSession, getPlatformAdmin } from "@/shared/lib/platformAuth";
 
 const NAV = [
@@ -8,6 +8,8 @@ const NAV = [
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/companies", label: "Companies", icon: Building2 },
+  { to: "/admin/sites", label: "Sites", icon: MapPinned },
+  { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/devices", label: "All devices", icon: Cpu },
 ];
 
@@ -51,6 +53,12 @@ export default function AdminShell({ title, subtitle, actions, children }: Props
         <div className="mt-auto border-t border-white/10 px-3 pt-4">
           <p className="truncate text-sm font-medium">{admin?.full_name ?? "Owner"}</p>
           <p className="truncate text-xs text-white/50">{admin?.email}</p>
+          {admin?.kind === "user" && (
+            <Link to="/home" className="mt-3 inline-flex items-center gap-2 text-sm text-white/70 hover:text-white">
+              <ArrowLeft className="size-4" />
+              Back to {admin.company?.name ?? "my company"}
+            </Link>
+          )}
           <button
             type="button"
             onClick={signOut}

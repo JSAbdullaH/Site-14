@@ -46,7 +46,7 @@ async function resendVerification(req, res) {
 }
 
 async function login(req, res) {
-  res.json(await authService.login(req.body));
+  sendMaybeSession(res, await authService.login(req.body));
 }
 
 async function verifyLogin(req, res) {

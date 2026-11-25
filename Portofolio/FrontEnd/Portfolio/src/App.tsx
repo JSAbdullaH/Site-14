@@ -25,6 +25,8 @@ import OrdersPage from "@/features/admin/OrdersPage";
 import ProductsPage from "@/features/admin/ProductsPage";
 import CompaniesPage from "@/features/admin/CompaniesPage";
 import AllDevicesPage from "@/features/admin/AllDevicesPage";
+import PlatformSitesPage from "@/features/admin/SitesPage";
+import PlatformUsersPage from "@/features/admin/UsersPage";
 
 export default function App() {
   return (
@@ -58,6 +60,8 @@ export default function App() {
       <Route path="/admin/products" element={<AdminRoute><ProductsPage /></AdminRoute>} />
       <Route path="/admin/companies" element={<AdminRoute><CompaniesPage /></AdminRoute>} />
       <Route path="/admin/devices" element={<AdminRoute><AllDevicesPage /></AdminRoute>} />
+      <Route path="/admin/sites" element={<AdminRoute><PlatformSitesPage /></AdminRoute>} />
+      <Route path="/admin/users" element={<AdminRoute><PlatformUsersPage /></AdminRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

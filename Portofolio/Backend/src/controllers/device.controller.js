@@ -30,7 +30,7 @@ async function rotateKey(req, res) {
 }
 
 async function remove(req, res) {
-  await deviceService.remove(req.auth, req.params.id);
+  await deviceService.remove(req.auth, req.params.id, { endShift: req.query.end_shift === 'true' });
   res.status(204).end();
 }
 
