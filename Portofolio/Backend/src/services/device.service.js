@@ -1,7 +1,8 @@
 const { prisma, Prisma } = require('../config/db');
-const AppError = require('../utils/AppError');
 const { FIELDS, toPublic, newKey, healthWhere, ONLINE_WINDOW_MS } = require('../models/device.model');
 const { DEVICE_TYPES } = require('../utils/userAgent');
+const AppError = require('../utils/AppError');
+
 
 const notFound = () => new AppError(404, 'NOT_FOUND', 'Device not found');
 const invalid = (field, message) => new AppError(422, 'VALIDATION_ERROR', 'One or more fields are invalid', { [field]: message });

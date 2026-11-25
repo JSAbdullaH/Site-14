@@ -30,7 +30,7 @@
 	<string>$(SITE14_API_URL)</string>
 	<key>WKApplication</key>
 	<true/>
-	<key>WKBackgroundModes</key>
+	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
 	</array>

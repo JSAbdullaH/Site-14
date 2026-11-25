@@ -21,7 +21,9 @@
     "db:studio": "prisma studio",
     "db:check": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script",
     "test": "jest --runInBand",
-    "test:e2e": "playwright test -c tests/e2e"
+    "test:e2e": "playwright test -c tests/e2e",
+    "docs:openapi": "node scripts/openapi.js",
+    "docs:api-tests": "node scripts/api-tests.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
